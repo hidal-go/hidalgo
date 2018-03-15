@@ -13,6 +13,8 @@
 # Output of the go coverage tool, specifically when used with LiteIDE
 *.out
 
+vendor/
+
 ### JetBrains template
 
 # User-specific stuff:
