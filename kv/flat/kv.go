@@ -1,15 +1,15 @@
-package kv
+package flat
 
 import (
 	"context"
-	"errors"
 
 	"github.com/nwca/uda/base"
+	"github.com/nwca/uda/kv"
 )
 
 var (
-	ErrNotFound = errors.New("kv: not found")
-	ErrReadOnly = errors.New("kv: read only")
+	ErrNotFound = kv.ErrNotFound
+	ErrReadOnly = kv.ErrReadOnly
 )
 
 type KV interface {
@@ -17,30 +17,18 @@ type KV interface {
 	Tx(rw bool) (Tx, error)
 }
 
-type Key [][]byte
+type Key []byte
 
 func (k Key) Clone() Key {
 	if k == nil {
 		return nil
 	}
 	p := make(Key, len(k))
-	for i, sk := range k {
-		p[i] = make([]byte, len(sk))
-		copy(p[i], sk)
-	}
+	copy(p, k)
 	return p
 }
 
-type Value []byte
-
-func (v Value) Clone() Value {
-	if v == nil {
-		return nil
-	}
-	p := make(Value, len(v))
-	copy(p, v)
-	return p
-}
+type Value = kv.Value
 
 type Tx interface {
 	base.Tx
@@ -63,5 +51,5 @@ type Tx interface {
 type Iterator interface {
 	base.Iterator
 	Key() Key
-	Val() Value
+	Val() kv.Value
 }

@@ -27,128 +27,116 @@ const (
 	Type = "bolt"
 )
 
+const root = "/"
+
 func New(d *bolt.DB) *DB {
-	return &DB{DB: d}
+	return &DB{db: d}
 }
 
-func Open(path string, opt *bolt.Options) (kv.DB, error) {
+func Open(path string, opt *bolt.Options) (*DB, error) {
 	db, err := bolt.Open(path, 0644, opt)
 	if err != nil {
 		return nil, err
 	}
-	return &DB{DB: db}, nil
+	return New(db), nil
 }
 
 type DB struct {
-	DB *bolt.DB
-}
-
-func (db *DB) Type() string {
-	return Type
+	db *bolt.DB
 }
 
 func (db *DB) Close() error {
-	return db.DB.Close()
+	return db.db.Close()
 }
 
-func (db *DB) Tx(update bool) (kv.BucketTx, error) {
-	tx, err := db.DB.Begin(update)
+func (db *DB) Tx(rw bool) (kv.Tx, error) {
+	tx, err := db.db.Begin(rw)
 	if err != nil {
 		return nil, err
 	}
-	return &Tx{Tx: tx}, nil
+	return &Tx{tx: tx}, nil
 }
 
 type Tx struct {
-	Tx  *bolt.Tx
-	err error
+	tx *bolt.Tx
 }
 
-func (tx *Tx) Get(ctx context.Context, keys []kv.BucketKey) ([][]byte, error) {
-	vals := make([][]byte, len(keys))
+func (tx *Tx) bucket(key kv.Key) (*bolt.Bucket, kv.Key) {
+	b := tx.tx.Bucket([]byte(root))
+	for b != nil && len(key) > 1 {
+		b = b.Bucket(key[0])
+		key = key[1:]
+	}
+	return b, key
+}
+func (tx *Tx) Get(ctx context.Context, key kv.Key) (kv.Value, error) {
+	b, k := tx.bucket(key)
+	if b == nil || len(k) != 1 {
+		return nil, kv.ErrNotFound
+	}
+	v := b.Get(k[0])
+	if v == nil {
+		return nil, kv.ErrNotFound
+	}
+	return v, nil
+}
+func (tx *Tx) GetBatch(ctx context.Context, keys []kv.Key) ([]kv.Value, error) {
+	vals := make([]kv.Value, len(keys))
 	for i, k := range keys {
-		if b := tx.Tx.Bucket(k.Bucket); b != nil {
-			vals[i] = b.Get(k.Key)
+		if b, k := tx.bucket(k); b != nil && len(k) == 1 {
+			vals[i] = b.Get(k[0])
 		}
 	}
 	return vals, nil
 }
 
 func (tx *Tx) Commit(ctx context.Context) error {
-	if tx.err != nil {
-		_ = tx.Tx.Rollback()
-		return tx.err
-	}
-	return tx.Tx.Commit()
+	return tx.tx.Commit()
 }
-func (tx *Tx) Rollback() error {
-	if tx.err != nil {
-		_ = tx.Tx.Rollback()
-		return tx.err
-	}
-	return tx.Tx.Rollback()
+func (tx *Tx) Close() error {
+	return tx.tx.Rollback()
 }
-func (tx *Tx) Bucket(name []byte) kv.Bucket {
-	if tx.Tx.Writable() {
-		b, err := tx.Tx.CreateBucketIfNotExists(name)
-		return &Bucket{Bucket: b, err: err}
+func (tx *Tx) Put(k kv.Key, v kv.Value) error {
+	b, err := tx.tx.CreateBucketIfNotExists([]byte(root))
+	for err == nil && b != nil && len(k) > 1 {
+		b, err = b.CreateBucketIfNotExists(k[0])
+		k = k[1:]
 	}
-	b := tx.Tx.Bucket(name)
-	var err error
-	if b == nil {
-		err = kv.ErrNoBucket
+	if err != nil {
+		return err
 	}
-	return &Bucket{Bucket: b, err: err}
+	return b.Put(k[0], v)
 }
-
-type Bucket struct {
-	Bucket *bolt.Bucket
-	err    error
-}
-
-func (b *Bucket) Get(ctx context.Context, keys [][]byte) ([][]byte, error) {
-	if b.err != nil {
-		return nil, b.err
-	} else if b.Bucket == nil {
-		return nil, kv.ErrNotFound
+func (tx *Tx) Del(k kv.Key) error {
+	b, k := tx.bucket(k)
+	if b == nil || len(k) != 1 {
+		return nil
 	}
-	vals := make([][]byte, len(keys))
-	for i, k := range keys {
-		vals[i] = b.Bucket.Get(k)
-	}
-	return vals, nil
+	return b.Delete(k[0])
 }
-func (b *Bucket) Put(k, v []byte) error {
-	if b.err != nil {
-		return b.err
+func (tx *Tx) Scan(pref kv.Key) kv.Iterator {
+	kpref := pref
+	b, pref := tx.bucket(pref)
+	if b == nil || len(pref) != 1 {
+		return &Iterator{}
 	}
-	return b.Bucket.Put(k, v)
-}
-func (b *Bucket) Del(k []byte) error {
-	if b.err != nil {
-		return b.err
-	}
-	return b.Bucket.Delete(k)
-}
-func (b *Bucket) Scan(pref []byte) kv.Iterator {
-	return &Iterator{b: b, pref: pref}
+	return &Iterator{b: b, pref: pref[0], kpref: kpref}
 }
 
 type Iterator struct {
-	b    *Bucket
-	pref []byte
-	c    *bolt.Cursor
-	k, v []byte
+	b     *bolt.Bucket
+	kpref kv.Key
+	pref  []byte
+	c     *bolt.Cursor
+	k, v  []byte
 }
 
 func (it *Iterator) Next(ctx context.Context) bool {
 	if it.b == nil {
 		return false
-	} else if it.b.err != nil {
-		return false
 	}
 	if it.c == nil {
-		it.c = it.b.Bucket.Cursor()
+		it.c = it.b.Cursor()
 		if len(it.pref) == 0 {
 			it.k, it.v = it.c.First()
 		} else {
@@ -163,16 +151,19 @@ func (it *Iterator) Next(ctx context.Context) bool {
 	}
 	return ok
 }
-func (it *Iterator) Key() []byte { return it.k }
-func (it *Iterator) Val() []byte { return it.v }
-func (it *Iterator) Err() error {
-	if it.b == nil {
-		return nil
+func (it *Iterator) Key() kv.Key {
+	if len(it.kpref) == 0 {
+		return kv.Key{it.k}
 	}
-	return it.b.err
+	k := it.kpref.Clone()
+	k = append(k, append([]byte{}, it.k...))
+	return k
 }
-func (it *Iterator) Close() error { return it.Err() }
-
-func (b *Bucket) SetFillPercent(v float64) {
-	b.Bucket.FillPercent = v
+func (it *Iterator) Val() kv.Value { return it.v }
+func (it *Iterator) Err() error {
+	return nil
+}
+func (it *Iterator) Close() error {
+	*it = Iterator{}
+	return nil
 }

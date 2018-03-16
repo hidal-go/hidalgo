@@ -16,14 +16,13 @@ package leveldb
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/syndtr/goleveldb/leveldb"
 	"github.com/syndtr/goleveldb/leveldb/iterator"
 	"github.com/syndtr/goleveldb/leveldb/opt"
 	"github.com/syndtr/goleveldb/leveldb/util"
 
-	"github.com/nwca/uda/kv"
+	"github.com/nwca/uda/kv/flat"
 )
 
 const (
@@ -31,23 +30,19 @@ const (
 )
 
 func New(d *leveldb.DB) *DB {
-	return &DB{DB: d}
+	return &DB{db: d}
 }
 
-func Open(path string, opt *opt.Options) (kv.DB, error) {
+func Open(path string, opt *opt.Options) (*DB, error) {
 	db, err := leveldb.OpenFile(path, opt)
 	if err != nil {
 		return nil, err
 	}
-	d := &DB{
-		DB: db,
-		wo: &opt.WriteOptions{},
-	}
-	return kv.NewFlat(d), nil
+	return New(db), nil
 }
 
 type DB struct {
-	DB *leveldb.DB
+	db *leveldb.DB
 	wo *opt.WriteOptions
 	ro *opt.ReadOptions
 }
@@ -59,20 +54,16 @@ func (db *DB) SetWriteOptions(wo *opt.WriteOptions) {
 func (db *DB) SetReadOptions(ro *opt.ReadOptions) {
 	db.ro = ro
 }
-
-func (db *DB) Type() string {
-	return Type
-}
 func (db *DB) Close() error {
-	return db.DB.Close()
+	return db.db.Close()
 }
-func (db *DB) Tx(update bool) (kv.FlatTx, error) {
+func (db *DB) Tx(rw bool) (flat.Tx, error) {
 	tx := &Tx{db: db}
 	var err error
-	if update {
-		tx.tx, err = db.DB.OpenTransaction()
+	if rw {
+		tx.tx, err = db.db.OpenTransaction()
 	} else {
-		tx.sn, err = db.DB.GetSnapshot()
+		tx.sn, err = db.db.GetSnapshot()
 	}
 	if err != nil {
 		return nil, err
@@ -98,7 +89,7 @@ func (tx *Tx) Commit(ctx context.Context) error {
 	tx.sn.Release()
 	return tx.err
 }
-func (tx *Tx) Rollback() error {
+func (tx *Tx) Close() error {
 	if tx.tx != nil {
 		tx.tx.Discard()
 	} else {
@@ -106,15 +97,32 @@ func (tx *Tx) Rollback() error {
 	}
 	return tx.err
 }
-func (tx *Tx) Get(ctx context.Context, keys [][]byte) ([][]byte, error) {
-	vals := make([][]byte, len(keys))
-	var err error
+func (tx *Tx) Get(ctx context.Context, key flat.Key) (flat.Value, error) {
+	var (
+		val []byte
+		err error
+	)
+	if tx.tx != nil {
+		val, err = tx.tx.Get(key, tx.db.ro)
+	} else {
+		val, err = tx.sn.Get(key, tx.db.ro)
+	}
+	if err == leveldb.ErrNotFound {
+		return nil, flat.ErrNotFound
+	} else if err != nil {
+		return nil, err
+	}
+	return val, nil
+}
+func (tx *Tx) GetBatch(ctx context.Context, keys []flat.Key) ([]flat.Value, error) {
+	vals := make([]flat.Value, len(keys))
 	var get func(k []byte, ro *opt.ReadOptions) ([]byte, error)
 	if tx.tx != nil {
 		get = tx.tx.Get
 	} else {
 		get = tx.sn.Get
 	}
+	var err error
 	for i, k := range keys {
 		vals[i], err = get(k, tx.db.ro)
 		if err == leveldb.ErrNotFound {
@@ -125,19 +133,19 @@ func (tx *Tx) Get(ctx context.Context, keys [][]byte) ([][]byte, error) {
 	}
 	return vals, nil
 }
-func (tx *Tx) Put(k, v []byte) error {
+func (tx *Tx) Put(k flat.Key, v flat.Value) error {
 	if tx.tx == nil {
-		return fmt.Errorf("put on ro tx")
+		return flat.ErrReadOnly
 	}
 	return tx.tx.Put(k, v, tx.db.wo)
 }
-func (tx *Tx) Del(k []byte) error {
+func (tx *Tx) Del(k flat.Key) error {
 	if tx.tx == nil {
-		return fmt.Errorf("del on ro tx")
+		return flat.ErrReadOnly
 	}
 	return tx.tx.Delete(k, tx.db.wo)
 }
-func (tx *Tx) Scan(pref []byte) kv.Iterator {
+func (tx *Tx) Scan(pref flat.Key) flat.Iterator {
 	r, ro := util.BytesPrefix(pref), tx.db.ro
 	var it iterator.Iterator
 	if tx.tx != nil {
@@ -160,8 +168,8 @@ func (it *Iterator) Next(ctx context.Context) bool {
 	}
 	return it.it.Next()
 }
-func (it *Iterator) Key() []byte { return it.it.Key() }
-func (it *Iterator) Val() []byte { return it.it.Value() }
+func (it *Iterator) Key() flat.Key   { return it.it.Key() }
+func (it *Iterator) Val() flat.Value { return it.it.Value() }
 func (it *Iterator) Err() error {
 	return it.it.Error()
 }
