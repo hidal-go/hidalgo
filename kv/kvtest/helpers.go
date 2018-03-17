@@ -4,39 +4,39 @@ import (
 	"context"
 	"testing"
 
-	. "github.com/nwca/uda/kv"
+	"github.com/nwca/uda/kv"
 	"github.com/stretchr/testify/require"
 )
 
-func NewTest(t testing.TB, db KV) *Test {
+func NewTest(t testing.TB, db kv.KV) *Test {
 	return &Test{t: t, db: db}
 }
 
 type Test struct {
 	t  testing.TB
-	db KV
+	db kv.KV
 }
 
-func (t Test) get(key Key) (Value, error) {
+func (t Test) Get(key kv.Key) (kv.Value, error) {
 	tx, err := t.db.Tx(false)
 	require.NoError(t.t, err)
 	defer tx.Close()
 	return tx.Get(context.TODO(), key)
 }
 
-func (t Test) notExists(k Key) {
-	v, err := t.get(k)
-	require.Equal(t.t, ErrNotFound, err)
-	require.Equal(t.t, Value(nil), v)
+func (t Test) NotExists(k kv.Key) {
+	v, err := t.Get(k)
+	require.Equal(t.t, kv.ErrNotFound, err)
+	require.Equal(t.t, kv.Value(nil), v)
 }
 
-func (t Test) expect(k Key, exp Value) {
-	v, err := t.get(k)
+func (t Test) Expect(k kv.Key, exp kv.Value) {
+	v, err := t.Get(k)
 	require.NoError(t.t, err)
 	require.Equal(t.t, exp, v)
 }
 
-func (t Test) put(key Key, val Value) {
+func (t Test) Put(key kv.Key, val kv.Value) {
 	tx, err := t.db.Tx(true)
 	require.NoError(t.t, err)
 	defer tx.Close()
@@ -51,7 +51,7 @@ func (t Test) put(key Key, val Value) {
 	require.NoError(t.t, err)
 }
 
-func (t Test) del(key Key) {
+func (t Test) Del(key kv.Key) {
 	tx, err := t.db.Tx(true)
 	require.NoError(t.t, err)
 	defer tx.Close()
@@ -60,13 +60,13 @@ func (t Test) del(key Key) {
 
 	ctx := context.TODO()
 	got, err := tx.Get(ctx, key)
-	require.Equal(t.t, ErrNotFound, err)
-	require.Equal(t.t, Value(nil), got)
+	require.Equal(t.t, kv.ErrNotFound, err)
+	require.Equal(t.t, kv.Value(nil), got)
 	err = tx.Commit(ctx)
 	require.NoError(t.t, err)
 }
 
-func (t Test) iterate(pref Key, exp []Pair) {
+func (t Test) Scan(pref kv.Key, exp []kv.Pair) {
 	tx, err := t.db.Tx(false)
 	require.NoError(t.t, err)
 	defer tx.Close()
@@ -76,9 +76,9 @@ func (t Test) iterate(pref Key, exp []Pair) {
 	require.NoError(t.t, it.Err())
 
 	ctx := context.TODO()
-	var got []Pair
+	var got []kv.Pair
 	for it.Next(ctx) {
-		got = append(got, Pair{
+		got = append(got, kv.Pair{
 			Key: it.Key().Clone(),
 			Val: it.Val().Clone(),
 		})

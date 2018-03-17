@@ -1,0 +1,12 @@
+digraph DBs {
+    btree [label="B-Tree"]
+    leveldb [label="LevelDB"]
+    flat_kv [label="Flat KV" URL="./docs/kv-flat.md"]
+    flat_kv -> btree
+    flat_kv -> leveldb
+
+    hie_kv [label="Hierarchical KV" URL="./docs/kv-hierarchical.md"]
+    bolt [label="Bolt"]
+    hie_kv -> bolt
+    hie_kv -> flat_kv
+}

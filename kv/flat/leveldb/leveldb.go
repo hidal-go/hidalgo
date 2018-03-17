@@ -29,6 +29,8 @@ const (
 	Type = "leveldb"
 )
 
+var _ flat.KV = (*DB)(nil)
+
 func New(d *leveldb.DB) *DB {
 	return &DB{db: d}
 }

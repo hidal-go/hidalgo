@@ -26,6 +26,10 @@ const (
 	Type = "btree"
 )
 
+var _ flat.KV = (*DB)(nil)
+
+// New creates a new flat in-memory key-value store.
+// It's not safe for concurrent use.
 func New() *DB {
 	return &DB{t: TreeNew(bytes.Compare)}
 }

@@ -29,6 +29,8 @@ const (
 
 const root = "/"
 
+var _ kv.KV = (*DB)(nil)
+
 func New(d *bolt.DB) *DB {
 	return &DB{db: d}
 }

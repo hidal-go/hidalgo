@@ -4,11 +4,14 @@ import (
 	"strconv"
 	"testing"
 
-	. "github.com/nwca/uda/kv"
+	"github.com/nwca/uda/kv"
 )
 
-type Func func(t testing.TB) (KV, func())
+// Func is a constructor for database implementations.
+// It returns an empty database and a function to destroy it.
+type Func func(t testing.TB) (kv.KV, func())
 
+// RunTest runs all tests for key-value implementations.
 func RunTest(t *testing.T, fnc Func) {
 	for _, c := range testList {
 		t.Run(c.name, func(t *testing.T) {
@@ -21,15 +24,15 @@ func RunTest(t *testing.T, fnc Func) {
 
 var testList = []struct {
 	name string
-	test func(t testing.TB, db KV)
+	test func(t testing.TB, db kv.KV)
 }{
 	{name: "basic", test: basic},
 }
 
-func basic(t testing.TB, db KV) {
+func basic(t testing.TB, db kv.KV) {
 	td := NewTest(t, db)
 
-	keys := []Key{
+	keys := []kv.Key{
 		{[]byte("a")},
 		{[]byte("b"), []byte("a")},
 		{[]byte("b"), []byte("a1")},
@@ -38,28 +41,29 @@ func basic(t testing.TB, db KV) {
 		{[]byte("c")},
 	}
 
-	td.notExists(nil)
+	td.NotExists(nil)
 	for _, k := range keys {
-		td.notExists(k)
+		td.NotExists(k)
 	}
 
-	var all []Pair
+	var all []kv.Pair
 	for i, k := range keys {
-		v := Value(strconv.Itoa(i))
-		td.put(k, v)
-		td.expect(k, v)
-		all = append(all, Pair{Key: k, Val: v})
+		v := kv.Value(strconv.Itoa(i))
+		td.Put(k, v)
+		td.Expect(k, v)
+		all = append(all, kv.Pair{Key: k, Val: v})
 	}
 
-	td.iterate(nil, all)
-	td.iterate(keys[0], all[:1])
-	td.iterate(keys[1][:1], all[1:len(all)-1])
-	td.iterate(Key{keys[1][0], keys[1][1][:1]}, all[1:4])
+	td.Scan(nil, all)
+	td.Scan(keys[0], all[:1])
+	td.Scan(keys[len(keys)-1], all[len(all)-1:])
+	td.Scan(keys[1][:1], all[1:len(all)-1])
+	td.Scan(kv.Key{keys[1][0], keys[1][1][:1]}, all[1:4])
 
 	for _, k := range keys {
-		td.del(k)
+		td.Del(k)
 	}
 	for _, k := range keys {
-		td.notExists(k)
+		td.NotExists(k)
 	}
 }
