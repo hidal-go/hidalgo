@@ -42,6 +42,11 @@ func (v Value) Clone() Value {
 	return p
 }
 
+type Pair struct {
+	Key Key
+	Val Value
+}
+
 type Tx interface {
 	base.Tx
 	// Get fetches a value from a single key from the database.

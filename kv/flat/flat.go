@@ -52,6 +52,7 @@ func (tx *flatTx) key(key kv.Key) Key {
 	for _, k := range key {
 		i += copy(p[i:], k)
 		p[i] = sep
+		i++
 	}
 	return p[:len(p)-1]
 }

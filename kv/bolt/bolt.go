@@ -116,50 +116,85 @@ func (tx *Tx) Del(k kv.Key) error {
 }
 func (tx *Tx) Scan(pref kv.Key) kv.Iterator {
 	kpref := pref
-	b, pref := tx.bucket(pref)
-	if b == nil || len(pref) != 1 {
+	b, p := tx.bucket(pref)
+	if b == nil || len(p) > 1 {
+		// if the prefix key is still longer than 1, it means that
+		// a bucket mentioned in the prefix does not exists and
+		// we can safely return an empty iterator
 		return &Iterator{}
 	}
-	return &Iterator{b: b, pref: pref[0], kpref: kpref}
+	// the key for bucket we iterate
+	kpref = kpref[:len(kpref)-len(p)]
+	return &Iterator{
+		b:    []*bolt.Bucket{b},
+		pref: p,
+		root: kpref.Clone(), // we will append to it
+	}
 }
 
 type Iterator struct {
-	b     *bolt.Bucket
-	kpref kv.Key
-	pref  []byte
-	c     *bolt.Cursor
-	k, v  []byte
+	root kv.Key // used to reconstruct a full key
+	pref kv.Key // prefix to check all keys against
+	b    []*bolt.Bucket
+	c    []*bolt.Cursor
+	k, v []byte
 }
 
 func (it *Iterator) Next(ctx context.Context) bool {
-	if it.b == nil {
-		return false
-	}
-	if it.c == nil {
-		it.c = it.b.Cursor()
-		if len(it.pref) == 0 {
-			it.k, it.v = it.c.First()
+	for len(it.b) > 0 {
+		i := len(it.b) - 1
+		cb := it.b[i]
+		if len(it.c) < len(it.b) {
+			c := cb.Cursor()
+			it.c = append(it.c, c)
+			if i >= len(it.pref) {
+				it.k, it.v = c.First()
+			} else {
+				it.k, it.v = c.Seek(it.pref[i])
+			}
 		} else {
-			it.k, it.v = it.c.Seek(it.pref)
+			c := it.c[i]
+			it.k, it.v = c.Next()
 		}
-	} else {
-		it.k, it.v = it.c.Next()
+		if it.k != nil {
+			// found a key, check prefix
+			if i >= len(it.pref) || bytes.HasPrefix(it.k, it.pref[i]) {
+				// prefix matches, or is not specified
+				if it.v == nil {
+					// it's a bucket
+					cb := it.b[len(it.b)-1]
+					if b := cb.Bucket(it.k); b != nil {
+						it.b = append(it.b, b)
+						it.root = append(it.root, it.k)
+						continue
+					}
+					// or maybe it's a key after all
+				}
+				// return this value
+				return true
+			}
+		}
+		// iterator is ended, or we reached the end of the prefix
+		// return to top-level bucket
+		it.c = it.c[:len(it.c)-1]
+		it.b = it.b[:len(it.b)-1]
+		if len(it.root) > 0 { // since we hide top-level bucket it can be smaller
+			it.root = it.root[:len(it.root)-1]
+		}
 	}
-	ok := it.k != nil && bytes.HasPrefix(it.k, it.pref)
-	if !ok {
-		it.b = nil
-	}
-	return ok
+	return false
 }
 func (it *Iterator) Key() kv.Key {
-	if len(it.kpref) == 0 {
-		return kv.Key{it.k}
+	if len(it.b) == 0 {
+		return nil
 	}
-	k := it.kpref.Clone()
+	k := it.root.Clone()
 	k = append(k, append([]byte{}, it.k...))
 	return k
 }
-func (it *Iterator) Val() kv.Value { return it.v }
+func (it *Iterator) Val() kv.Value {
+	return it.v
+}
 func (it *Iterator) Err() error {
 	return nil
 }
