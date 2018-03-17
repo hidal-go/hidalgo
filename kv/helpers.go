@@ -41,3 +41,10 @@ func Each(ctx context.Context, tx Tx, pref Key, fnc func(k Key, v Value) error) 
 	}
 	return it.Err()
 }
+
+// CreateBucket is a helper to create buckets upfront without writing any key-value pairs to it.
+func CreateBucket(_ context.Context, tx Tx, key Key) error {
+	key = key.Clone()
+	key = append(key, nil)
+	return tx.Put(key, nil)
+}

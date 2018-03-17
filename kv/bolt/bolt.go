@@ -47,6 +47,10 @@ type DB struct {
 	db *bolt.DB
 }
 
+func (db *DB) DB() *bolt.DB {
+	return db.db
+}
+
 func (db *DB) Close() error {
 	return db.db.Close()
 }
@@ -106,6 +110,8 @@ func (tx *Tx) Put(k kv.Key, v kv.Value) error {
 	}
 	if err != nil {
 		return err
+	} else if len(k[0]) == 0 && len(v) == 0 {
+		return nil // bucket creation, no need to put value
 	}
 	return b.Put(k[0], v)
 }

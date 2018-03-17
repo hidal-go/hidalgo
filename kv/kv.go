@@ -2,6 +2,7 @@
 package kv
 
 import (
+	"bytes"
 	"context"
 	"errors"
 
@@ -24,6 +25,48 @@ type KV interface {
 // Key is a hierarchical binary key used in a database.
 type Key [][]byte
 
+// SKey is a helper for making string keys.
+func SKey(parts ...string) Key {
+	k := make(Key, 0, len(parts))
+	for _, s := range parts {
+		k = append(k, []byte(s))
+	}
+	return k
+}
+
+// Compare return 0 when keys are equal, -1 when k < k2 and +1 when k > k2.
+func (k Key) Compare(k2 Key) int {
+	for i, s := range k {
+		if i >= len(k2) {
+			return +1
+		}
+		if d := bytes.Compare(s, k2[i]); d != 0 {
+			return d
+		}
+	}
+	if len(k) < len(k2) {
+		return -1
+	}
+	return 0
+}
+
+// Append key parts and return a new value.
+// Value is not a deep copy, use Clone for this.
+func (k Key) Append(parts Key) Key {
+	if k == nil && parts == nil {
+		return nil
+	}
+	k2 := make(Key, len(k)+len(parts))
+	i := copy(k2, k)
+	copy(k2[i:], parts)
+	return k2
+}
+
+// AppendBytes is the same like Append, but accepts bytes slices.
+func (k Key) AppendBytes(parts ...[]byte) Key {
+	return k.Append(Key(parts))
+}
+
 // Clone returns a copy of the key.
 func (k Key) Clone() Key {
 	if k == nil {
@@ -35,6 +78,21 @@ func (k Key) Clone() Key {
 		copy(p[i], sk)
 	}
 	return p
+}
+
+// ByKey sorts keys in ascending order.
+type ByKey []Key
+
+func (s ByKey) Len() int {
+	return len(s)
+}
+
+func (s ByKey) Less(i, j int) bool {
+	return s[i].Compare(s[j]) < 0
+}
+
+func (s ByKey) Swap(i, j int) {
+	s[i], s[j] = s[j], s[i]
 }
 
 // Value is a binary value stored in a database.
