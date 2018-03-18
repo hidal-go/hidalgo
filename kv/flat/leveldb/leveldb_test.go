@@ -29,6 +29,6 @@ func create(t testing.TB) (flat.KV, func()) {
 func TestLeveldb(t *testing.T) {
 	kvtest.RunTest(t, func(t testing.TB) (kv.KV, func()) {
 		db, closer := create(t)
-		return flat.New(db, '/'), closer
+		return flat.New(db), closer
 	})
 }

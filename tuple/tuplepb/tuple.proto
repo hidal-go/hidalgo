@@ -1,0 +1,38 @@
+syntax = "proto3";
+
+package nwca.uda.tuple;
+
+option go_package = "tuplepb";
+
+import "github.com/gogo/protobuf/gogoproto/gogo.proto";
+option (gogoproto.protosizer_all) = true;
+option (gogoproto.marshaler_all) = true;
+option (gogoproto.unmarshaler_all) =  true;
+
+enum ValueType {
+    TYPE_ANY = 0;
+    TYPE_BYTES = 1;
+    TYPE_STRING = 2;
+    TYPE_UINT = 3;
+    TYPE_INT = 4;
+    TYPE_BOOL = 5;
+    TYPE_TIME = 6;
+    TYPE_FLOAT = 7;
+}
+
+message Table {
+    string name = 1;
+    repeated KeyField key = 2 [(gogoproto.nullable) = false];
+    repeated Field data = 3 [(gogoproto.nullable) = false];
+}
+
+message KeyField {
+    string name = 1;
+    ValueType type = 2;
+    bool auto = 3;
+}
+
+message Field {
+    string name = 1;
+    ValueType type = 2;
+}

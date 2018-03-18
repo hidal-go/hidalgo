@@ -1,0 +1,190 @@
+package kv
+
+import (
+	"context"
+	"fmt"
+
+	"github.com/nwca/uda/kv/flat"
+	"github.com/nwca/uda/tuple"
+	"github.com/nwca/uda/types"
+)
+
+func NewKV(ctx context.Context, db tuple.Store, table string) (flat.KV, error) {
+	tx, err := db.Tx(true)
+	if err != nil {
+		return nil, err
+	}
+	defer tx.Close()
+	_, err = tx.Table(ctx, table)
+	if err == tuple.ErrTableNotFound {
+		_, err = tx.CreateTable(ctx, tuple.Header{
+			Name: table,
+			Key: []tuple.KeyField{
+				{Name: "key", Type: &types.Bytes{}},
+			},
+			Data: []tuple.Field{
+				{Name: "val", Type: &types.Bytes{}},
+			},
+		})
+	}
+	if err == nil {
+		err = tx.Commit(ctx)
+	}
+	if err != nil {
+		return nil, err
+	}
+	return &flatKV{db: db, table: table}, nil
+}
+
+type flatKV struct {
+	db    tuple.Store
+	table string
+}
+
+func (kv *flatKV) Close() error {
+	return kv.db.Close()
+}
+
+func (kv *flatKV) Tx(rw bool) (flat.Tx, error) {
+	tx, err := kv.db.Tx(rw)
+	if err != nil {
+		return nil, err
+	}
+	tbl, err := tx.Table(context.TODO(), kv.table)
+	if err != nil {
+		tx.Close()
+		return nil, err
+	}
+	return &flatTx{tx: tx, tbl: tbl}, nil
+}
+
+type flatTx struct {
+	tx  tuple.Tx
+	tbl tuple.Table
+}
+
+func (tx *flatTx) Commit(ctx context.Context) error {
+	return tx.tx.Commit(ctx)
+}
+
+func (tx *flatTx) Close() error {
+	return tx.tx.Close()
+}
+
+func flatKey(b flat.Key) tuple.Key {
+	if b == nil {
+		return nil
+	}
+	v := types.Bytes(b.Clone())
+	return tuple.Key{&v}
+}
+
+func flatVal(b flat.Value) tuple.Data {
+	v := types.Bytes(b.Clone())
+	return tuple.Data{&v}
+}
+
+func (tx *flatTx) Get(ctx context.Context, key flat.Key) (flat.Value, error) {
+	row, err := tx.tbl.GetTuple(ctx, flatKey(key))
+	if err == tuple.ErrNotFound {
+		return nil, flat.ErrNotFound
+	} else if err != nil {
+		return nil, err
+	}
+	b, ok := row[0].(*types.Bytes)
+	if !ok || b == nil {
+		return nil, fmt.Errorf("unexpected value type: %T", row[0])
+	}
+	return flat.Value(*b), nil
+}
+
+func (tx *flatTx) GetBatch(ctx context.Context, key []flat.Key) ([]flat.Value, error) {
+	keys := make([]tuple.Key, 0, len(key))
+	for _, k := range key {
+		keys = append(keys, flatKey(k))
+	}
+	rows, err := tx.tbl.GetTupleBatch(ctx, keys)
+	if err != nil {
+		return nil, err
+	}
+	vals := make([]flat.Value, len(key))
+	for i, d := range rows {
+		if d == nil {
+			continue
+		}
+		b, ok := d[0].(*types.Bytes)
+		if !ok || b == nil {
+			return nil, fmt.Errorf("unexpected value type: %T", d[0])
+		}
+		vals[i] = flat.Value(*b)
+	}
+	return vals, nil
+}
+
+func (tx *flatTx) Put(k flat.Key, v flat.Value) error {
+	return tx.tbl.UpdateTuple(context.TODO(), tuple.Tuple{
+		Key:  flatKey(k),
+		Data: flatVal(v),
+	}, &tuple.UpdateOpt{Upsert: true})
+}
+
+func (tx *flatTx) Del(k flat.Key) error {
+	return tx.tbl.DeleteTuple(context.TODO(), flatKey(k))
+}
+
+func (tx *flatTx) Scan(pref flat.Key) flat.Iterator {
+	return &flatIterator{tx: tx, it: tx.tbl.Scan(flatKey(pref))}
+}
+
+type flatIterator struct {
+	tx  *flatTx
+	it  tuple.Iterator
+	err error
+}
+
+func (it *flatIterator) Close() error {
+	return it.it.Close()
+}
+
+func (it *flatIterator) Err() error {
+	if err := it.it.Err(); err != nil {
+		return err
+	}
+	return it.err
+}
+
+func (it *flatIterator) Next(ctx context.Context) bool {
+	if it.err != nil {
+		return false
+	}
+	return it.it.Next(ctx)
+}
+
+func (it *flatIterator) Key() flat.Key {
+	key := it.it.Key()
+	if len(key) == 0 {
+		return nil
+	} else if len(key) > 1 {
+		it.err = fmt.Errorf("unexpected key size: %d", len(key))
+		return nil
+	}
+	b, ok := key[0].(*types.Bytes)
+	if !ok || b == nil {
+		it.err = fmt.Errorf("unexpected key type: %T", key[0])
+		return nil
+	}
+	return flat.Key(*b).Clone()
+}
+
+func (it *flatIterator) Val() flat.Value {
+	data := it.it.Data()
+	if len(data) == 0 {
+		return nil
+	}
+	b, ok := data[0].(*types.Bytes)
+	if !ok || b == nil {
+		it.err = fmt.Errorf("unexpected value type: %T", data[0])
+		return nil
+	}
+	return flat.Value(*b).Clone()
+}

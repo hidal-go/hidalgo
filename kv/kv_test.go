@@ -53,3 +53,12 @@ func TestKeyCompare(t *testing.T) {
 		})
 	}
 }
+
+func TestKeyAppend(t *testing.T) {
+	k := SKey("a", "b", "c")
+	k = k.Append(SKey("d"))
+	require.Equal(t, SKey("a", "b", "c", "d"), k)
+	k = SKey("a", "b", "c")
+	k = k.AppendBytes([]byte("d"))
+	require.Equal(t, SKey("a", "b", "c", "d"), k)
+}

@@ -1,7 +1,6 @@
 package flat
 
 import (
-	"bytes"
 	"context"
 
 	"github.com/nwca/uda/kv"
@@ -9,13 +8,57 @@ import (
 
 var _ kv.KV = (*flatKV)(nil)
 
-func New(flat KV, sep byte) kv.KV {
-	return &flatKV{flat: flat, sep: sep}
+const (
+	sep = '/'
+	esc = '\\'
+)
+
+func New(flat KV) kv.KV {
+	return &flatKV{flat: flat}
 }
 
 type flatKV struct {
 	flat KV
-	sep  byte
+}
+
+func keyEscape(k kv.Key) Key {
+	var k2 Key
+	for i, s := range k {
+		if i != 0 {
+			k2 = append(k2, sep)
+		}
+		for _, p := range s {
+			if p == esc || p == sep {
+				k2 = append(k2, esc)
+			}
+			k2 = append(k2, p)
+		}
+	}
+	return k2
+}
+
+func keyUnescape(k Key) kv.Key {
+	var (
+		k2  kv.Key
+		cur Key
+	)
+	for i := 0; i < len(k); i++ {
+		p := k[i]
+		if p == esc {
+			cur = append(cur, k[i+1])
+			i++
+			continue
+		} else if p == sep {
+			k2 = append(k2, cur)
+			cur = nil
+			continue
+		}
+		cur = append(cur, p)
+	}
+	if cur != nil {
+		k2 = append(k2, cur)
+	}
+	return k2
 }
 
 func (kv *flatKV) Close() error {
@@ -36,25 +79,10 @@ type flatTx struct {
 }
 
 func (tx *flatTx) key(key kv.Key) Key {
-	l := len(key)
-	if l == 0 {
+	if len(key) == 0 {
 		return nil
-	} else if l == 1 {
-		return key[0]
 	}
-	n := 0
-	for _, k := range key {
-		n += len(k)
-	}
-	p := make([]byte, n+l)
-	i := 0
-	sep := tx.kv.sep
-	for _, k := range key {
-		i += copy(p[i:], k)
-		p[i] = sep
-		i++
-	}
-	return p[:len(p)-1]
+	return keyEscape(key)
 }
 
 func (tx *flatTx) Get(ctx context.Context, key kv.Key) (kv.Value, error) {
@@ -102,5 +130,5 @@ func (it *prefIter) Val() kv.Value {
 }
 
 func (it *prefIter) Key() kv.Key {
-	return bytes.Split(it.Iterator.Key(), []byte{it.kv.sep})
+	return keyUnescape(it.Iterator.Key())
 }

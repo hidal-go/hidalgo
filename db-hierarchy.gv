@@ -9,4 +9,7 @@ digraph DBs {
     bolt [label="Bolt"]
     hie_kv -> bolt
     hie_kv -> flat_kv
+
+    strict_tuple [label="Tuple store" URL="./docs/tuple-strict.md"]
+    strict_tuple -> hie_kv
 }
