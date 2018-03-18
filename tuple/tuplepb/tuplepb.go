@@ -1,8 +1,6 @@
 package tuplepb
 
 import (
-	"reflect"
-
 	"fmt"
 
 	"github.com/nwca/uda/tuple"
@@ -21,56 +19,45 @@ var (
 
 	_ tuple.KeyField = struct {
 		Name string
-		Type types.Sortable
+		Type types.SortableType
 		Auto bool
 	}{}
 
 	_ tuple.Field = struct {
 		Name string
-		Type types.Value
+		Type types.Type
 	}{}
 )
 
 var (
-	typBytes  types.Bytes
-	typString types.String
-	typUInt   types.UInt
-	typInt    types.Int
-	typBool   types.Bool
-	typTime   types.Time
-	typFloat  types.Float
-)
-
-var (
-	value2type    = make(map[reflect.Type]ValueType)
-	type2sortable = make(map[ValueType]types.Sortable)
-	type2value    = map[ValueType]types.Value{
+	value2type    = make(map[types.Type]ValueType)
+	type2sortable = make(map[ValueType]types.SortableType)
+	type2value    = map[ValueType]types.Type{
 		ValueType_TYPE_ANY:    nil,
-		ValueType_TYPE_BYTES:  &typBytes,
-		ValueType_TYPE_STRING: &typString,
-		ValueType_TYPE_UINT:   &typUInt,
-		ValueType_TYPE_INT:    &typInt,
-		ValueType_TYPE_BOOL:   &typBool,
-		ValueType_TYPE_TIME:   &typTime,
-		ValueType_TYPE_FLOAT:  &typFloat,
+		ValueType_TYPE_BYTES:  types.BytesType{},
+		ValueType_TYPE_STRING: types.StringType{},
+		ValueType_TYPE_UINT:   types.UIntType{},
+		ValueType_TYPE_INT:    types.IntType{},
+		ValueType_TYPE_BOOL:   types.BoolType{},
+		ValueType_TYPE_TIME:   types.TimeType{},
+		ValueType_TYPE_FLOAT:  types.FloatType{},
 	}
 )
 
 func init() {
 	for typ, v := range type2value {
-		rt := reflect.TypeOf(v)
-		if _, ok := value2type[rt]; ok {
+		if _, ok := value2type[v]; ok {
 			panic(typ.String())
 		}
-		value2type[rt] = typ
-		if v, ok := v.(types.Sortable); ok && v != nil {
+		value2type[v] = typ
+		if v, ok := v.(types.SortableType); ok && v != nil {
 			type2sortable[typ] = v
 		}
 	}
 }
 
-func typeOf(v types.Value) (ValueType, bool) {
-	typ, ok := value2type[reflect.TypeOf(v)]
+func typeOf(v types.Type) (ValueType, bool) {
+	typ, ok := value2type[v]
 	return typ, ok
 }
 

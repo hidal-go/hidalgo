@@ -20,10 +20,10 @@ func NewKV(ctx context.Context, db tuple.Store, table string) (flat.KV, error) {
 		_, err = tx.CreateTable(ctx, tuple.Header{
 			Name: table,
 			Key: []tuple.KeyField{
-				{Name: "key", Type: &types.Bytes{}},
+				{Name: "key", Type: types.BytesType{}},
 			},
 			Data: []tuple.Field{
-				{Name: "val", Type: &types.Bytes{}},
+				{Name: "val", Type: types.BytesType{}},
 			},
 		})
 	}

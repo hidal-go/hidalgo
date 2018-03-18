@@ -9,22 +9,16 @@ import (
 )
 
 func TestTableEncoding(t *testing.T) {
-	var (
-		typBin types.Bytes
-		typInt types.String
-		typStr types.String
-		typFlt types.Float
-	)
 	tbl := &tuple.Header{
 		Name: "test",
 		Key: []tuple.KeyField{
-			{Name: "k1", Type: &typInt, Auto: true},
-			{Name: "k2", Type: &typStr},
+			{Name: "k1", Type: types.IntType{}, Auto: true},
+			{Name: "k2", Type: types.StringType{}},
 		},
 		Data: []tuple.Field{
-			{Name: "f1", Type: &typBin},
-			{Name: "f2", Type: &typStr},
-			{Name: "f2", Type: &typFlt},
+			{Name: "f1", Type: types.BytesType{}},
+			{Name: "f2", Type: types.StringType{}},
+			{Name: "f2", Type: types.FloatType{}},
 		},
 	}
 

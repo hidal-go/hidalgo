@@ -16,8 +16,14 @@ var (
 	ErrReadOnly      = errors.New("tuple: not found")
 )
 
+// Type is any value type that can be stored in tuple.
+type Type = types.Type
+
 // Value is any value that can be stored in tuple.
 type Value = types.Value
+
+// KeyType is a value type that can be sorted after serialization.
+type KeyType = types.SortableType
 
 // Sortable is a value type that can be sorted after serialization.
 type Sortable = types.Sortable
@@ -25,14 +31,14 @@ type Sortable = types.Sortable
 // Field is a single field used in tuple payload.
 type Field struct {
 	Name string // field name
-	Type Value  // field type
+	Type Type   // field type
 }
 
 // KeyField is a single primary key field used in tuple.
 type KeyField struct {
-	Name string   // field name
-	Type Sortable // field type
-	Auto bool     // autoincrement
+	Name string  // field name
+	Type KeyType // field type
+	Auto bool    // autoincrement
 }
 
 // Header describes a schema of tuples table.
@@ -67,7 +73,7 @@ func (t Header) Validate() error {
 				return fmt.Errorf("only one auto key is allowed")
 			}
 			switch f.Type.(type) {
-			case *types.UInt:
+			case types.UIntType:
 			default:
 				return fmt.Errorf("only uint types can be autoincremented")
 			}

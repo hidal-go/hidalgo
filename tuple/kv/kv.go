@@ -9,7 +9,6 @@ import (
 	"github.com/nwca/uda/kv"
 	"github.com/nwca/uda/tuple"
 	"github.com/nwca/uda/tuple/tuplepb"
-	"github.com/nwca/uda/types"
 )
 
 func New(kv kv.KV) tuple.Store {
@@ -163,7 +162,7 @@ func (tbl *tupleTable) decodeKey(key kv.Key) (tuple.Key, error) {
 	}
 	row := make(tuple.Key, len(tbl.h.Key))
 	for i, f := range tbl.h.Key {
-		v := f.Type.Zero().(types.Sortable)
+		v := f.Type.NewSortable()
 		err := v.UnmarshalSortable(key[i])
 		if err != nil {
 			return nil, fmt.Errorf("cannot decode tuple key: %v", err)
@@ -196,7 +195,7 @@ func (tbl *tupleTable) encodeTuple(data tuple.Data) (kv.Value, error) {
 func (tbl *tupleTable) decodeTuple(data kv.Value) (tuple.Data, error) {
 	row := make(tuple.Data, len(tbl.h.Data))
 	for i, f := range tbl.h.Data {
-		v := f.Type.Zero()
+		v := f.Type.New()
 		sz, n := binary.Uvarint(data)
 		data = data[n:]
 		if n == 0 {

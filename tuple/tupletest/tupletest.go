@@ -56,16 +56,14 @@ func basic(t testing.TB, db tuple.Store) {
 	require.NoError(t, err)
 	defer tx.Close()
 
-	var typStr types.String
-
 	ctx := context.TODO()
 	tbl, err := tx.CreateTable(ctx, tuple.Header{
 		Name: "test",
 		Key: []tuple.KeyField{
-			{Name: "k1", Type: &typStr},
+			{Name: "k1", Type: types.StringType{}},
 		},
 		Data: []tuple.Field{
-			{Name: "f1", Type: &typStr},
+			{Name: "f1", Type: types.StringType{}},
 		},
 	})
 	require.NoError(t, err)
