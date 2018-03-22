@@ -11,5 +11,27 @@ digraph DBs {
     hie_kv -> flat_kv
 
     strict_tuple [label="Tuple store" URL="./docs/tuple-strict.md"]
+    cassandra [label="Cassandra"]
+    // elastic [label="ElasticSearch"]
+    // gae_datastore [label="Google\nDatastore"]
     strict_tuple -> hie_kv
+    strict_tuple -> cassandra
+    // strict_tuple -> elastic
+    // strict_tuple -> gae_datastore
+
+    // strict_tuple -> sql_pk
+    // sql_pk [label="SQL\n(PK only)"]
+    // postgres [label="PostgreSQL"]
+    // mysql [label="MySQL"]
+    // cockroach [label="CockroachDB"]
+    // sql_pk -> postgres
+    // sql_pk -> mysql
+    // sql_pk -> cockroach
+
+    // strict_tuple -> schema_less_tuple
+    // schema_less_tuple  [label="Schema-less\ntuple store"]
+    // mongo [label="MongoDB"]
+    // couch [label="CouchDB"]
+    // schema_less_tuple -> mongo
+    // schema_less_tuple -> couch
 }

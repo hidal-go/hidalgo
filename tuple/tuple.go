@@ -13,7 +13,7 @@ var (
 	ErrNotFound      = errors.New("tuple: not found")
 	ErrTableNotFound = errors.New("tuple: table not found")
 	ErrExists        = errors.New("tuple: this key already exists")
-	ErrReadOnly      = errors.New("tuple: not found")
+	ErrReadOnly      = errors.New("tuple: read only")
 )
 
 // Type is any value type that can be stored in tuple.
