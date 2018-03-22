@@ -3,7 +3,7 @@ package flat
 import (
 	"context"
 
-	"github.com/nwca/uda/kv"
+	"github.com/nwca/hidalgo/kv"
 )
 
 var _ kv.KV = (*flatKV)(nil)

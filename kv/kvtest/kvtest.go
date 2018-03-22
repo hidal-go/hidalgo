@@ -4,7 +4,7 @@ import (
 	"strconv"
 	"testing"
 
-	"github.com/nwca/uda/kv"
+	"github.com/nwca/hidalgo/kv"
 )
 
 // Func is a constructor for database implementations.

@@ -3,8 +3,8 @@ package tuplepb
 import (
 	"testing"
 
-	"github.com/nwca/uda/tuple"
-	"github.com/nwca/uda/types"
+	"github.com/nwca/hidalgo/tuple"
+	"github.com/nwca/hidalgo/types"
 	"github.com/stretchr/testify/require"
 )
 

@@ -6,7 +6,7 @@ import (
 	"context"
 	"errors"
 
-	"github.com/nwca/uda/base"
+	"github.com/nwca/hidalgo/base"
 )
 
 var (

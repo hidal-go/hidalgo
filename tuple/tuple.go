@@ -5,8 +5,8 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/nwca/uda/base"
-	"github.com/nwca/uda/types"
+	"github.com/nwca/hidalgo/base"
+	"github.com/nwca/hidalgo/types"
 )
 
 var (

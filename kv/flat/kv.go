@@ -4,8 +4,8 @@ package flat
 import (
 	"context"
 
-	"github.com/nwca/uda/base"
-	"github.com/nwca/uda/kv"
+	"github.com/nwca/hidalgo/base"
+	"github.com/nwca/hidalgo/kv"
 )
 
 var (

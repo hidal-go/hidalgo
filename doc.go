@@ -1,6 +1,6 @@
-// Package uda provides common interfaces and abstractions for existing databases.
+// Package hidalgo provides high-level database abstractions over existing databases.
 //
 // See subpackages for more information.
-package uda
+package hidalgo
 
 //go:generate dot -Tsvg -odb-hierarchy.svg db-hierarchy.gv

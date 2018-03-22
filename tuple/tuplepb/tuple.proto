@@ -1,6 +1,6 @@
 syntax = "proto3";
 
-package nwca.uda.tuple;
+package nwca.hidalgo.tuple;
 
 option go_package = "tuplepb";
 

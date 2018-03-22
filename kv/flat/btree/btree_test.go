@@ -3,9 +3,9 @@ package btree
 import (
 	"testing"
 
-	"github.com/nwca/uda/kv"
-	"github.com/nwca/uda/kv/flat"
-	"github.com/nwca/uda/kv/kvtest"
+	"github.com/nwca/hidalgo/kv"
+	"github.com/nwca/hidalgo/kv/flat"
+	"github.com/nwca/hidalgo/kv/kvtest"
 )
 
 func TestBtree(t *testing.T) {

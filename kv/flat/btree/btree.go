@@ -19,7 +19,7 @@ import (
 	"context"
 	"io"
 
-	"github.com/nwca/uda/kv/flat"
+	"github.com/nwca/hidalgo/kv/flat"
 )
 
 const (

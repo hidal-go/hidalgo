@@ -1,8 +1,6 @@
-# UDA
+# High-level Database Abstraction Layer for Go
 
-[![](https://godoc.org/github.com/nwca/uda?status.svg)](https://godoc.org/github.com/nwca/uda)
-
-Unified Database Adapters for Go.
+[![](https://godoc.org/github.com/nwca/hidalgo?status.svg)](https://godoc.org/github.com/nwca/hidalgo)
 
 This library consists of multiple abstraction layers over existing databases.
 

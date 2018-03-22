@@ -20,7 +20,7 @@ import (
 
 	"github.com/boltdb/bolt"
 
-	"github.com/nwca/uda/kv"
+	"github.com/nwca/hidalgo/kv"
 )
 
 const (

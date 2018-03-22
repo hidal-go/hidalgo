@@ -4,12 +4,12 @@ import (
 	"context"
 	"testing"
 
-	hkv "github.com/nwca/uda/kv"
-	"github.com/nwca/uda/kv/flat"
-	"github.com/nwca/uda/kv/kvtest"
-	"github.com/nwca/uda/tuple"
-	"github.com/nwca/uda/tuple/kv"
-	"github.com/nwca/uda/types"
+	hkv "github.com/nwca/hidalgo/kv"
+	"github.com/nwca/hidalgo/kv/flat"
+	"github.com/nwca/hidalgo/kv/kvtest"
+	"github.com/nwca/hidalgo/tuple"
+	"github.com/nwca/hidalgo/tuple/kv"
+	"github.com/nwca/hidalgo/types"
 	"github.com/stretchr/testify/require"
 )
 

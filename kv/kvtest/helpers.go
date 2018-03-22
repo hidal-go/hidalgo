@@ -4,7 +4,7 @@ import (
 	"context"
 	"testing"
 
-	"github.com/nwca/uda/kv"
+	"github.com/nwca/hidalgo/kv"
 	"github.com/stretchr/testify/require"
 )
 

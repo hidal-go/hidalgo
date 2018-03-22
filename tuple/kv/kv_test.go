@@ -3,11 +3,11 @@ package kv_test
 import (
 	"testing"
 
-	"github.com/nwca/uda/kv/flat"
-	"github.com/nwca/uda/kv/flat/btree"
-	"github.com/nwca/uda/tuple"
-	"github.com/nwca/uda/tuple/kv"
-	"github.com/nwca/uda/tuple/tupletest"
+	"github.com/nwca/hidalgo/kv/flat"
+	"github.com/nwca/hidalgo/kv/flat/btree"
+	"github.com/nwca/hidalgo/tuple"
+	"github.com/nwca/hidalgo/tuple/kv"
+	"github.com/nwca/hidalgo/tuple/tupletest"
 )
 
 func TestKV2Tuple(t *testing.T) {
