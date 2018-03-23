@@ -2,9 +2,11 @@ package kvtest
 
 import (
 	"context"
+	"sort"
 	"testing"
 
 	"github.com/nwca/hidalgo/kv"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -84,5 +86,17 @@ func (t Test) Scan(pref kv.Key, exp []kv.Pair) {
 		})
 	}
 	require.NoError(t.t, it.Err())
-	require.Equal(t.t, exp, got)
+	if assert.ObjectsAreEqual(exp, got) {
+		return // ok
+	}
+	// check sorting order
+	sort.Slice(got, func(i, j int) bool {
+		return got[i].Key.Compare(got[j].Key) < 0
+	})
+	if assert.ObjectsAreEqual(exp, got) {
+		// fail in any case
+		assert.Fail(t.t, "results are not sorted")
+		return
+	}
+	require.Equal(t.t, exp, got, "\n%v\nvs\n%v", exp, got)
 }

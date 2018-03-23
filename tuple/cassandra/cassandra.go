@@ -230,7 +230,19 @@ func (tbl *Table) GetTuple(ctx context.Context, key tuple.Key) (tuple.Data, erro
 }
 
 func (tbl *Table) GetTupleBatch(ctx context.Context, keys []tuple.Key) ([]tuple.Data, error) {
-	panic("implement me")
+	// TODO: one query with IN
+	out := make([]tuple.Data, len(keys))
+	for i, key := range keys {
+		t, err := tbl.GetTuple(ctx, key)
+		if err == tuple.ErrNotFound {
+			err = nil
+		}
+		if err != nil {
+			return out, err
+		}
+		out[i] = t
+	}
+	return out, nil
 }
 
 func (tbl *Table) InsertTuple(ctx context.Context, t tuple.Tuple) (tuple.Key, error) {
@@ -270,11 +282,52 @@ func (tbl *Table) InsertTuple(ctx context.Context, t tuple.Tuple) (tuple.Key, er
 }
 
 func (tbl *Table) UpdateTuple(ctx context.Context, t tuple.Tuple, opt *tuple.UpdateOpt) error {
-	panic("implement me")
+	if err := tbl.h.ValidateKey(t.Key, false); err != nil {
+		return err
+	} else if err = tbl.h.ValidateData(t.Data); err != nil {
+		return err
+	}
+	var fields []string
+	var vals []interface{}
+	for i, f := range tbl.h.Data {
+		fields = append(fields, fmt.Sprintf("%s = ?", escapeName(f.Name)))
+		vals = append(vals, t.Data[i].Native())
+	}
+	var where []string
+	for i, f := range tbl.h.Key {
+		where = append(where, fmt.Sprintf("%s = ?", escapeName(f.Name)))
+		vals = append(vals, t.Key[i].Native())
+	}
+	qu := fmt.Sprintf(`UPDATE %s SET %s WHERE %s`,
+		escapeName(tbl.h.Name), strings.Join(fields, ", "), strings.Join(where, ", "))
+	err := tbl.tx.query(ctx, qu, vals...).Exec()
+	if err == gocql.ErrNotFound && opt.Upsert {
+		_, err = tbl.InsertTuple(ctx, t)
+	}
+	return err
 }
 
 func (tbl *Table) DeleteTuple(ctx context.Context, key tuple.Key) error {
-	panic("implement me")
+	if err := tbl.h.ValidateKey(key, false); err != nil {
+		return err
+	}
+	var (
+		where []string
+		vals  []interface{}
+	)
+	for i, f := range tbl.h.Key {
+		where = append(where, fmt.Sprintf("(%s = ?)", escapeName(f.Name)))
+		vals = append(vals, key[i].Native())
+	}
+	qu := fmt.Sprintf(`DELETE FROM %s WHERE %s`,
+		escapeName(tbl.h.Name),
+		strings.Join(where, " AND "),
+	)
+	err := tbl.tx.query(ctx, qu, vals...).Exec()
+	if err == gocql.ErrNotFound {
+		err = nil
+	}
+	return err
 }
 
 func (tbl *Table) Scan(pref tuple.Key) tuple.Iterator {
