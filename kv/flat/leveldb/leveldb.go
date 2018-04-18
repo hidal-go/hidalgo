@@ -22,12 +22,23 @@ import (
 	"github.com/syndtr/goleveldb/leveldb/opt"
 	"github.com/syndtr/goleveldb/leveldb/util"
 
+	"github.com/nwca/hidalgo/base"
 	"github.com/nwca/hidalgo/kv/flat"
 )
 
 const (
-	Type = "leveldb"
+	Name = "leveldb"
 )
+
+func init() {
+	flat.Register(flat.Registration{
+		Registration: base.Registration{
+			Name: Name, Title: "LevelDB",
+			Local: true,
+		},
+		OpenPath: OpenPath,
+	})
+}
 
 var _ flat.KV = (*DB)(nil)
 
@@ -41,6 +52,14 @@ func Open(path string, opt *opt.Options) (*DB, error) {
 		return nil, err
 	}
 	return New(db), nil
+}
+
+func OpenPath(path string) (flat.KV, error) {
+	db, err := Open(path, nil)
+	if err != nil {
+		return nil, err
+	}
+	return db, nil
 }
 
 type DB struct {

@@ -6,18 +6,30 @@ import (
 	"github.com/nwca/hidalgo/kv"
 )
 
-var _ kv.KV = (*flatKV)(nil)
+var _ kv.KV = (*hieKV)(nil)
 
 const (
 	sep = '/'
 	esc = '\\'
 )
 
-func New(flat KV) kv.KV {
-	return &flatKV{flat: flat}
+// Upgrade upgrades flat KV to hierarchical KV.
+func Upgrade(flat KV) kv.KV {
+	return &hieKV{flat: flat}
 }
 
-type flatKV struct {
+// UpgradeOpenPath automatically upgrades flat KV to hierarchical KV on open.
+func UpgradeOpenPath(open OpenPathFunc) kv.OpenPathFunc {
+	return func(path string) (kv.KV, error) {
+		flat, err := open(path)
+		if err != nil {
+			return nil, err
+		}
+		return Upgrade(flat), nil
+	}
+}
+
+type hieKV struct {
 	flat KV
 }
 
@@ -61,10 +73,10 @@ func keyUnescape(k Key) kv.Key {
 	return k2
 }
 
-func (kv *flatKV) Close() error {
+func (kv *hieKV) Close() error {
 	return kv.flat.Close()
 }
-func (kv *flatKV) Tx(rw bool) (kv.Tx, error) {
+func (kv *hieKV) Tx(rw bool) (kv.Tx, error) {
 	tx, err := kv.flat.Tx(rw)
 	if err != nil {
 		return nil, err
@@ -73,7 +85,7 @@ func (kv *flatKV) Tx(rw bool) (kv.Tx, error) {
 }
 
 type flatTx struct {
-	kv *flatKV
+	kv *hieKV
 	tx Tx
 	rw bool
 }
@@ -121,7 +133,7 @@ func (tx *flatTx) Scan(pref kv.Key) kv.Iterator {
 }
 
 type prefIter struct {
-	kv *flatKV
+	kv *hieKV
 	Iterator
 }
 

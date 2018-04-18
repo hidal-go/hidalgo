@@ -10,6 +10,6 @@ import (
 
 func TestBtree(t *testing.T) {
 	kvtest.RunTest(t, func(t testing.TB) (kv.KV, func()) {
-		return flat.New(New()), func() {}
+		return flat.Upgrade(New()), func() {}
 	})
 }

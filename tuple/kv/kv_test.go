@@ -13,7 +13,7 @@ import (
 func TestKV2Tuple(t *testing.T) {
 	tupletest.RunTest(t, func(t testing.TB) (tuple.Store, func()) {
 		kdb := btree.New()
-		db := kv.New(flat.New(kdb))
+		db := kv.New(flat.Upgrade(kdb))
 		return db, func() {}
 	})
 }

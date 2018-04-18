@@ -1,10 +1,13 @@
 package kvtest
 
 import (
+	"io/ioutil"
+	"os"
 	"strconv"
 	"testing"
 
 	"github.com/nwca/hidalgo/kv"
+	"github.com/stretchr/testify/require"
 )
 
 // Func is a constructor for database implementations.
@@ -20,6 +23,24 @@ func RunTest(t *testing.T, fnc Func) {
 			c.test(t, db)
 		})
 	}
+}
+
+// RunTestLocal is a wrapper for RunTest that automatically creates a temporary directory and opens a database.
+func RunTestLocal(t *testing.T, open kv.OpenPathFunc) {
+	RunTest(t, func(t testing.TB) (kv.KV, func()) {
+		dir, err := ioutil.TempDir("", "dal-kv-")
+		require.NoError(t, err)
+
+		db, err := open(dir)
+		if err != nil {
+			os.RemoveAll(dir)
+			require.NoError(t, err)
+		}
+		return db, func() {
+			db.Close()
+			os.RemoveAll(dir)
+		}
+	})
 }
 
 var testList = []struct {

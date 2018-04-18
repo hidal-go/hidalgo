@@ -36,7 +36,7 @@ func RunTest(t *testing.T, fnc Func) {
 				closer()
 				require.NoError(t, err)
 			}
-			return flat.New(kdb), func() {
+			return flat.Upgrade(kdb), func() {
 				kdb.Close()
 				closer()
 			}

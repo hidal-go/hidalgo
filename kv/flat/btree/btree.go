@@ -19,12 +19,28 @@ import (
 	"context"
 	"io"
 
+	"github.com/nwca/hidalgo/base"
 	"github.com/nwca/hidalgo/kv/flat"
 )
 
 const (
-	Type = "btree"
+	Name = "btree"
 )
+
+func init() {
+	flat.Register(flat.Registration{
+		Registration: base.Registration{
+			Name: Name, Title: "B-Tree",
+			Local: true, Volatile: true,
+		},
+		OpenPath: func(path string) (flat.KV, error) {
+			if path != "" {
+				return nil, base.ErrVolatile
+			}
+			return New(), nil
+		},
+	})
+}
 
 var _ flat.KV = (*DB)(nil)
 

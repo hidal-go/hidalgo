@@ -17,15 +17,27 @@ package bolt
 import (
 	"bytes"
 	"context"
+	"time"
 
 	"github.com/boltdb/bolt"
 
+	"github.com/nwca/hidalgo/base"
 	"github.com/nwca/hidalgo/kv"
 )
 
 const (
-	Type = "bolt"
+	Name = "bolt"
 )
+
+func init() {
+	kv.Register(kv.Registration{
+		Registration: base.Registration{
+			Name: Name, Title: "BoltDB",
+			Local: true,
+		},
+		OpenPath: OpenPath,
+	})
+}
 
 const root = "/"
 
@@ -41,6 +53,16 @@ func Open(path string, opt *bolt.Options) (*DB, error) {
 		return nil, err
 	}
 	return New(db), nil
+}
+
+func OpenPath(path string) (kv.KV, error) {
+	db, err := Open(path, &bolt.Options{
+		Timeout: time.Second,
+	})
+	if err != nil {
+		return nil, err
+	}
+	return db, nil
 }
 
 type DB struct {

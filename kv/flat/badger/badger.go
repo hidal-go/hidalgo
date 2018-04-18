@@ -5,13 +5,24 @@ import (
 
 	"github.com/dgraph-io/badger"
 
+	"github.com/nwca/hidalgo/base"
 	"github.com/nwca/hidalgo/kv"
 	"github.com/nwca/hidalgo/kv/flat"
 )
 
 const (
-	Type = "badger"
+	Name = "badger"
 )
+
+func init() {
+	flat.Register(flat.Registration{
+		Registration: base.Registration{
+			Name: Name, Title: "Badger",
+			Local: true,
+		},
+		OpenPath: OpenPath,
+	})
+}
 
 var _ flat.KV = (*DB)(nil)
 
@@ -28,6 +39,16 @@ func Open(opt badger.Options) (*DB, error) {
 		return nil, err
 	}
 	return New(db), nil
+}
+
+func OpenPath(path string) (flat.KV, error) {
+	opt := badger.DefaultOptions
+	opt.Dir = path
+	db, err := Open(opt)
+	if err != nil {
+		return nil, err
+	}
+	return db, nil
 }
 
 type DB struct {

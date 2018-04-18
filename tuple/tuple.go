@@ -13,7 +13,7 @@ var (
 	ErrNotFound      = errors.New("tuple: not found")
 	ErrTableNotFound = errors.New("tuple: table not found")
 	ErrExists        = errors.New("tuple: this key already exists")
-	ErrReadOnly      = errors.New("tuple: not found")
+	ErrReadOnly      = errors.New("tuple: read-only database")
 )
 
 // Type is any value type that can be stored in tuple.
@@ -25,7 +25,7 @@ type Value = types.Value
 // KeyType is a value type that can be sorted after serialization.
 type KeyType = types.SortableType
 
-// Sortable is a value type that can be sorted after serialization.
+// Sortable is a value that can be sorted after serialization.
 type Sortable = types.Sortable
 
 // Field is a single field used in tuple payload.
