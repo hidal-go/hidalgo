@@ -6,6 +6,8 @@ By using a specific key separator these stores can implement [hierarchical key-v
 
 **Supported backends:**
 
-* In-memory B-Tree
+* In-memory [B-Tree](github.com/cznic/b)
 
-* LevelDB
+* [LevelDB](github.com/syndtr/goleveldb)
+
+* [Badger](github.com/dgraph-io/badger)

@@ -1,14 +1,16 @@
 digraph DBs {
-    btree [label="B-Tree"]
-    leveldb [label="LevelDB"]
     flat_kv [label="Flat KV" URL="./docs/kv-flat.md"]
+    btree [label="B-Tree"]
     flat_kv -> btree
+    leveldb [label="LevelDB"]
     flat_kv -> leveldb
+    badger [label="Badger"]
+    flat_kv -> badger
 
     hie_kv [label="Hierarchical KV" URL="./docs/kv-hierarchical.md"]
+    hie_kv -> flat_kv
     bolt [label="Bolt"]
     hie_kv -> bolt
-    hie_kv -> flat_kv
 
     strict_tuple [label="Tuple store" URL="./docs/tuple-strict.md"]
     strict_tuple -> hie_kv

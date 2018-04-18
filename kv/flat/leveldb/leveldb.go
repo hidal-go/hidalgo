@@ -117,23 +117,7 @@ func (tx *Tx) Get(ctx context.Context, key flat.Key) (flat.Value, error) {
 	return val, nil
 }
 func (tx *Tx) GetBatch(ctx context.Context, keys []flat.Key) ([]flat.Value, error) {
-	vals := make([]flat.Value, len(keys))
-	var get func(k []byte, ro *opt.ReadOptions) ([]byte, error)
-	if tx.tx != nil {
-		get = tx.tx.Get
-	} else {
-		get = tx.sn.Get
-	}
-	var err error
-	for i, k := range keys {
-		vals[i], err = get(k, tx.db.ro)
-		if err == leveldb.ErrNotFound {
-			vals[i] = nil
-		} else if err != nil {
-			return nil, err
-		}
-	}
-	return vals, nil
+	return flat.GetBatch(ctx, tx, keys)
 }
 func (tx *Tx) Put(k flat.Key, v flat.Value) error {
 	if tx.tx == nil {
