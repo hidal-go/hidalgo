@@ -14,4 +14,16 @@ digraph DBs {
 
     strict_tuple [label="Tuple store" URL="./docs/tuple-strict.md"]
     strict_tuple -> hie_kv
+
+    legacy_nosql [label="NoSQL\n(legacy)", color=grey]
+    legacy_mongo [label="MongoDB", color=grey]
+    legacy_nosql -> legacy_mongo [color=grey]
+    legacy_elastic [label="ElasticSearch", color=grey]
+    legacy_nosql -> legacy_elastic [color=grey]
+    legacy_ouch [label="go-kivik", color=grey]
+    legacy_nosql -> legacy_ouch [color=grey]
+    legacy_couch [label="CouchDB", color=grey]
+    legacy_ouch -> legacy_couch [color=grey]
+    legacy_pouch [label="PouchDB", color=grey]
+    legacy_ouch -> legacy_pouch [color=grey]
 }
