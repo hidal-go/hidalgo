@@ -106,10 +106,12 @@ func (t Header) ValidateKey(k Key, insert bool) error {
 		return fmt.Errorf("wrong key size: %d vs %d", len(t.Key), len(k))
 	}
 	for i, f := range t.Key {
-		if k[i] == nil && (!f.Auto || !insert) {
+		v := k[i]
+		if v == nil && (!f.Auto || !insert) {
 			return fmt.Errorf("key fields should be set")
+		} else if v != nil && v.Type() != f.Type {
+			return fmt.Errorf("key %q: expected %T, got %T", f.Name, f.Type, v.Type())
 		}
-		// TODO: type check
 	}
 	return nil
 }
@@ -131,17 +133,40 @@ func (t Header) ValidatePref(k Key) error {
 // ValidateData verifies that specific payload is valid for this table.
 func (t Header) ValidateData(d Data) error {
 	if len(t.Data) != len(d) {
-		return fmt.Errorf("wrong key size")
+		return fmt.Errorf("wrong payload size")
 	}
-	// TODO: type check
+	for i, f := range t.Data {
+		v := d[i]
+		if v != nil && v.Type() != f.Type {
+			return fmt.Errorf("payload %q: expected %T, got %T", f.Name, f.Type, v.Type())
+		}
+	}
 	return nil
 }
 
 // Key is a tuple primary key.
 type Key []Sortable
 
+// SKey creates a string key.
+func SKey(key ...string) Key {
+	out := make(Key, 0, len(key))
+	for _, k := range key {
+		out = append(out, types.String(k))
+	}
+	return out
+}
+
 // Data is a tuple payload.
 type Data []Value
+
+// SData creates a string payload.
+func SData(data ...string) Data {
+	out := make(Data, 0, len(data))
+	for _, v := range data {
+		out = append(out, types.String(v))
+	}
+	return out
+}
 
 // Tuple is a data tuple.
 type Tuple struct {

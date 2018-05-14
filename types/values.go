@@ -17,6 +17,10 @@ type Value interface {
 	Type() Type
 	// Marshal implementations should not include the length of the value.
 	encoding.BinaryMarshaler
+}
+
+type ValueDest interface {
+	Value() Value
 	encoding.BinaryUnmarshaler
 }
 
@@ -27,6 +31,11 @@ type Sortable interface {
 	SortableType() SortableType
 	// MarshalSortable encodes the value into sortable encoding: v1 < v2, marshal(v1) < marshal(v2).
 	MarshalSortable() ([]byte, error)
+}
+
+type SortableDest interface {
+	ValueDest
+	Sortable() Sortable
 	// UnmarshalSortable decodes the value from sortable encoding.
 	UnmarshalSortable(p []byte) error
 }
@@ -37,14 +46,14 @@ var (
 )
 
 var (
-	_ Sortable = (*Int)(nil)
-	_ Sortable = (*UInt)(nil)
-	_ Sortable = (*String)(nil)
-	_ Sortable = (*Bytes)(nil)
-	_ Sortable = (*Bool)(nil)
-	_ Sortable = (*Time)(nil)
+	_ SortableDest = (*Int)(nil)
+	_ SortableDest = (*UInt)(nil)
+	_ SortableDest = (*String)(nil)
+	_ SortableDest = (*Bytes)(nil)
+	_ SortableDest = (*Bool)(nil)
+	_ SortableDest = (*Time)(nil)
 
-	_ Value = (*Float)(nil)
+	_ ValueDest = (*Float)(nil)
 )
 
 type String string
@@ -57,6 +66,18 @@ func (String) Type() Type {
 }
 func (String) SortableType() SortableType {
 	return StringType{}
+}
+func (v *String) Value() Value {
+	if v == nil {
+		return nil
+	}
+	return *v
+}
+func (v *String) Sortable() Sortable {
+	if v == nil {
+		return nil
+	}
+	return *v
 }
 func (v String) MarshalBinary() ([]byte, error) {
 	return []byte(v), nil
@@ -84,6 +105,18 @@ func (Bytes) Type() Type {
 func (Bytes) SortableType() SortableType {
 	return BytesType{}
 }
+func (v *Bytes) Value() Value {
+	if v == nil {
+		return nil
+	}
+	return *v
+}
+func (v *Bytes) Sortable() Sortable {
+	if v == nil {
+		return nil
+	}
+	return *v
+}
 func (v Bytes) MarshalBinary() ([]byte, error) {
 	return append([]byte{}, v...), nil
 }
@@ -109,6 +142,18 @@ func (Int) Type() Type {
 }
 func (Int) SortableType() SortableType {
 	return IntType{}
+}
+func (v *Int) Value() Value {
+	if v == nil {
+		return nil
+	}
+	return *v
+}
+func (v *Int) Sortable() Sortable {
+	if v == nil {
+		return nil
+	}
+	return *v
 }
 func (v Int) MarshalBinary() ([]byte, error) {
 	buf := make([]byte, binary.MaxVarintLen64)
@@ -151,6 +196,18 @@ func (UInt) Type() Type {
 func (UInt) SortableType() SortableType {
 	return UIntType{}
 }
+func (v *UInt) Value() Value {
+	if v == nil {
+		return nil
+	}
+	return *v
+}
+func (v *UInt) Sortable() Sortable {
+	if v == nil {
+		return nil
+	}
+	return *v
+}
 func (v UInt) MarshalBinary() ([]byte, error) {
 	buf := make([]byte, binary.MaxVarintLen64)
 	n := binary.PutUvarint(buf, uint64(v))
@@ -189,6 +246,12 @@ func (v Float) Native() interface{} {
 func (Float) Type() Type {
 	return FloatType{}
 }
+func (v *Float) Value() Value {
+	if v == nil {
+		return nil
+	}
+	return *v
+}
 func (v Float) MarshalBinary() ([]byte, error) {
 	buf := make([]byte, 8)
 	iv := math.Float64bits(float64(v))
@@ -214,6 +277,18 @@ func (Bool) Type() Type {
 }
 func (Bool) SortableType() SortableType {
 	return BoolType{}
+}
+func (v *Bool) Value() Value {
+	if v == nil {
+		return nil
+	}
+	return *v
+}
+func (v *Bool) Sortable() Sortable {
+	if v == nil {
+		return nil
+	}
+	return *v
 }
 func (v Bool) MarshalBinary() ([]byte, error) {
 	if v {
@@ -252,6 +327,18 @@ func (Time) Type() Type {
 }
 func (Time) SortableType() SortableType {
 	return TimeType{}
+}
+func (v *Time) Value() Value {
+	if v == nil {
+		return nil
+	}
+	return *v
+}
+func (v *Time) Sortable() Sortable {
+	if v == nil {
+		return nil
+	}
+	return *v
 }
 func (v Time) MarshalBinary() ([]byte, error) {
 	return time.Time(v).MarshalBinary()

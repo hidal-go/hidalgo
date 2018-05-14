@@ -2,84 +2,71 @@ package types
 
 type Type interface {
 	// New creates a new zero value of this type.
-	New() Value
+	New() ValueDest
 }
 
 type SortableType interface {
 	Type
 	// NewSortable creates a new zero value of this type.
-	NewSortable() Sortable
+	NewSortable() SortableDest
 }
 
 type BytesType struct{}
 
-func (BytesType) New() Value {
-	var v Bytes
-	return &v
+func (tp BytesType) New() ValueDest {
+	return tp.NewSortable()
 }
-func (BytesType) NewSortable() Sortable {
-	var v Bytes
-	return &v
+func (BytesType) NewSortable() SortableDest {
+	return new(Bytes)
 }
 
 type StringType struct{}
 
-func (StringType) New() Value {
-	var v String
-	return &v
+func (tp StringType) New() ValueDest {
+	return tp.NewSortable()
 }
-func (StringType) NewSortable() Sortable {
-	var v String
-	return &v
+func (StringType) NewSortable() SortableDest {
+	return new(String)
 }
 
 type IntType struct{}
 
-func (IntType) New() Value {
-	var v Int
-	return &v
+func (tp IntType) New() ValueDest {
+	return tp.NewSortable()
 }
-func (IntType) NewSortable() Sortable {
-	var v Int
-	return &v
+func (IntType) NewSortable() SortableDest {
+	return new(Int)
 }
 
 type UIntType struct{}
 
-func (UIntType) New() Value {
-	var v UInt
-	return &v
+func (tp UIntType) New() ValueDest {
+	return tp.NewSortable()
 }
-func (UIntType) NewSortable() Sortable {
-	var v UInt
-	return &v
+func (UIntType) NewSortable() SortableDest {
+	return new(UInt)
 }
 
 type BoolType struct{}
 
-func (BoolType) New() Value {
-	var v Bool
-	return &v
+func (tp BoolType) New() ValueDest {
+	return tp.NewSortable()
 }
-func (BoolType) NewSortable() Sortable {
-	var v Bool
-	return &v
+func (BoolType) NewSortable() SortableDest {
+	return new(Bool)
 }
 
 type TimeType struct{}
 
-func (TimeType) New() Value {
-	var v Time
-	return &v
+func (tp TimeType) New() ValueDest {
+	return tp.NewSortable()
 }
-func (TimeType) NewSortable() Sortable {
-	var v Time
-	return &v
+func (TimeType) NewSortable() SortableDest {
+	return new(Time)
 }
 
 type FloatType struct{}
 
-func (FloatType) New() Value {
-	var v Float
-	return &v
+func (FloatType) New() ValueDest {
+	return new(Float)
 }

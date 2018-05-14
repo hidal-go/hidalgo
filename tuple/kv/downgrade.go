@@ -75,13 +75,11 @@ func flatKey(b flat.Key) tuple.Key {
 	if b == nil {
 		return nil
 	}
-	v := types.Bytes(b.Clone())
-	return tuple.Key{&v}
+	return tuple.Key{types.Bytes(b.Clone())}
 }
 
 func flatVal(b flat.Value) tuple.Data {
-	v := types.Bytes(b.Clone())
-	return tuple.Data{&v}
+	return tuple.Data{types.Bytes(b.Clone())}
 }
 
 func (tx *flatTx) Get(ctx context.Context, key flat.Key) (flat.Value, error) {
@@ -91,11 +89,11 @@ func (tx *flatTx) Get(ctx context.Context, key flat.Key) (flat.Value, error) {
 	} else if err != nil {
 		return nil, err
 	}
-	b, ok := row[0].(*types.Bytes)
+	b, ok := row[0].(types.Bytes)
 	if !ok || b == nil {
 		return nil, fmt.Errorf("unexpected value type: %T", row[0])
 	}
-	return flat.Value(*b), nil
+	return flat.Value(b), nil
 }
 
 func (tx *flatTx) GetBatch(ctx context.Context, key []flat.Key) ([]flat.Value, error) {
@@ -112,11 +110,11 @@ func (tx *flatTx) GetBatch(ctx context.Context, key []flat.Key) ([]flat.Value, e
 		if d == nil {
 			continue
 		}
-		b, ok := d[0].(*types.Bytes)
+		b, ok := d[0].(types.Bytes)
 		if !ok || b == nil {
 			return nil, fmt.Errorf("unexpected value type: %T", d[0])
 		}
-		vals[i] = flat.Value(*b)
+		vals[i] = flat.Value(b)
 	}
 	return vals, nil
 }
@@ -168,12 +166,12 @@ func (it *flatIterator) Key() flat.Key {
 		it.err = fmt.Errorf("unexpected key size: %d", len(key))
 		return nil
 	}
-	b, ok := key[0].(*types.Bytes)
+	b, ok := key[0].(types.Bytes)
 	if !ok || b == nil {
 		it.err = fmt.Errorf("unexpected key type: %T", key[0])
 		return nil
 	}
-	return flat.Key(*b).Clone()
+	return flat.Key(b).Clone()
 }
 
 func (it *flatIterator) Val() flat.Value {
@@ -181,10 +179,10 @@ func (it *flatIterator) Val() flat.Value {
 	if len(data) == 0 {
 		return nil
 	}
-	b, ok := data[0].(*types.Bytes)
+	b, ok := data[0].(types.Bytes)
 	if !ok || b == nil {
 		it.err = fmt.Errorf("unexpected value type: %T", data[0])
 		return nil
 	}
-	return flat.Value(*b).Clone()
+	return flat.Value(b).Clone()
 }

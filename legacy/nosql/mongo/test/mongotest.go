@@ -1,4 +1,4 @@
-package elastictest
+package mongotest
 
 import (
 	"testing"

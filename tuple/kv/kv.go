@@ -120,8 +120,12 @@ func toKvKey(k tuple.Key) kv.Key {
 	}
 	key := make(kv.Key, 0, len(k))
 	for _, s := range k {
-		data, _ := s.MarshalSortable()
-		key = append(key, data)
+		if s == nil {
+			key = append(key, nil)
+		} else {
+			data, _ := s.MarshalSortable()
+			key = append(key, data)
+		}
 	}
 	return key
 }
@@ -167,7 +171,7 @@ func (tbl *tupleTable) decodeKey(key kv.Key) (tuple.Key, error) {
 		if err != nil {
 			return nil, fmt.Errorf("cannot decode tuple key: %v", err)
 		}
-		row[i] = v
+		row[i] = v.Sortable()
 	}
 	return row, nil
 }
@@ -208,7 +212,7 @@ func (tbl *tupleTable) decodeTuple(data kv.Value) (tuple.Data, error) {
 		if err != nil {
 			return nil, fmt.Errorf("cannot decode tuple field: %v", err)
 		}
-		row[i] = v
+		row[i] = v.Value()
 	}
 	return row, nil
 }
