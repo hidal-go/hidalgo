@@ -56,6 +56,12 @@ type Sortable interface {
 	MarshalSortable() ([]byte, error)
 }
 
+type BinaryString interface {
+	Sortable
+	// PrefixEnd returns the next binary key that ends this prefix.
+	PrefixEnd() BinaryString
+}
+
 type SortableDest interface {
 	ValueDest
 	Sortable() Sortable
@@ -94,6 +100,9 @@ var (
 
 	_ ValueDest = (*Int)(nil)
 	_ ValueDest = (*Float)(nil)
+
+	_ BinaryString = String("")
+	_ BinaryString = Bytes{}
 )
 
 type String string
@@ -137,6 +146,15 @@ func (v String) Compare(b Sortable) int {
 	ab, _ := v.MarshalSortable()
 	bb, _ := b.MarshalSortable()
 	return bytes.Compare(ab, bb)
+}
+
+// PrefixEnd returns the next binary key that ends the prefix.
+func (v String) PrefixEnd() BinaryString {
+	end := prefixEnd([]byte(v))
+	if end == nil {
+		return nil
+	}
+	return String(end)
 }
 func (v String) MarshalBinary() ([]byte, error) {
 	return []byte(v), nil
@@ -194,6 +212,25 @@ func (v Bytes) Compare(b Sortable) int {
 	ab, _ := v.MarshalSortable()
 	bb, _ := b.MarshalSortable()
 	return bytes.Compare(ab, bb)
+}
+func prefixEnd(key []byte) []byte {
+	for i := len(key) - 1; i >= 0; i-- {
+		if key[i] < 0xff {
+			key[i]++
+			return key[:i+1]
+		}
+	}
+	// next prefix does not exist (e.g., 0xffff)
+	return nil
+}
+
+// PrefixEnd returns the next binary key that ends the prefix.
+func (v Bytes) PrefixEnd() BinaryString {
+	end := prefixEnd(append([]byte{}, v...))
+	if end == nil {
+		return nil
+	}
+	return Bytes(end)
 }
 func (v Bytes) MarshalBinary() ([]byte, error) {
 	return append([]byte{}, v...), nil

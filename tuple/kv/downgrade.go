@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/hidal-go/hidalgo/filter"
 	"github.com/hidal-go/hidalgo/kv/flat"
 	"github.com/hidal-go/hidalgo/tuple"
 	"github.com/hidal-go/hidalgo/values"
@@ -71,14 +72,18 @@ func (tx *flatTx) Close() error {
 	return tx.tx.Close()
 }
 
+func flatKeyPart(b flat.Key) values.Bytes {
+	return values.Bytes(b.Clone())
+}
+
 func flatKey(b flat.Key) tuple.Key {
 	if b == nil {
 		return nil
 	}
-	return tuple.Key{values.Bytes(b.Clone())}
+	return tuple.Key{flatKeyPart(b)}
 }
 
-func flatVal(b flat.Value) tuple.Data {
+func flatData(b flat.Value) tuple.Data {
 	return tuple.Data{values.Bytes(b.Clone())}
 }
 
@@ -122,16 +127,27 @@ func (tx *flatTx) GetBatch(ctx context.Context, key []flat.Key) ([]flat.Value, e
 func (tx *flatTx) Put(k flat.Key, v flat.Value) error {
 	return tx.tbl.UpdateTuple(context.TODO(), tuple.Tuple{
 		Key:  flatKey(k),
-		Data: flatVal(v),
+		Data: flatData(v),
 	}, &tuple.UpdateOpt{Upsert: true})
 }
 
 func (tx *flatTx) Del(k flat.Key) error {
-	return tx.tbl.DeleteTuple(context.TODO(), flatKey(k))
+	return tx.tbl.DeleteTuples(context.TODO(), &tuple.Filter{
+		KeyFilter: tuple.Keys{flatKey(k)},
+	})
 }
 
 func (tx *flatTx) Scan(pref flat.Key) flat.Iterator {
-	return &flatIterator{tx: tx, it: tx.tbl.Scan(flatKey(pref))}
+	var f *tuple.Filter
+	if len(pref) != 0 {
+		kpref := flatKeyPart(pref)
+		f = &tuple.Filter{
+			KeyFilter: tuple.KeyFilters{
+				filter.Prefix(kpref),
+			},
+		}
+	}
+	return &flatIterator{tx: tx, it: tx.tbl.Scan(f)}
 }
 
 type flatIterator struct {

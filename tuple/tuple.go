@@ -6,6 +6,7 @@ import (
 	"fmt"
 
 	"github.com/hidal-go/hidalgo/base"
+	"github.com/hidal-go/hidalgo/filter"
 	"github.com/hidal-go/hidalgo/values"
 )
 
@@ -147,6 +148,22 @@ func (t Header) ValidateData(d Data) error {
 // Key is a tuple primary key.
 type Key []Sortable
 
+// Compare return 0 when keys are equal, -1 when k < k2 and +1 when k > k2.
+func (k Key) Compare(k2 Key) int {
+	for i, s := range k {
+		if i >= len(k2) {
+			return +1
+		}
+		if d := values.Compare(s, k2[i]); d != 0 {
+			return d
+		}
+	}
+	if len(k) < len(k2) {
+		return -1
+	}
+	return 0
+}
+
 // SKey creates a string key.
 func SKey(key ...string) Key {
 	out := make(Key, 0, len(key))
@@ -214,10 +231,10 @@ type Table interface {
 	// UpdateTuple rewrites specified tuple. Options can be provided to create a tuple if ti does not exists.
 	// If this flag is not provided and the tuple is missing, it returns ErrNotFound.
 	UpdateTuple(ctx context.Context, t Tuple, opt *UpdateOpt) error
-	// DeleteTuple removes a tuple with specific key.
-	DeleteTuple(ctx context.Context, key Key) error
-	// Scan iterates over all tuples with a specific key prefix.
-	Scan(pref Key) Iterator
+	// DeleteTuples removes all tuples that matches a filter.
+	DeleteTuples(ctx context.Context, f *Filter) error
+	// Scan iterates over all tuples with the key and the payload matching filters.
+	Scan(f *Filter) Iterator
 }
 
 // Iterator is an iterator over a tuple store.
@@ -227,4 +244,104 @@ type Iterator interface {
 	Key() Key
 	// Data returns a payload the tuple.
 	Data() Data
+}
+
+// Filter is a tuple filter.
+type Filter struct {
+	KeyFilter
+	DataFilter
+}
+
+func (f *Filter) IsAny() bool {
+	return f == nil || (f.KeyFilter == nil && f.DataFilter == nil)
+}
+func (f *Filter) IsAnyKey() bool {
+	return f == nil || f.KeyFilter == nil
+}
+func (f *Filter) IsAnyData() bool {
+	return f == nil || f.DataFilter == nil
+}
+func (f *Filter) FilterKey(k Key) bool {
+	if f.IsAnyKey() {
+		return true
+	}
+	return f.KeyFilter.FilterKey(k)
+}
+func (f *Filter) FilterData(d Data) bool {
+	if f.IsAnyData() {
+		return true
+	}
+	return f.DataFilter.FilterData(d)
+}
+func (f *Filter) FilterTuple(t Tuple) bool {
+	if f == nil {
+		return true
+	}
+	if f.KeyFilter != nil && !f.KeyFilter.FilterKey(t.Key) {
+		return false
+	}
+	if f.DataFilter != nil && !f.DataFilter.FilterData(t.Data) {
+		return false
+	}
+	return true
+}
+
+// KeyFilter controls if a key should be considered or not.
+type KeyFilter interface {
+	FilterKey(k Key) bool
+}
+
+// Keys is a filter that accepts only specific keys.
+type Keys []Key
+
+func (arr Keys) FilterKey(k Key) bool {
+	for _, k2 := range arr {
+		if k.Compare(k2) == 0 {
+			return true
+		}
+	}
+	return true
+}
+
+// KeyFilters applies value filters to individual key components.
+// If key is shorter, nil value is passed to the filter.
+type KeyFilters []filter.ValueFilter
+
+func (arr KeyFilters) FilterKey(k Key) bool {
+	for i, f := range arr {
+		var v Sortable
+		if i < len(k) {
+			v = k[i]
+		}
+		if !f.FilterValue(v) {
+			return false
+		}
+	}
+	return true
+}
+
+// DataFilter controls if a payload should be considered or not.
+type DataFilter interface {
+	FilterData(d Data) bool
+}
+
+// DataFilters applies value filters to individual payload components.
+// Filter will reject the value if its length is different.
+// Nil filters are allowed in the slice to indicate no filtering.
+type DataFilters []filter.ValueFilter
+
+func (arr DataFilters) FilterData(d Data) bool {
+	if len(d) != len(arr) {
+		return false
+	}
+	for i, f := range arr {
+		if f == nil {
+			continue
+		}
+		v := d[i]
+		if !f.FilterValue(v) {
+			return false
+		}
+	}
+	return true
 }

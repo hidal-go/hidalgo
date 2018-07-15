@@ -6,9 +6,11 @@ import (
 	"fmt"
 	"io"
 
+	"github.com/hidal-go/hidalgo/filter"
 	"github.com/hidal-go/hidalgo/kv"
 	"github.com/hidal-go/hidalgo/tuple"
 	"github.com/hidal-go/hidalgo/tuple/tuplepb"
+	"github.com/hidal-go/hidalgo/values"
 )
 
 func New(kv kv.KV) tuple.Store {
@@ -313,22 +315,75 @@ func (tbl *tupleTable) UpdateTuple(ctx context.Context, t tuple.Tuple, opt *tupl
 	return nil
 }
 
-func (tbl *tupleTable) DeleteTuple(ctx context.Context, key tuple.Key) error {
-	if err := tbl.h.ValidateKey(key, false); err != nil {
-		return err
+func (tbl *tupleTable) DeleteTuples(ctx context.Context, f *tuple.Filter) error {
+	if !f.IsAny() {
+		// if we know the list of keys in advance
+		if arr, ok := f.KeyFilter.(tuple.Keys); ok {
+			// check keys against the schema
+			for _, key := range arr {
+				if err := tbl.h.ValidateKey(key, false); err != nil {
+					return err
+				}
+			}
+			if f.IsAnyData() {
+				// if data won't be filtered - delete tuples directly
+				for _, key := range arr {
+					if err := tbl.tx.tx.Del(tbl.row(key)); err != nil {
+						return err
+					}
+				}
+				return nil
+			}
+		}
 	}
-	return tbl.tx.tx.Del(tbl.row(key))
+	// fallback to iterate + delete
+	it := tbl.scan(f)
+	defer it.Close()
+	for it.Next(ctx) {
+		if err := tbl.tx.tx.Del(it.key()); err != nil {
+			return err
+		}
+	}
+	return it.Err()
 }
 
-func (tbl *tupleTable) Scan(pref tuple.Key) tuple.Iterator {
-	return &tupleIterator{
-		tbl: tbl,
-		it:  tbl.tx.tx.Scan(tbl.row(pref)),
+func (tbl *tupleTable) scan(f *tuple.Filter) *tupleIterator {
+	pref := tbl.row(nil)
+	if !f.IsAny() {
+		if kf, ok := f.KeyFilter.(tuple.KeyFilters); ok {
+			// find common prefix, if any
+		loop:
+			for _, vf := range kf {
+				switch vf := vf.(type) {
+				case filter.Equal:
+					s, ok := vf.Value.(values.Sortable)
+					if !ok {
+						break loop
+					}
+					pref = pref.Append(toKvKey(tuple.Key{s}))
+				case filter.Range:
+					p, ok := vf.Prefix()
+					if ok && p != nil {
+						pref = pref.Append(toKvKey(tuple.Key{p}))
+					}
+					break loop
+				}
+			}
+		}
 	}
+	return &tupleIterator{
+		tbl: tbl, f: f,
+		it: tbl.tx.tx.Scan(pref),
+	}
+}
+
+func (tbl *tupleTable) Scan(f *tuple.Filter) tuple.Iterator {
+	return tbl.scan(f)
 }
 
 type tupleIterator struct {
 	tbl *tupleTable
+	f   *tuple.Filter
 	it  kv.Iterator
 	err error
 }
@@ -348,11 +403,27 @@ func (it *tupleIterator) Next(ctx context.Context) bool {
 	if it.err != nil {
 		return false
 	}
-	return it.it.Next(ctx)
+	f := it.f
+	if f.IsAny() {
+		return it.it.Next(ctx)
+	}
+	for it.it.Next(ctx) {
+		if f.KeyFilter != nil && !f.KeyFilter.FilterKey(it.Key()) {
+			continue
+		}
+		if f.DataFilter != nil && !f.DataFilter.FilterData(it.Data()) {
+			continue
+		}
+		return true
+	}
+	return false
 }
 
+func (it *tupleIterator) key() kv.Key {
+	return it.it.Key()
+}
 func (it *tupleIterator) Key() tuple.Key {
-	data, err := it.tbl.decodeKey(it.it.Key())
+	data, err := it.tbl.decodeKey(it.key())
 	if err != nil {
 		it.err = err
 	}

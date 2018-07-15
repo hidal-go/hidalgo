@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/hidal-go/hidalgo/filter"
 	hkv "github.com/hidal-go/hidalgo/kv"
 	"github.com/hidal-go/hidalgo/kv/flat"
 	"github.com/hidal-go/hidalgo/kv/kvtest"
@@ -200,17 +201,26 @@ func scans(t testing.TB, db tuple.Store) {
 	}
 
 	scan := func(pref []string, exp ...int) {
-		var kpref tuple.Key
+		var kpref tuple.KeyFilters
 		if len(pref) != 0 {
-			for _, k := range pref {
-				if k == "" {
-					kpref = append(kpref, nil)
+			for i, k := range pref {
+				var f filter.SortableFilter
+				if i == len(pref)-1 {
+					if k == "" {
+						break
+					}
+					f = filter.Prefix(values.String(k))
 				} else {
-					kpref = append(kpref, values.String(k))
+					f = filter.EQ(values.String(k))
 				}
+				kpref = append(kpref, f)
 			}
 		}
-		it := tbl.Scan(kpref)
+		var f *tuple.Filter
+		if kpref != nil {
+			f = &tuple.Filter{KeyFilter: kpref}
+		}
+		it := tbl.Scan(f)
 		defer it.Close()
 
 		var got []int
