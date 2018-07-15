@@ -11,7 +11,7 @@ import (
 	"github.com/hidal-go/hidalgo/kv/kvtest"
 	"github.com/hidal-go/hidalgo/tuple"
 	"github.com/hidal-go/hidalgo/tuple/kv"
-	"github.com/hidal-go/hidalgo/types"
+	"github.com/hidal-go/hidalgo/values"
 	"github.com/stretchr/testify/require"
 )
 
@@ -64,10 +64,10 @@ func basic(t testing.TB, db tuple.Store) {
 	tbl, err := tx.CreateTable(ctx, tuple.Header{
 		Name: "test",
 		Key: []tuple.KeyField{
-			{Name: "k1", Type: types.StringType{}},
+			{Name: "k1", Type: values.StringType{}},
 		},
 		Data: []tuple.Field{
-			{Name: "f1", Type: types.StringType{}},
+			{Name: "f1", Type: values.StringType{}},
 		},
 	})
 	require.NoError(t, err)
@@ -103,15 +103,15 @@ func typed(t testing.TB, db tuple.Store) {
 	require.NoError(t, err)
 	defer tx.Close()
 
-	sortable := []types.Sortable{
-		types.String("foo"),
-		types.Bytes("b\x00r"),
-		types.Int(-42),
-		types.UInt(42),
-		types.Bool(false),
-		types.Time(time.Unix(123, 456)),
+	sortable := []values.Sortable{
+		values.String("foo"),
+		values.Bytes("b\x00r"),
+		values.Int(-42),
+		values.UInt(42),
+		values.Bool(false),
+		values.AsTime(time.Unix(123, 456)),
 	}
-	var payloads []types.Value
+	var payloads []values.Value
 	for _, tp := range sortable {
 		payloads = append(payloads, tp)
 	}
@@ -178,12 +178,12 @@ func scans(t testing.TB, db tuple.Store) {
 	tbl, err := tx.CreateTable(ctx, tuple.Header{
 		Name: "test",
 		Key: []tuple.KeyField{
-			{Name: "k1", Type: types.StringType{}},
-			{Name: "k2", Type: types.StringType{}},
-			{Name: "k3", Type: types.StringType{}},
+			{Name: "k1", Type: values.StringType{}},
+			{Name: "k2", Type: values.StringType{}},
+			{Name: "k3", Type: values.StringType{}},
 		},
 		Data: []tuple.Field{
-			{Name: "f1", Type: types.IntType{}},
+			{Name: "f1", Type: values.IntType{}},
 		},
 	})
 	require.NoError(t, err)
@@ -191,10 +191,10 @@ func scans(t testing.TB, db tuple.Store) {
 	insert := func(key []string, n int) {
 		var tkey tuple.Key
 		for _, k := range key {
-			tkey = append(tkey, types.String(k))
+			tkey = append(tkey, values.String(k))
 		}
 		_, err = tbl.InsertTuple(ctx, tuple.Tuple{
-			Key: tkey, Data: tuple.Data{types.Int(n)},
+			Key: tkey, Data: tuple.Data{values.Int(n)},
 		})
 		require.NoError(t, err)
 	}
@@ -206,7 +206,7 @@ func scans(t testing.TB, db tuple.Store) {
 				if k == "" {
 					kpref = append(kpref, nil)
 				} else {
-					kpref = append(kpref, types.String(k))
+					kpref = append(kpref, values.String(k))
 				}
 			}
 		}
@@ -217,7 +217,7 @@ func scans(t testing.TB, db tuple.Store) {
 		for it.Next(ctx) {
 			d := it.Data()
 			require.True(t, len(d) == 1)
-			v, ok := d[0].(types.Int)
+			v, ok := d[0].(values.Int)
 			require.True(t, ok, "%T: %#v", d[0], d[0])
 			got = append(got, int(v))
 		}

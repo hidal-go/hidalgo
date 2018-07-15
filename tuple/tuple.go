@@ -6,7 +6,7 @@ import (
 	"fmt"
 
 	"github.com/hidal-go/hidalgo/base"
-	"github.com/hidal-go/hidalgo/types"
+	"github.com/hidal-go/hidalgo/values"
 )
 
 var (
@@ -17,16 +17,16 @@ var (
 )
 
 // Type is any value type that can be stored in tuple.
-type Type = types.Type
+type Type = values.Type
 
 // Value is any value that can be stored in tuple.
-type Value = types.Value
+type Value = values.Value
 
 // KeyType is a value type that can be sorted after serialization.
-type KeyType = types.SortableType
+type KeyType = values.SortableType
 
 // Sortable is a value that can be sorted after serialization.
-type Sortable = types.Sortable
+type Sortable = values.Sortable
 
 // Field is a single field used in tuple payload.
 type Field struct {
@@ -73,7 +73,7 @@ func (t Header) Validate() error {
 				return fmt.Errorf("only one auto key is allowed")
 			}
 			switch f.Type.(type) {
-			case types.UIntType:
+			case values.UIntType:
 			default:
 				return fmt.Errorf("only uint types can be autoincremented")
 			}
@@ -151,7 +151,7 @@ type Key []Sortable
 func SKey(key ...string) Key {
 	out := make(Key, 0, len(key))
 	for _, k := range key {
-		out = append(out, types.String(k))
+		out = append(out, values.String(k))
 	}
 	return out
 }
@@ -163,7 +163,7 @@ type Data []Value
 func SData(data ...string) Data {
 	out := make(Data, 0, len(data))
 	for _, v := range data {
-		out = append(out, types.String(v))
+		out = append(out, values.String(v))
 	}
 	return out
 }

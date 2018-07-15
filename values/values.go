@@ -1,6 +1,7 @@
-package types
+package values
 
 import (
+	"bytes"
 	"encoding"
 	"encoding/binary"
 	"errors"
@@ -24,9 +25,31 @@ type ValueDest interface {
 	encoding.BinaryUnmarshaler
 }
 
+// Primitive is a private interface implemented only by following types:
+//
+//	* String
+//	* Bytes
+//	* Int
+//	* UInt
+//	* Float
+//	* Bool
+type Primitive interface {
+	Value
+	// PrimitiveType returns a type associated with this value.
+	PrimitiveType() PrimitiveType
+	isPrimitive()
+}
+
+type PrimitiveDest interface {
+	ValueDest
+	Primitive() Primitive
+}
+
 // Sortable is an extension of Value interface that allows to use it in building low-level indexes.
 type Sortable interface {
 	Value
+	// Compare returns 0 if x == v, -1 if x < v and +1 if x > v
+	Compare(v Sortable) int
 	// SortableType returns a type associated with this value.
 	SortableType() SortableType
 	// MarshalSortable encodes the value into sortable encoding: v1 < v2, marshal(v1) < marshal(v2).
@@ -40,24 +63,42 @@ type SortableDest interface {
 	UnmarshalSortable(p []byte) error
 }
 
+func Compare(a, b Sortable) int {
+	if a != nil {
+		return a.Compare(b)
+	}
+	if b != nil {
+		return -b.Compare(a)
+	}
+	return 0
+}
+
 var (
 	sortableOrder = binary.BigEndian
 	defaultOrder  = binary.LittleEndian
 )
 
 var (
-	_ SortableDest = (*Int)(nil)
+	_ PrimitiveDest = (*Int)(nil)
+	_ PrimitiveDest = (*UInt)(nil)
+	_ PrimitiveDest = (*String)(nil)
+	_ PrimitiveDest = (*Bytes)(nil)
+	_ PrimitiveDest = (*Bool)(nil)
+	_ PrimitiveDest = (*Float)(nil)
+
 	_ SortableDest = (*UInt)(nil)
 	_ SortableDest = (*String)(nil)
 	_ SortableDest = (*Bytes)(nil)
 	_ SortableDest = (*Bool)(nil)
 	_ SortableDest = (*Time)(nil)
 
+	_ ValueDest = (*Int)(nil)
 	_ ValueDest = (*Float)(nil)
 )
 
 type String string
 
+func (String) isPrimitive() {}
 func (v String) Native() interface{} {
 	return string(v)
 }
@@ -65,6 +106,9 @@ func (String) Type() Type {
 	return StringType{}
 }
 func (String) SortableType() SortableType {
+	return StringType{}
+}
+func (String) PrimitiveType() PrimitiveType {
 	return StringType{}
 }
 func (v *String) Value() Value {
@@ -78,6 +122,21 @@ func (v *String) Sortable() Sortable {
 		return nil
 	}
 	return *v
+}
+func (v *String) Primitive() Primitive {
+	if v == nil {
+		return nil
+	}
+	return *v
+}
+func (v String) Compare(b Sortable) int {
+	if b == nil {
+		return +1
+	}
+	// TODO: optimize
+	ab, _ := v.MarshalSortable()
+	bb, _ := b.MarshalSortable()
+	return bytes.Compare(ab, bb)
 }
 func (v String) MarshalBinary() ([]byte, error) {
 	return []byte(v), nil
@@ -96,6 +155,7 @@ func (v *String) UnmarshalSortable(p []byte) error {
 
 type Bytes []byte
 
+func (Bytes) isPrimitive() {}
 func (v Bytes) Native() interface{} {
 	return []byte(v)
 }
@@ -103,6 +163,9 @@ func (Bytes) Type() Type {
 	return BytesType{}
 }
 func (Bytes) SortableType() SortableType {
+	return BytesType{}
+}
+func (Bytes) PrimitiveType() PrimitiveType {
 	return BytesType{}
 }
 func (v *Bytes) Value() Value {
@@ -116,6 +179,21 @@ func (v *Bytes) Sortable() Sortable {
 		return nil
 	}
 	return *v
+}
+func (v *Bytes) Primitive() Primitive {
+	if v == nil {
+		return nil
+	}
+	return *v
+}
+func (v Bytes) Compare(b Sortable) int {
+	if b == nil {
+		return +1
+	}
+	// TODO: optimize
+	ab, _ := v.MarshalSortable()
+	bb, _ := b.MarshalSortable()
+	return bytes.Compare(ab, bb)
 }
 func (v Bytes) MarshalBinary() ([]byte, error) {
 	return append([]byte{}, v...), nil
@@ -134,6 +212,7 @@ func (v *Bytes) UnmarshalSortable(p []byte) error {
 
 type Int int64
 
+func (Int) isPrimitive() {}
 func (v Int) Native() interface{} {
 	return int64(v)
 }
@@ -141,6 +220,9 @@ func (Int) Type() Type {
 	return IntType{}
 }
 func (Int) SortableType() SortableType {
+	return IntType{}
+}
+func (Int) PrimitiveType() PrimitiveType {
 	return IntType{}
 }
 func (v *Int) Value() Value {
@@ -154,6 +236,21 @@ func (v *Int) Sortable() Sortable {
 		return nil
 	}
 	return *v
+}
+func (v *Int) Primitive() Primitive {
+	if v == nil {
+		return nil
+	}
+	return *v
+}
+func (v Int) Compare(b Sortable) int {
+	if b == nil {
+		return +1
+	}
+	// TODO: optimize
+	ab, _ := v.MarshalSortable()
+	bb, _ := b.MarshalSortable()
+	return bytes.Compare(ab, bb)
 }
 func (v Int) MarshalBinary() ([]byte, error) {
 	buf := make([]byte, binary.MaxVarintLen64)
@@ -172,21 +269,42 @@ func (v *Int) UnmarshalBinary(p []byte) error {
 	*v = Int(iv)
 	return nil
 }
+
+const uintShift = -math.MinInt64
+
+func (v Int) asSortable() uint64 {
+	if v >= 0 {
+		return uint64(v) + uintShift
+	}
+	iv := uint64(-v)
+	return uintShift - iv
+}
+
+func (v *Int) setSortable(uv uint64) {
+	if uv >= uintShift {
+		*v = Int(uv - uintShift)
+	} else {
+		uv = uintShift - uv
+		*v = Int(-int64(uv))
+	}
+}
+
 func (v Int) MarshalSortable() ([]byte, error) {
 	buf := make([]byte, 8)
-	sortableOrder.PutUint64(buf, uint64(v))
+	sortableOrder.PutUint64(buf, v.asSortable())
 	return buf, nil
 }
 func (v *Int) UnmarshalSortable(p []byte) error {
 	if len(p) != 8 {
 		return fmt.Errorf("unexpected value size: %d", len(p))
 	}
-	*v = Int(sortableOrder.Uint64(p))
+	v.setSortable(sortableOrder.Uint64(p))
 	return nil
 }
 
 type UInt uint64
 
+func (UInt) isPrimitive() {}
 func (v UInt) Native() interface{} {
 	return uint64(v)
 }
@@ -194,6 +312,9 @@ func (UInt) Type() Type {
 	return UIntType{}
 }
 func (UInt) SortableType() SortableType {
+	return UIntType{}
+}
+func (UInt) PrimitiveType() PrimitiveType {
 	return UIntType{}
 }
 func (v *UInt) Value() Value {
@@ -207,6 +328,21 @@ func (v *UInt) Sortable() Sortable {
 		return nil
 	}
 	return *v
+}
+func (v *UInt) Primitive() Primitive {
+	if v == nil {
+		return nil
+	}
+	return *v
+}
+func (v UInt) Compare(b Sortable) int {
+	if b == nil {
+		return +1
+	}
+	// TODO: optimize
+	ab, _ := v.MarshalSortable()
+	bb, _ := b.MarshalSortable()
+	return bytes.Compare(ab, bb)
 }
 func (v UInt) MarshalBinary() ([]byte, error) {
 	buf := make([]byte, binary.MaxVarintLen64)
@@ -240,13 +376,23 @@ func (v *UInt) UnmarshalSortable(p []byte) error {
 
 type Float float64
 
+func (Float) isPrimitive() {}
 func (v Float) Native() interface{} {
 	return float64(v)
 }
 func (Float) Type() Type {
 	return FloatType{}
 }
+func (Float) PrimitiveType() PrimitiveType {
+	return FloatType{}
+}
 func (v *Float) Value() Value {
+	if v == nil {
+		return nil
+	}
+	return *v
+}
+func (v *Float) Primitive() Primitive {
 	if v == nil {
 		return nil
 	}
@@ -269,6 +415,7 @@ func (v *Float) UnmarshalBinary(p []byte) error {
 
 type Bool bool
 
+func (Bool) isPrimitive() {}
 func (v Bool) Native() interface{} {
 	return bool(v)
 }
@@ -276,6 +423,9 @@ func (Bool) Type() Type {
 	return BoolType{}
 }
 func (Bool) SortableType() SortableType {
+	return BoolType{}
+}
+func (Bool) PrimitiveType() PrimitiveType {
 	return BoolType{}
 }
 func (v *Bool) Value() Value {
@@ -289,6 +439,21 @@ func (v *Bool) Sortable() Sortable {
 		return nil
 	}
 	return *v
+}
+func (v *Bool) Primitive() Primitive {
+	if v == nil {
+		return nil
+	}
+	return *v
+}
+func (v Bool) Compare(b Sortable) int {
+	if b == nil {
+		return +1
+	}
+	// TODO: optimize
+	ab, _ := v.MarshalSortable()
+	bb, _ := b.MarshalSortable()
+	return bytes.Compare(ab, bb)
 }
 func (v Bool) MarshalBinary() ([]byte, error) {
 	if v {
@@ -317,6 +482,10 @@ func (v *Bool) UnmarshalSortable(p []byte) error {
 	return nil
 }
 
+func AsTime(t time.Time) Time {
+	return Time(t.UTC())
+}
+
 type Time time.Time
 
 func (v Time) Native() interface{} {
@@ -340,6 +509,15 @@ func (v *Time) Sortable() Sortable {
 	}
 	return *v
 }
+func (v Time) Compare(b Sortable) int {
+	if b == nil {
+		return +1
+	}
+	// TODO: optimize
+	ab, _ := v.MarshalSortable()
+	bb, _ := b.MarshalSortable()
+	return bytes.Compare(ab, bb)
+}
 func (v Time) MarshalBinary() ([]byte, error) {
 	return time.Time(v).MarshalBinary()
 }
@@ -348,7 +526,7 @@ func (v *Time) UnmarshalBinary(p []byte) error {
 	if err := t.UnmarshalBinary(p); err != nil {
 		return err
 	}
-	*v = Time(t)
+	*v = AsTime(t)
 	return nil
 }
 func (v Time) MarshalSortable() ([]byte, error) {
@@ -360,6 +538,6 @@ func (v *Time) UnmarshalSortable(p []byte) error {
 	if err := iv.UnmarshalSortable(p); err != nil {
 		return err
 	}
-	*v = Time(time.Unix(0, int64(iv)))
+	*v = Time(time.Unix(0, int64(iv)).UTC())
 	return nil
 }

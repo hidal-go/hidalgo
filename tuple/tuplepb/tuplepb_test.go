@@ -4,7 +4,7 @@ import (
 	"testing"
 
 	"github.com/hidal-go/hidalgo/tuple"
-	"github.com/hidal-go/hidalgo/types"
+	"github.com/hidal-go/hidalgo/values"
 	"github.com/stretchr/testify/require"
 )
 
@@ -12,13 +12,13 @@ func TestTableEncoding(t *testing.T) {
 	tbl := &tuple.Header{
 		Name: "test",
 		Key: []tuple.KeyField{
-			{Name: "k1", Type: types.IntType{}, Auto: true},
-			{Name: "k2", Type: types.StringType{}},
+			{Name: "k1", Type: values.IntType{}, Auto: true},
+			{Name: "k2", Type: values.StringType{}},
 		},
 		Data: []tuple.Field{
-			{Name: "f1", Type: types.BytesType{}},
-			{Name: "f2", Type: types.StringType{}},
-			{Name: "f2", Type: types.FloatType{}},
+			{Name: "f1", Type: values.BytesType{}},
+			{Name: "f2", Type: values.StringType{}},
+			{Name: "f2", Type: values.FloatType{}},
 		},
 	}
 

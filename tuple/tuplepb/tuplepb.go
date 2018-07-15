@@ -4,7 +4,7 @@ import (
 	"fmt"
 
 	"github.com/hidal-go/hidalgo/tuple"
-	"github.com/hidal-go/hidalgo/types"
+	"github.com/hidal-go/hidalgo/values"
 )
 
 //go:generate protoc --proto_path=$GOPATH/src:. --gogo_out=. tuple.proto
@@ -19,28 +19,28 @@ var (
 
 	_ tuple.KeyField = struct {
 		Name string
-		Type types.SortableType
+		Type values.SortableType
 		Auto bool
 	}{}
 
 	_ tuple.Field = struct {
 		Name string
-		Type types.Type
+		Type values.Type
 	}{}
 )
 
 var (
-	value2type    = make(map[types.Type]ValueType)
-	type2sortable = make(map[ValueType]types.SortableType)
-	type2value    = map[ValueType]types.Type{
+	value2type    = make(map[values.Type]ValueType)
+	type2sortable = make(map[ValueType]values.SortableType)
+	type2value    = map[ValueType]values.Type{
 		ValueType_TYPE_ANY:    nil,
-		ValueType_TYPE_BYTES:  types.BytesType{},
-		ValueType_TYPE_STRING: types.StringType{},
-		ValueType_TYPE_UINT:   types.UIntType{},
-		ValueType_TYPE_INT:    types.IntType{},
-		ValueType_TYPE_BOOL:   types.BoolType{},
-		ValueType_TYPE_TIME:   types.TimeType{},
-		ValueType_TYPE_FLOAT:  types.FloatType{},
+		ValueType_TYPE_BYTES:  values.BytesType{},
+		ValueType_TYPE_STRING: values.StringType{},
+		ValueType_TYPE_UINT:   values.UIntType{},
+		ValueType_TYPE_INT:    values.IntType{},
+		ValueType_TYPE_BOOL:   values.BoolType{},
+		ValueType_TYPE_TIME:   values.TimeType{},
+		ValueType_TYPE_FLOAT:  values.FloatType{},
 	}
 )
 
@@ -50,13 +50,13 @@ func init() {
 			panic(typ.String())
 		}
 		value2type[v] = typ
-		if v, ok := v.(types.SortableType); ok && v != nil {
+		if v, ok := v.(values.SortableType); ok && v != nil {
 			type2sortable[typ] = v
 		}
 	}
 }
 
-func typeOf(v types.Type) (ValueType, bool) {
+func typeOf(v values.Type) (ValueType, bool) {
 	typ, ok := value2type[v]
 	return typ, ok
 }
