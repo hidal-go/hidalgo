@@ -1,4 +1,4 @@
-package kv_test
+package tuplekv_test
 
 import (
 	"testing"
@@ -13,7 +13,7 @@ import (
 func TestKV2Tuple(t *testing.T) {
 	tupletest.RunTest(t, func(t testing.TB) (tuple.Store, func()) {
 		kdb := btree.New()
-		db := kv.New(flat.Upgrade(kdb))
+		db := tuplekv.New(flat.Upgrade(kdb))
 		return db, func() {}
 	})
 }

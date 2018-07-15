@@ -34,7 +34,7 @@ func RunTest(t *testing.T, fnc Func) {
 			db, closer := fnc(t)
 
 			ctx := context.TODO()
-			kdb, err := kv.NewKV(ctx, db, "kv")
+			kdb, err := tuplekv.NewKV(ctx, db, "kv")
 			if err != nil {
 				closer()
 				require.NoError(t, err)
