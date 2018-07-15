@@ -198,8 +198,8 @@ type Tx interface {
 
 // Table represents an opened tuples table with a specific type (schema).
 type Table interface {
-	// Delete clears the data and removes the table.
-	Delete(ctx context.Context) error
+	// Drop clears the data and removes the table.
+	Drop(ctx context.Context) error
 	// Clears removes all tuples from the table.
 	Clear(ctx context.Context) error
 

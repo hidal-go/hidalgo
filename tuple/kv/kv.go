@@ -138,7 +138,7 @@ func (tbl *tupleTable) row(key tuple.Key) kv.Key {
 	return k
 }
 
-func (tbl *tupleTable) Delete(ctx context.Context) error {
+func (tbl *tupleTable) Drop(ctx context.Context) error {
 	if err := tbl.Clear(ctx); err != nil {
 		return err
 	}
