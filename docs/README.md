@@ -1,6 +1,6 @@
 # Documentation
 
-For Go documentation, see [GoDoc](https://godoc.org/github.com/nwca/hidalgo).
+For Go documentation, see [GoDoc](https://godoc.org/github.com/hidal-go/hidalgo).
 
 ## Abstractions
 

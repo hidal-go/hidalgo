@@ -4,8 +4,8 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/nwca/hidalgo/kv"
-	"github.com/nwca/hidalgo/kv/kvtest"
+	"github.com/hidal-go/hidalgo/kv"
+	"github.com/hidal-go/hidalgo/kv/kvtest"
 )
 
 func TestBolt(t *testing.T) {

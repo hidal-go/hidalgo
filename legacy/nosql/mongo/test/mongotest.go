@@ -6,9 +6,9 @@ import (
 	"github.com/ory/dockertest"
 	"gopkg.in/mgo.v2"
 
-	"github.com/nwca/hidalgo/legacy/nosql"
-	"github.com/nwca/hidalgo/legacy/nosql/mongo"
-	"github.com/nwca/hidalgo/legacy/nosql/nosqltest"
+	"github.com/hidal-go/hidalgo/legacy/nosql"
+	"github.com/hidal-go/hidalgo/legacy/nosql/mongo"
+	"github.com/hidal-go/hidalgo/legacy/nosql/nosqltest"
 )
 
 const vers = "3"

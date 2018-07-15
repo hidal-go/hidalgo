@@ -11,9 +11,9 @@ import (
 	"testing"
 
 	"github.com/go-kivik/kivik"
-	"github.com/nwca/hidalgo/legacy/nosql"
-	"github.com/nwca/hidalgo/legacy/nosql/couch"
-	"github.com/nwca/hidalgo/legacy/nosql/nosqltest"
+	"github.com/hidal-go/hidalgo/legacy/nosql"
+	"github.com/hidal-go/hidalgo/legacy/nosql/couch"
+	"github.com/hidal-go/hidalgo/legacy/nosql/nosqltest"
 )
 
 func init() {

@@ -6,9 +6,9 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/nwca/hidalgo/kv"
-	"github.com/nwca/hidalgo/tuple"
-	"github.com/nwca/hidalgo/tuple/tuplepb"
+	"github.com/hidal-go/hidalgo/kv"
+	"github.com/hidal-go/hidalgo/tuple"
+	"github.com/hidal-go/hidalgo/tuple/tuplepb"
 )
 
 func New(kv kv.KV) tuple.Store {

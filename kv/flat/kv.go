@@ -5,8 +5,8 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/nwca/hidalgo/base"
-	"github.com/nwca/hidalgo/kv"
+	"github.com/hidal-go/hidalgo/base"
+	"github.com/hidal-go/hidalgo/kv"
 )
 
 var (

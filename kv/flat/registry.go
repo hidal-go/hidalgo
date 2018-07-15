@@ -3,8 +3,8 @@ package flat
 import (
 	"sort"
 
-	"github.com/nwca/hidalgo/base"
-	"github.com/nwca/hidalgo/kv"
+	"github.com/hidal-go/hidalgo/base"
+	"github.com/hidal-go/hidalgo/kv"
 )
 
 // OpenPathFunc is a function for opening a database given a path.

@@ -4,9 +4,9 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/nwca/hidalgo/kv/flat"
-	"github.com/nwca/hidalgo/tuple"
-	"github.com/nwca/hidalgo/types"
+	"github.com/hidal-go/hidalgo/kv/flat"
+	"github.com/hidal-go/hidalgo/tuple"
+	"github.com/hidal-go/hidalgo/types"
 )
 
 func NewKV(ctx context.Context, db tuple.Store, table string) (flat.KV, error) {

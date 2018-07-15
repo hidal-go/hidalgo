@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/nwca/hidalgo/legacy/nosql"
+	"github.com/hidal-go/hidalgo/legacy/nosql"
 	"github.com/stretchr/testify/require"
 )
 

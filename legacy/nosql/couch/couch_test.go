@@ -5,9 +5,9 @@ package couch_test
 import (
 	"testing"
 
-	"github.com/nwca/hidalgo/legacy/nosql/couch"
-	_ "github.com/nwca/hidalgo/legacy/nosql/couch/test"
-	"github.com/nwca/hidalgo/legacy/nosql/nosqltest"
+	"github.com/hidal-go/hidalgo/legacy/nosql/couch"
+	_ "github.com/hidal-go/hidalgo/legacy/nosql/couch/test"
+	"github.com/hidal-go/hidalgo/legacy/nosql/nosqltest"
 )
 
 func TestCouch(t *testing.T) {

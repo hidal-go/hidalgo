@@ -5,8 +5,8 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/nwca/hidalgo/base"
-	"github.com/nwca/hidalgo/types"
+	"github.com/hidal-go/hidalgo/base"
+	"github.com/hidal-go/hidalgo/types"
 )
 
 var (

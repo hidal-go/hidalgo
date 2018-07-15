@@ -3,8 +3,8 @@ package leveldb
 import (
 	"testing"
 
-	"github.com/nwca/hidalgo/kv/flat"
-	"github.com/nwca/hidalgo/kv/kvtest"
+	"github.com/hidal-go/hidalgo/kv/flat"
+	"github.com/hidal-go/hidalgo/kv/kvtest"
 )
 
 func TestLeveldb(t *testing.T) {

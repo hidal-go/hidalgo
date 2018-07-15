@@ -10,8 +10,8 @@ import (
 	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
 
-	"github.com/nwca/hidalgo/base"
-	"github.com/nwca/hidalgo/legacy/nosql"
+	"github.com/hidal-go/hidalgo/base"
+	"github.com/hidal-go/hidalgo/legacy/nosql"
 )
 
 const Name = "mongo"

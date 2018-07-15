@@ -19,8 +19,8 @@ import (
 	"context"
 	"io"
 
-	"github.com/nwca/hidalgo/base"
-	"github.com/nwca/hidalgo/kv/flat"
+	"github.com/hidal-go/hidalgo/base"
+	"github.com/hidal-go/hidalgo/kv/flat"
 )
 
 const (

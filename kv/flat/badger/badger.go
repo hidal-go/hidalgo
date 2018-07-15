@@ -5,9 +5,9 @@ import (
 
 	"github.com/dgraph-io/badger"
 
-	"github.com/nwca/hidalgo/base"
-	"github.com/nwca/hidalgo/kv"
-	"github.com/nwca/hidalgo/kv/flat"
+	"github.com/hidal-go/hidalgo/base"
+	"github.com/hidal-go/hidalgo/kv"
+	"github.com/hidal-go/hidalgo/kv/flat"
 )
 
 const (

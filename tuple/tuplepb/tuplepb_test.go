@@ -3,8 +3,8 @@ package tuplepb
 import (
 	"testing"
 
-	"github.com/nwca/hidalgo/tuple"
-	"github.com/nwca/hidalgo/types"
+	"github.com/hidal-go/hidalgo/tuple"
+	"github.com/hidal-go/hidalgo/types"
 	"github.com/stretchr/testify/require"
 )
 

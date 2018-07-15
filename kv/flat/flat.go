@@ -3,7 +3,7 @@ package flat
 import (
 	"context"
 
-	"github.com/nwca/hidalgo/kv"
+	"github.com/hidal-go/hidalgo/kv"
 )
 
 var _ kv.KV = (*hieKV)(nil)

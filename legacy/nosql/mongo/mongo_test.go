@@ -3,9 +3,9 @@ package mongo_test
 import (
 	"testing"
 
-	"github.com/nwca/hidalgo/legacy/nosql/mongo"
-	_ "github.com/nwca/hidalgo/legacy/nosql/mongo/test"
-	"github.com/nwca/hidalgo/legacy/nosql/nosqltest"
+	"github.com/hidal-go/hidalgo/legacy/nosql/mongo"
+	_ "github.com/hidal-go/hidalgo/legacy/nosql/mongo/test"
+	"github.com/hidal-go/hidalgo/legacy/nosql/nosqltest"
 )
 
 func TestMongo(t *testing.T) {

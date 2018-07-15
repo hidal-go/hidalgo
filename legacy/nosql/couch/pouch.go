@@ -4,8 +4,8 @@ package couch
 
 import (
 	_ "github.com/go-kivik/pouchdb" // The PouchDB driver
-	"github.com/nwca/hidalgo/base"
-	"github.com/nwca/hidalgo/legacy/nosql"
+	"github.com/hidal-go/hidalgo/base"
+	"github.com/hidal-go/hidalgo/legacy/nosql"
 )
 
 const (

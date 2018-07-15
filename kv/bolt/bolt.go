@@ -21,8 +21,8 @@ import (
 
 	"github.com/boltdb/bolt"
 
-	"github.com/nwca/hidalgo/base"
-	"github.com/nwca/hidalgo/kv"
+	"github.com/hidal-go/hidalgo/base"
+	"github.com/hidal-go/hidalgo/kv"
 )
 
 const (

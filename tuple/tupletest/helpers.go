@@ -3,7 +3,7 @@ package tupletest
 import (
 	"testing"
 
-	"github.com/nwca/hidalgo/tuple"
+	"github.com/hidal-go/hidalgo/tuple"
 )
 
 func NewTest(t testing.TB, db tuple.Store) *Test {

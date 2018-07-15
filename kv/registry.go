@@ -3,7 +3,7 @@ package kv
 import (
 	"sort"
 
-	"github.com/nwca/hidalgo/base"
+	"github.com/hidal-go/hidalgo/base"
 )
 
 // OpenPathFunc is a function for opening a database given a path.

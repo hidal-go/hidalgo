@@ -6,9 +6,9 @@ import (
 	"context"
 	"testing"
 
-	"github.com/nwca/hidalgo/legacy/nosql"
-	"github.com/nwca/hidalgo/legacy/nosql/couch"
-	"github.com/nwca/hidalgo/legacy/nosql/nosqltest"
+	"github.com/hidal-go/hidalgo/legacy/nosql"
+	"github.com/hidal-go/hidalgo/legacy/nosql/couch"
+	"github.com/hidal-go/hidalgo/legacy/nosql/nosqltest"
 	"github.com/ory/dockertest"
 )
 

@@ -3,7 +3,7 @@ package flat
 import (
 	"testing"
 
-	"github.com/nwca/hidalgo/kv"
+	"github.com/hidal-go/hidalgo/kv"
 	"github.com/stretchr/testify/require"
 )
 
