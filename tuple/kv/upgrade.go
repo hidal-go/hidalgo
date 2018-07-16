@@ -403,20 +403,9 @@ func (it *tupleIterator) Next(ctx context.Context) bool {
 	if it.err != nil {
 		return false
 	}
-	f := it.f
-	if f.IsAny() {
+	return tuple.FilterIterator(it, it.f, func() bool {
 		return it.it.Next(ctx)
-	}
-	for it.it.Next(ctx) {
-		if f.KeyFilter != nil && !f.KeyFilter.FilterKey(it.Key()) {
-			continue
-		}
-		if f.DataFilter != nil && !f.DataFilter.FilterData(it.Data()) {
-			continue
-		}
-		return true
-	}
-	return false
+	})
 }
 
 func (it *tupleIterator) key() kv.Key {

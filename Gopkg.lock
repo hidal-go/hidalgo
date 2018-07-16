@@ -39,6 +39,12 @@
   revision = "2de33835d10275975374b37b2dcfd22c9020a1f5"
 
 [[projects]]
+  name = "github.com/go-sql-driver/mysql"
+  packages = ["."]
+  revision = "d523deb1b23d913de5bdada721a6071e71283618"
+  version = "v1.4.0"
+
+[[projects]]
   name = "github.com/gogo/protobuf"
   packages = [
     "gogoproto",
@@ -119,6 +125,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "8749bb616d83803d2ca561d518bdedd1da0787e12b2da214567471122412641b"
+  inputs-digest = "938de96cfde8a86eb3b1f1e347c9b9d1d483d8f24482307ff34f45e952ab4613"
   solver-name = "gps-cdcl"
   solver-version = 1

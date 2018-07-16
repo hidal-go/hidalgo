@@ -9,6 +9,10 @@
   branch = "master"
   name = "github.com/syndtr/goleveldb"
 
+[[constraint]]
+  name = "github.com/go-sql-driver/mysql"
+  version = "v1.4.0"
+
 [prune]
   go-tests = true
   unused-packages = true

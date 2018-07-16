@@ -55,6 +55,7 @@ func (t Test) Del(key kv.Key) {
 	tx, err := t.db.Tx(true)
 	require.NoError(t.t, err)
 	defer tx.Close()
+
 	err = tx.Del(key)
 	require.NoError(t.t, err)
 
@@ -62,6 +63,7 @@ func (t Test) Del(key kv.Key) {
 	got, err := tx.Get(ctx, key)
 	require.Equal(t.t, kv.ErrNotFound, err)
 	require.Equal(t.t, kv.Value(nil), got)
+
 	err = tx.Commit(ctx)
 	require.NoError(t.t, err)
 }

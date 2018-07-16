@@ -12,8 +12,15 @@ digraph DBs {
     bolt [label="Bolt"]
     hie_kv -> bolt
 
+    sql_tuple [label="SQL" URL="./docs/sql-tuple.md"]
+    mysql [label="MySQL"]
+    sql_tuple -> mysql
+    # postgres [label="PostgreSQL"]
+    # sql_tuple -> postgres
+
     strict_tuple [label="Tuple store" URL="./docs/tuple-strict.md"]
     strict_tuple -> hie_kv
+    strict_tuple -> sql_tuple
 
     legacy_nosql [label="NoSQL\n(legacy)", color=grey]
     legacy_mongo [label="MongoDB", color=grey]

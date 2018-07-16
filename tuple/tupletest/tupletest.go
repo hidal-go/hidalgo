@@ -110,7 +110,8 @@ func typed(t testing.TB, db tuple.Store) {
 		values.Int(-42),
 		values.UInt(42),
 		values.Bool(false),
-		values.AsTime(time.Unix(123, 456)),
+		// FIXME: test nanoseconds on backends that support it
+		values.AsTime(time.Unix(123, 456789000)),
 	}
 	var payloads []values.Value
 	for _, tp := range sortable {
@@ -118,19 +119,26 @@ func typed(t testing.TB, db tuple.Store) {
 	}
 
 	var (
-		kfields []tuple.KeyField
-		vfields []tuple.Field
+		kfields  []tuple.KeyField
+		kfields1 []tuple.KeyField
+		vfields  []tuple.Field
 
 		key  tuple.Key
+		key1 tuple.Key
 		data tuple.Data
 	)
 
 	for i, v := range sortable {
-		key = append(key, v)
-		kfields = append(kfields, tuple.KeyField{
+		kf := tuple.KeyField{
 			Name: fmt.Sprintf("k%d", i+1),
 			Type: v.SortableType(),
-		})
+		}
+		if i == 0 {
+			key1 = append(key1, v)
+			kfields1 = append(kfields1, kf)
+		}
+		key = append(key, v)
+		kfields = append(kfields, kf)
 	}
 	for i, v := range payloads {
 		data = append(data, v)
@@ -141,19 +149,32 @@ func typed(t testing.TB, db tuple.Store) {
 	}
 
 	ctx := context.TODO()
+	tbl1, err := tx.CreateTable(ctx, tuple.Header{
+		Name: "test1", Key: kfields1, Data: vfields,
+	})
+	require.NoError(t, err, "\nkey : %#v\ndata: %#v", kfields1, vfields)
 	tbl, err := tx.CreateTable(ctx, tuple.Header{
-		Name: "test", Key: kfields, Data: vfields,
+		Name: "test2", Key: kfields, Data: vfields,
+	})
+	require.NoError(t, err, "\nkey : %#v\ndata: %#v", kfields, vfields)
+
+	_, err = tbl1.InsertTuple(ctx, tuple.Tuple{
+		Key: key1, Data: data,
 	})
 	require.NoError(t, err)
+
+	v2, err := tbl1.GetTuple(ctx, key1)
+	require.NoError(t, err, "\nkey : %#v\ndata: %#v", kfields1, vfields)
+	require.Equal(t, data, v2, "\n%v\nvs\n%v", data, v2)
 
 	_, err = tbl.InsertTuple(ctx, tuple.Tuple{
 		Key: key, Data: data,
 	})
 	require.NoError(t, err)
 
-	v2, err := tbl.GetTuple(ctx, key)
-	require.NoError(t, err)
-	require.Equal(t, data, v2)
+	v2, err = tbl.GetTuple(ctx, key)
+	require.NoError(t, err, "\nkey : %#v\ndata: %#v", kfields, vfields)
+	require.Equal(t, data, v2, "\n%v\nvs\n%v", data, v2)
 
 	it := tbl.Scan(nil)
 	defer it.Close()
