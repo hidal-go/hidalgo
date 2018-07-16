@@ -22,6 +22,7 @@ type Value interface {
 
 type ValueDest interface {
 	Value() Value
+	NativePtr() interface{}
 	encoding.BinaryUnmarshaler
 }
 
@@ -111,6 +112,9 @@ func (String) isPrimitive() {}
 func (v String) Native() interface{} {
 	return string(v)
 }
+func (v *String) NativePtr() interface{} {
+	return (*string)(v)
+}
 func (String) Type() Type {
 	return StringType{}
 }
@@ -176,6 +180,9 @@ type Bytes []byte
 func (Bytes) isPrimitive() {}
 func (v Bytes) Native() interface{} {
 	return []byte(v)
+}
+func (v *Bytes) NativePtr() interface{} {
+	return (*[]byte)(v)
 }
 func (Bytes) Type() Type {
 	return BytesType{}
@@ -252,6 +259,9 @@ type Int int64
 func (Int) isPrimitive() {}
 func (v Int) Native() interface{} {
 	return int64(v)
+}
+func (v *Int) NativePtr() interface{} {
+	return (*int64)(v)
 }
 func (Int) Type() Type {
 	return IntType{}
@@ -345,6 +355,9 @@ func (UInt) isPrimitive() {}
 func (v UInt) Native() interface{} {
 	return uint64(v)
 }
+func (v *UInt) NativePtr() interface{} {
+	return (*uint64)(v)
+}
 func (UInt) Type() Type {
 	return UIntType{}
 }
@@ -417,6 +430,9 @@ func (Float) isPrimitive() {}
 func (v Float) Native() interface{} {
 	return float64(v)
 }
+func (v *Float) NativePtr() interface{} {
+	return (*float64)(v)
+}
 func (Float) Type() Type {
 	return FloatType{}
 }
@@ -455,6 +471,9 @@ type Bool bool
 func (Bool) isPrimitive() {}
 func (v Bool) Native() interface{} {
 	return bool(v)
+}
+func (v *Bool) NativePtr() interface{} {
+	return (*bool)(v)
 }
 func (Bool) Type() Type {
 	return BoolType{}
@@ -527,6 +546,12 @@ type Time time.Time
 
 func (v Time) Native() interface{} {
 	return time.Time(v)
+}
+func (v Time) String() string {
+	return time.Time(v).String()
+}
+func (v *Time) NativePtr() interface{} {
+	return (*time.Time)(v)
 }
 func (Time) Type() Type {
 	return TimeType{}
