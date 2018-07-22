@@ -234,8 +234,16 @@ type Table interface {
 	// DeleteTuples removes all tuples that matches a filter.
 	DeleteTuples(ctx context.Context, f *Filter) error
 	// Scan iterates over all tuples with the key and the payload matching filters.
-	Scan(f *Filter) Iterator
+	Scan(sorting Sorting, f *Filter) Iterator
 }
+
+type Sorting int
+
+const (
+	SortAsc  = Sorting(+1)
+	SortNone = Sorting(0)
+	SortDesc = Sorting(-1)
+)
 
 // Iterator is an iterator over a tuple store.
 type Iterator interface {

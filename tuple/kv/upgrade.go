@@ -377,7 +377,11 @@ func (tbl *tupleTable) scan(f *tuple.Filter) *tupleIterator {
 	}
 }
 
-func (tbl *tupleTable) Scan(f *tuple.Filter) tuple.Iterator {
+func (tbl *tupleTable) Scan(sorting tuple.Sorting, f *tuple.Filter) tuple.Iterator {
+	if sorting == tuple.SortDesc {
+		// FIXME: support descending order
+		return &tupleIterator{err: fmt.Errorf("descending order is not supported yet")}
+	}
 	return tbl.scan(f)
 }
 
@@ -389,10 +393,16 @@ type tupleIterator struct {
 }
 
 func (it *tupleIterator) Close() error {
-	return it.it.Close()
+	if it.it != nil {
+		return it.it.Close()
+	}
+	return nil
 }
 
 func (it *tupleIterator) Err() error {
+	if it.it == nil {
+		return it.err
+	}
 	if err := it.it.Err(); err != nil {
 		return err
 	}
@@ -409,9 +419,15 @@ func (it *tupleIterator) Next(ctx context.Context) bool {
 }
 
 func (it *tupleIterator) key() kv.Key {
+	if it.it == nil {
+		return nil
+	}
 	return it.it.Key()
 }
 func (it *tupleIterator) Key() tuple.Key {
+	if it.it == nil {
+		return nil
+	}
 	data, err := it.tbl.decodeKey(it.key())
 	if err != nil {
 		it.err = err
@@ -420,6 +436,9 @@ func (it *tupleIterator) Key() tuple.Key {
 }
 
 func (it *tupleIterator) Data() tuple.Data {
+	if it.it == nil {
+		return nil
+	}
 	data, err := it.tbl.decodeTuple(it.it.Val())
 	if err != nil {
 		it.err = err

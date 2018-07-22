@@ -563,13 +563,13 @@ func (v *Time) Value() Value {
 	if v == nil {
 		return nil
 	}
-	return *v
+	return Time(time.Time(*v).UTC())
 }
 func (v *Time) Sortable() Sortable {
 	if v == nil {
 		return nil
 	}
-	return *v
+	return Time(time.Time(*v).UTC())
 }
 func (v Time) Compare(b Sortable) int {
 	if b == nil {

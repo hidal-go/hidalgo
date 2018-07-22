@@ -13,19 +13,12 @@ import (
 )
 
 const (
-	debug         = false
-	deletePullAll = true
+	debug = false
 )
 
 var (
 	ErrTableNotFound = tuple.ErrTableNotFound
 )
-
-type ErrorFunc func(err error) error
-
-type Dialect struct {
-	Errors ErrorFunc
-}
 
 func OpenSQL(name, addr, db string) (*sql.DB, error) {
 	r := ByName(name)
@@ -44,16 +37,18 @@ func Open(name, addr, db string) (tuple.Store, error) {
 	if err != nil {
 		return nil, err
 	}
-	return New(conn, ByName(name).Dialect), nil
+	return New(conn, db, ByName(name).Dialect), nil
 }
 
-func New(db *sql.DB, dia Dialect) tuple.Store {
-	return &sqlStore{db: db, dia: dia}
+func New(db *sql.DB, dbname string, dia Dialect) tuple.Store {
+	dia.SetDefaults()
+	return &sqlStore{db: db, dbName: dbname, dia: dia}
 }
 
 type sqlStore struct {
-	db  *sql.DB
-	dia Dialect
+	db     *sql.DB
+	dbName string
+	dia    Dialect
 }
 
 func (s *sqlStore) Close() error {
@@ -65,15 +60,23 @@ func (s *sqlStore) Tx(rw bool) (tuple.Tx, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &sqlTx{dia: &s.dia, tx: tx, rw: rw}, nil
+	return &sqlTx{dia: &s.dia, tx: tx, dbName: s.dbName, rw: rw}, nil
 }
 
 type sqlTx struct {
 	dia    *Dialect
 	tx     *sql.Tx
+	dbName string
 	rw     bool
 	mu     sync.RWMutex
 	tables map[string]*sqlTable
+}
+
+func (tx *sqlTx) curSchema() string {
+	if s := tx.dia.DefaultSchema; s != "" {
+		return s
+	}
+	return tx.dbName
 }
 
 func (tx *sqlTx) Commit(ctx context.Context) error {
@@ -95,20 +98,9 @@ func (tx *sqlTx) convError(err error) error {
 	return err
 }
 
-func (tx *sqlTx) prepare(ctx context.Context, qu string) (*sql.Stmt, error) {
-	if debug {
-		log.Println(qu)
-	}
-	stmt, err := tx.tx.PrepareContext(ctx, qu)
-	if err != nil {
-		err = tx.convError(err)
-	}
-	return stmt, err
-}
-
 func (tx *sqlTx) query(ctx context.Context, qu string, args ...interface{}) (*sql.Rows, error) {
 	if debug {
-		log.Println(qu, args)
+		log.Println(append([]interface{}{qu}, args...)...)
 	}
 	rows, err := tx.tx.QueryContext(ctx, qu, args...)
 	if err != nil {
@@ -117,25 +109,36 @@ func (tx *sqlTx) query(ctx context.Context, qu string, args ...interface{}) (*sq
 	return rows, err
 }
 
+func (tx *sqlTx) queryb(ctx context.Context, b *Builder) (*sql.Rows, error) {
+	qu, args := b.String(), b.Args()
+	return tx.query(ctx, qu, args...)
+}
+
 func (tx *sqlTx) queryRow(ctx context.Context, qu string, args ...interface{}) *sql.Row {
 	if debug {
-		log.Println(qu, args)
+		log.Println(append([]interface{}{qu}, args...)...)
 	}
 	return tx.tx.QueryRowContext(ctx, qu, args...)
 }
 
 func (tx *sqlTx) exec(ctx context.Context, qu string, args ...interface{}) error {
 	if debug {
-		log.Println(qu, args)
+		log.Println(append([]interface{}{qu}, args...)...)
 	}
+	// TODO: prepare automatically
 	_, err := tx.tx.ExecContext(ctx, qu, args...)
 	err = tx.convError(err)
 	return err
 }
 
+func (tx *sqlTx) execb(ctx context.Context, b *Builder) error {
+	qu, args := b.String(), b.Args()
+	return tx.exec(ctx, qu, args...)
+}
+
 func (tx *sqlTx) execStmt(ctx context.Context, st *sql.Stmt, args ...interface{}) error {
 	if debug {
-		log.Println("STMT", args)
+		log.Println(append([]interface{}{"STMT"}, args...)...)
 	}
 	_, err := st.ExecContext(ctx, args...)
 	if err != nil {
@@ -145,6 +148,9 @@ func (tx *sqlTx) execStmt(ctx context.Context, st *sql.Stmt, args ...interface{}
 }
 
 func (tx *sqlTx) cacheTable(tbl *sqlTable) {
+	if debug {
+		log.Printf("%q, %#v, %#v", tbl.h.Name, tbl.h.Key, tbl.h.Data)
+	}
 	if tx.tables == nil {
 		tx.tables = make(map[string]*sqlTable)
 	}
@@ -165,40 +171,43 @@ func (tx *sqlTx) Table(ctx context.Context, name string) (tuple.Table, error) {
 		return tbl, nil
 	}
 	tbl := &sqlTable{tx: tx, h: tuple.Header{Name: name}}
-	rows, err := tx.query(ctx, `SHOW FULL COLUMNS FROM `+tbl.name())
+	rows, err := tx.query(ctx, tx.dia.ListColumns,
+		tx.curSchema(),
+		name,
+	)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
 
 	type column struct {
-		Name       string
-		Type       string
-		Collation  *sql.NullString
-		Null       string // YES/NO
-		Key        string // PRI
-		Default    *sql.NullString
-		Extra      string
-		Privileges string
-		Comment    string
+		Name    string
+		Type    string
+		Null    string         // YES/NO
+		Key     sql.NullString // PRI*
+		Comment sql.NullString
 	}
 	var cols []column
 	for rows.Next() {
 		var col column
 		if err := rows.Scan(
-			&col.Name, &col.Type, &col.Collation, &col.Null, &col.Key,
-			&col.Default, &col.Extra, &col.Privileges, &col.Comment,
+			&col.Name, &col.Type, &col.Null, &col.Key, &col.Comment,
 		); err != nil {
 			return nil, err
 		}
 		cols = append(cols, col)
 	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	} else if len(cols) == 0 {
+		return nil, ErrTableNotFound
+	}
 	for _, c := range cols {
-		typ, err := tbl.typeFromMeta(c.Type, c.Comment)
+		typ, err := tbl.nativeType(c.Type, c.Comment.String)
 		if err != nil {
 			return nil, err
 		}
-		if c.Key == "PRI" {
+		if strings.HasPrefix(c.Key.String, "PRI") {
 			kt, ok := typ.(values.SortableType)
 			if !ok {
 				return nil, fmt.Errorf("non-sortable key type: %T", typ)
@@ -219,7 +228,10 @@ func (tx *sqlTx) Table(ctx context.Context, name string) (tuple.Table, error) {
 }
 
 func (tx *sqlTx) ListTables(ctx context.Context) ([]tuple.Table, error) {
-	rows, err := tx.query(ctx, `SHOW TABLES`)
+	rows, err := tx.query(ctx,
+		`SELECT table_name FROM information_schema.tables WHERE table_schema = `+tx.dia.Placeholder(0),
+		tx.curSchema(),
+	)
 	if err != nil {
 		return nil, err
 	}
@@ -248,23 +260,57 @@ func (tx *sqlTx) CreateTable(ctx context.Context, table tuple.Header) (tuple.Tab
 		return nil, err
 	}
 	tbl := &sqlTable{tx: tx, h: table}
-	qu := `CREATE TABLE ` + tbl.name() + ` (`
+	b := tbl.sql()
+	b.Write("CREATE TABLE ")
+	b.Idents(tbl.h.Name)
+	b.Write(" (")
 	for i, f := range table.Key {
 		if i > 0 {
-			qu += ","
+			b.Write(",")
 		}
-		qu += "\n" + tbl.quoteName(f.Name) + " " + tbl.sqlColumnDef(f.Type, true)
+		b.Write("\n\t")
+		b.Idents(f.Name)
+		b.Write(" ")
+		b.Write(tbl.sqlColumnDef(f.Type, true))
 	}
 	for _, f := range table.Data {
-		qu += ",\n" + tbl.quoteName(f.Name) + " " + tbl.sqlColumnDef(f.Type, false)
+		b.Write(",\n\t")
+		b.Idents(f.Name)
+		b.Write(" ")
+		b.Write(tbl.sqlColumnDef(f.Type, false))
 	}
 	if len(tbl.h.Key) != 0 {
-		qu += ",\nPRIMARY KEY (" + tbl.keyNames() + ")"
+		b.Write(",\n\t")
+		b.Write("PRIMARY KEY (")
+		b.Idents(tbl.keyNames()...)
+		b.Write(")")
 	}
-	qu += "\n);"
-	err := tx.exec(ctx, qu)
+	b.Write("\n);")
+	err := tx.execb(ctx, b)
 	if err != nil {
 		return nil, err
+	}
+	b.Reset()
+	if dia := tbl.tx.dia; dia.ColumnCommentInline == nil && dia.ColumnCommentSet != nil {
+		setComment := func(col string, t values.Type) error {
+			c := dia.sqlColumnComment(t)
+			if c == "" {
+				return nil
+			}
+			b.Reset()
+			dia.ColumnCommentSet(b, tbl.h.Name, col, c)
+			return tx.execb(ctx, b)
+		}
+		for _, f := range table.Key {
+			if err := setComment(f.Name, f.Type); err != nil {
+				return nil, err
+			}
+		}
+		for _, f := range table.Data {
+			if err := setComment(f.Name, f.Type); err != nil {
+				return nil, err
+			}
+		}
 	}
 	tx.cacheTable(tbl)
 	return tbl, nil
@@ -276,118 +322,33 @@ type sqlTable struct {
 }
 
 func (tbl *sqlTable) sqlType(t values.Type, key bool) string {
-	var tp string
-	switch t.(type) {
-	case values.StringType:
-		if key {
-			// TODO: only MySQL
-			// TODO: pick size based on the number of columns (max 3k)
-			tp = "VARCHAR(256)"
-		} else {
-			tp = "TEXT"
-		}
-		// TODO: set it on the table/database
-		tp += " CHARACTER SET utf8 COLLATE utf8_unicode_ci"
-	case values.BytesType:
-		if key {
-			// TODO: only MySQL
-			// TODO: pick size based on the number of columns (max 3k)
-			tp = "VARBINARY(256)"
-		} else {
-			// TODO: MySQL: BLOB or VARBINARY
-			// TODO: PostgreSQL: BYTEA
-			tp = "BLOB"
-		}
-	case values.IntType:
-		tp = "BIGINT"
-	case values.UIntType:
-		tp = "BIGINT UNSIGNED"
-	case values.FloatType:
-		tp = "DOUBLE PRECISION"
-	case values.BoolType:
-		tp = "BOOLEAN"
-	case values.TimeType:
-		tp = "DATETIME(6)" // TODO: PostgreSQL: TIMESTAMP
-	default:
-		panic(fmt.Errorf("unsupported type: %T", t))
-	}
-	if key {
-		tp += " NOT NULL"
-	} else {
-		tp += " NULL"
-	}
-	return tp
-}
-func (tbl *sqlTable) sqlColumnMeta(t values.Type) string {
-	switch t.(type) {
-	case values.BoolType:
-		return " COMMENT " + tbl.quoteString("Bool")
-	}
-	return ""
+	return tbl.tx.dia.sqlType(t, key)
 }
 func (tbl *sqlTable) sqlColumnDef(t values.Type, key bool) string {
-	return tbl.sqlType(t, key) + tbl.sqlColumnMeta(t)
+	return tbl.sqlType(t, key) + tbl.tx.dia.sqlColumnCommentInline(t)
 }
-func (tbl *sqlTable) typeFromMeta(typ, comment string) (values.Type, error) {
-	typ = strings.ToLower(typ)
-	switch typ {
-	case "text":
-		return values.StringType{}, nil
-	case "blob", "bytea":
-		return values.BytesType{}, nil
-	case "double", "double precision":
-		return values.FloatType{}, nil
-	case "boolean":
-		return values.BoolType{}, nil
-	case "tinyint(1)":
-		if comment == "Bool" { // TODO: or if it's MySQL
-			return values.BoolType{}, nil
-		}
-	case "timestamp", "datetime", "date", "time":
-		return values.TimeType{}, nil
-	}
-	pref := func(p string) bool {
-		return strings.HasPrefix(typ, p)
-	}
-	switch {
-	case pref("blob"), pref("varbinary"), pref("binary"):
-		return values.BytesType{}, nil
-	case pref("text"), pref("varchar"), pref("char"):
-		return values.StringType{}, nil
-	case pref("bigint"), pref("int"), pref("mediumint"), pref("smallint"), pref("tinyint"):
-		if strings.HasSuffix(typ, "unsigned") {
-			return values.UIntType{}, nil
-		}
-		return values.IntType{}, nil
-	case pref("timestamp"), pref("datetime"), pref("date"), pref("time"):
-		return values.TimeType{}, nil
-	}
-	return nil, fmt.Errorf("unsupported column type: %q", typ)
+func (tbl *sqlTable) nativeType(typ, comment string) (values.Type, error) {
+	return tbl.tx.dia.nativeType(typ, comment)
 }
 
 func (tbl *sqlTable) Drop(ctx context.Context) error {
 	if !tbl.tx.rw {
 		return tuple.ErrReadOnly
 	}
-	return tbl.tx.exec(ctx, `DROP TABLE `+tbl.name())
+	b := tbl.sql()
+	b.Write(`DROP TABLE `)
+	b.Idents(tbl.h.Name)
+	return tbl.tx.execb(ctx, b)
 }
 
 func (tbl *sqlTable) Clear(ctx context.Context) error {
 	if !tbl.tx.rw {
 		return tuple.ErrReadOnly
 	}
-	return tbl.tx.exec(ctx, `TRUNCATE TABLE `+tbl.name())
-}
-func (tbl *sqlTable) name() string {
-	return tbl.quoteName(tbl.h.Name)
-}
-func (tbl *sqlTable) quoteName(s string) string {
-	// TODO: PostgreSQL
-	return "`" + s + "`"
-}
-func (tbl *sqlTable) quoteString(s string) string {
-	// TODO: PostgreSQL
-	return "'" + s + "'"
+	b := tbl.sql()
+	b.Write(`TRUNCATE TABLE `)
+	b.Idents(tbl.h.Name)
+	return tbl.tx.execb(ctx, b)
 }
 func (tbl *sqlTable) convValue(v values.Value) interface{} {
 	if v == nil {
@@ -407,43 +368,34 @@ func (tbl *sqlTable) appendData(dst []interface{}, data tuple.Data) []interface{
 	}
 	return dst
 }
-func (tbl *sqlTable) whereKey() string {
-	where := make([]string, 0, len(tbl.h.Key))
-	for _, f := range tbl.h.Key {
-		where = append(where, `(`+tbl.quoteName(f.Name)+` = ?)`)
-	}
-	return strings.Join(where, " AND ")
+func (tbl *sqlTable) appendTuple(dst []interface{}, t tuple.Tuple) []interface{} {
+	dst = tbl.appendKey(dst, t.Key)
+	dst = tbl.appendData(dst, t.Data)
+	return dst
 }
-func (tbl *sqlTable) names() string {
+func (tbl *sqlTable) names() []string {
 	names := make([]string, 0, len(tbl.h.Key)+len(tbl.h.Data))
 	for _, f := range tbl.h.Key {
-		names = append(names, tbl.quoteName(f.Name))
+		names = append(names, f.Name)
 	}
 	for _, f := range tbl.h.Data {
-		names = append(names, tbl.quoteName(f.Name))
+		names = append(names, f.Name)
 	}
-	return strings.Join(names, ", ")
+	return names
 }
-func (tbl *sqlTable) placeholders() string {
-	ph := make([]string, len(tbl.h.Key)+len(tbl.h.Data))
-	for i := range ph {
-		ph[i] = "?" // TODO: PostgreSQL
-	}
-	return strings.Join(ph, ", ")
-}
-func (tbl *sqlTable) keyNames() string {
+func (tbl *sqlTable) keyNames() []string {
 	names := make([]string, 0, len(tbl.h.Key))
 	for _, f := range tbl.h.Key {
-		names = append(names, tbl.quoteName(f.Name))
+		names = append(names, f.Name)
 	}
-	return strings.Join(names, ", ")
+	return names
 }
-func (tbl *sqlTable) payloadNames() string {
+func (tbl *sqlTable) payloadNames() []string {
 	names := make([]string, 0, len(tbl.h.Data))
 	for _, f := range tbl.h.Data {
-		names = append(names, tbl.quoteName(f.Name))
+		names = append(names, f.Name)
 	}
-	return strings.Join(names, ", ")
+	return names
 }
 
 type scanner interface {
@@ -510,9 +462,15 @@ func (tbl *sqlTable) GetTuple(ctx context.Context, key tuple.Key) (tuple.Data, e
 	if err := tbl.h.ValidateKey(key, false); err != nil {
 		return nil, err
 	}
-	qu := `SELECT ` + tbl.payloadNames() + ` FROM ` + tbl.name() + ` WHERE ` + tbl.whereKey() + ` LIMIT 1;`
-	args := tbl.appendKey(nil, key)
-	row := tbl.tx.queryRow(ctx, qu, args...)
+	b := tbl.sql()
+	b.Write("SELECT ")
+	b.Idents(tbl.payloadNames()...)
+	b.Write(" FROM ")
+	b.Idents(tbl.h.Name)
+	b.Write(" WHERE ")
+	b.EqPlaceAnd(tbl.keyNames(), tbl.appendKey(nil, key))
+	b.Write(" LIMIT 1")
+	row := tbl.tx.queryRow(ctx, b.String(), b.Args()...)
 	data, err := tbl.scanPayload(row)
 	if err == sql.ErrNoRows {
 		return nil, tuple.ErrNotFound
@@ -535,25 +493,6 @@ func (tbl *sqlTable) GetTupleBatch(ctx context.Context, keys []tuple.Key) ([]tup
 	return out, nil
 }
 
-func (tbl *sqlTable) insertTuple(ctx context.Context, op string, stmt *sql.Stmt, t tuple.Tuple) (tuple.Key, *sql.Stmt, error) {
-	if stmt == nil {
-		qu := op + ` INTO ` + tbl.name() + `(` + tbl.names() + `) VALUES (` + tbl.placeholders() + `)`
-		var err error
-		stmt, err = tbl.tx.prepare(ctx, qu)
-		if err != nil {
-			return nil, nil, err
-		}
-	}
-	rec := make([]interface{}, 0, len(tbl.h.Key)+len(tbl.h.Data))
-	rec = tbl.appendKey(rec, t.Key)
-	rec = tbl.appendData(rec, t.Data)
-	err := tbl.tx.execStmt(ctx, stmt, rec...)
-	if err != nil {
-		return nil, stmt, err
-	}
-	return t.Key, stmt, nil
-}
-
 func (tbl *sqlTable) InsertTuple(ctx context.Context, t tuple.Tuple) (tuple.Key, error) {
 	if err := tbl.h.ValidateKey(t.Key, true); err != nil {
 		return nil, err
@@ -564,19 +503,23 @@ func (tbl *sqlTable) InsertTuple(ctx context.Context, t tuple.Tuple) (tuple.Key,
 		// FIXME: auto fields
 		return nil, fmt.Errorf("auto fields are not yet supported")
 	}
-	key, stmt, err := tbl.insertTuple(ctx, "INSERT", nil, t)
-	if stmt != nil {
-		stmt.Close()
+	b := tbl.sql()
+	b.Write("INSERT INTO ")
+	b.Idents(tbl.h.Name)
+	b.Write("(")
+	b.Idents(tbl.names()...)
+	b.Write(") VALUES (")
+	b.Place(tbl.appendTuple(nil, t)...)
+	b.Write(")")
+	err := tbl.tx.execb(ctx, b)
+	if err != nil {
+		return nil, err
 	}
-	return key, err
+	return t.Key, nil
 }
 
-func (tbl *sqlTable) setData() string {
-	set := make([]string, 0, len(tbl.h.Data))
-	for _, f := range tbl.h.Data {
-		set = append(set, tbl.quoteName(f.Name)+` = ?`)
-	}
-	return strings.Join(set, ", ")
+func (tbl *sqlTable) sql() *Builder {
+	return tbl.tx.dia.NewBuilder()
 }
 func (tbl *sqlTable) UpdateTuple(ctx context.Context, t tuple.Tuple, opt *tuple.UpdateOpt) error {
 	if err := tbl.h.ValidateKey(t.Key, false); err != nil {
@@ -588,46 +531,73 @@ func (tbl *sqlTable) UpdateTuple(ctx context.Context, t tuple.Tuple, opt *tuple.
 		opt = &tuple.UpdateOpt{}
 	}
 	if !opt.Upsert {
-		var args []interface{}
-		args = tbl.appendData(args, t.Data)
-		args = tbl.appendKey(args, t.Key)
-		qu := `UPDATE ` + tbl.name() + ` SET ` + tbl.setData() + ` WHERE ` + tbl.whereKey()
-		return tbl.tx.exec(ctx, qu, args...)
+		b := tbl.sql()
+		b.Write(`UPDATE `)
+		b.Idents(tbl.h.Name)
+		b.Write(` SET `)
+		b.EqPlace(tbl.payloadNames(), tbl.appendData(nil, t.Data))
+		b.Write(` WHERE `)
+		b.EqPlaceAnd(tbl.keyNames(), tbl.appendKey(nil, t.Key))
+		return tbl.tx.execb(ctx, b)
 	}
-	_, stmt, err := tbl.insertTuple(ctx, "REPLACE", nil, t)
-	if stmt != nil {
-		stmt.Close()
+	dia := tbl.tx.dia
+	if dia.OnConflict {
+		b := tbl.sql()
+		b.Write(`INSERT INTO `)
+		b.Idents(tbl.h.Name)
+		b.Write(`(`)
+		b.Idents(tbl.names()...)
+		b.Write(`) VALUES (`)
+		b.Place(tbl.appendTuple(nil, t)...)
+		b.Write(`) ON CONFLICT ON CONSTRAINT `)
+		b.Idents(tbl.h.Name + "_pkey") // TODO: should be in the dialect
+		b.Write(` DO UPDATE SET `)
+		b.EqPlace(tbl.payloadNames(), tbl.appendData(nil, t.Data))
+		return tbl.tx.execb(ctx, b)
 	}
-	return err
+	if dia.ReplaceStmt {
+		b := tbl.sql()
+		b.Write("REPLACE INTO ")
+		b.Idents(tbl.h.Name)
+		b.Write("(")
+		b.Idents(tbl.names()...)
+		b.Write(") VALUES (")
+		b.Place(tbl.appendTuple(nil, t)...)
+		b.Write(")")
+		return tbl.tx.execb(ctx, b)
+	}
+	return fmt.Errorf("upsert is not supported")
 }
 
-func (tbl *sqlTable) asWhere(f *tuple.Filter) (string, []interface{}, *tuple.Filter) {
+func (tbl *sqlTable) asWhere(f *tuple.Filter) (*tuple.Filter, func(*Builder)) {
 	// FIXME: optimize filters
-	return "", nil, f
+	return f, nil
 }
 func (tbl *sqlTable) DeleteTuples(ctx context.Context, f *tuple.Filter) error {
-	where, args, f := tbl.asWhere(f)
-	qu := `DELETE FROM ` + tbl.name()
+	f, where := tbl.asWhere(f)
 	if f.IsAny() {
 		// no additional filters - delete directly
-		qu += where
-		return tbl.tx.exec(ctx, qu, args...)
+		b := tbl.sql()
+		b.Write(`DELETE FROM `)
+		b.Idents(tbl.h.Name)
+		if where != nil {
+			b.Write(" WHERE ")
+			where(b)
+		}
+		return tbl.tx.execb(ctx, b)
 	}
 	// some filter were optimized, but some still remain
 	// fallback to iterate + delete
 
 	// TODO: select key only
-	it := tbl.scanWhere(where, args, f)
+	it := tbl.scanWhere(tuple.SortNone, where, f)
 	defer it.Close()
 
-	qu += " WHERE " + tbl.whereKey()
-
 	var allKeys []tuple.Key
-	if deletePullAll {
-		// Some databases (MySQL) cannot handle multiple requests over
-		// the single connection, so we can't keep an iterator open
-		// and send delete requests. We are forced to pull all results
-		// to memory first.
+	if tbl.tx.dia.NoIteratorsWhenMutating {
+		// Some databases cannot handle multiple requests over the single connection,
+		// so we can't keep an iterator open and send delete requests. We are forced
+		// to pull all results to memory first.
 		// TODO: run select with a limit, delete and rerun it again
 		for it.Next(ctx) {
 			allKeys = append(allKeys, it.Key())
@@ -637,19 +607,18 @@ func (tbl *sqlTable) DeleteTuples(ctx context.Context, f *tuple.Filter) error {
 		}
 	}
 
-	del, err := tbl.tx.prepare(ctx, qu)
-	if err != nil {
-		return err
+	deleteOne := func(k tuple.Key) error {
+		b := tbl.sql()
+		b.Write(`DELETE FROM `)
+		b.Idents(tbl.h.Name)
+		b.Write(" WHERE ")
+		b.EqPlaceAnd(tbl.keyNames(), tbl.appendKey(nil, k))
+		return tbl.tx.execb(ctx, b)
 	}
-	defer del.Close()
 
-	deleteOne := func(args []interface{}) error {
-		return tbl.tx.execStmt(ctx, del, args...)
-	}
-
-	if deletePullAll { // TODO: should depend on the driver
+	if tbl.tx.dia.NoIteratorsWhenMutating {
 		for _, key := range allKeys {
-			err := deleteOne(tbl.appendKey(nil, key))
+			err := deleteOne(key)
 			if err != nil {
 				return err
 			}
@@ -658,7 +627,7 @@ func (tbl *sqlTable) DeleteTuples(ctx context.Context, f *tuple.Filter) error {
 	}
 	for it.Next(ctx) {
 		key := it.Key()
-		err := deleteOne(tbl.appendKey(nil, key))
+		err := deleteOne(key)
 		if err != nil {
 			return err
 		}
@@ -670,15 +639,36 @@ func (tbl *sqlTable) scan(open rowsFunc, f *tuple.Filter) tuple.Iterator {
 	return &sqlIterator{tbl: tbl, open: open, f: f}
 }
 
-func (tbl *sqlTable) scanWhere(where string, args []interface{}, f *tuple.Filter) tuple.Iterator {
+func (tbl *sqlTable) scanWhere(sorting tuple.Sorting, where func(*Builder), f *tuple.Filter) tuple.Iterator {
 	return tbl.scan(func(ctx context.Context) (*sql.Rows, error) {
-		return tbl.tx.query(ctx, `SELECT `+tbl.names()+` FROM `+tbl.name()+where, args...)
+		b := tbl.sql()
+		b.Write(`SELECT `)
+		b.Idents(tbl.names()...)
+		b.Write(` FROM `)
+		b.Idents(tbl.h.Name)
+		if where != nil {
+			b.Write(" WHERE ")
+			where(b)
+		}
+		dir := ""
+		switch sorting {
+		case tuple.SortAsc:
+			dir = "ASC"
+		case tuple.SortDesc:
+			dir = "DESC"
+		}
+		if dir != "" {
+			b.Write(" ORDER BY ")
+			b.Idents(tbl.keyNames()...)
+			b.Write(" " + dir)
+		}
+		return tbl.tx.queryb(ctx, b)
 	}, f)
 }
 
-func (tbl *sqlTable) Scan(f *tuple.Filter) tuple.Iterator {
-	where, args, f := tbl.asWhere(f)
-	return tbl.scanWhere(where, args, f)
+func (tbl *sqlTable) Scan(sorting tuple.Sorting, f *tuple.Filter) tuple.Iterator {
+	f, where := tbl.asWhere(f)
+	return tbl.scanWhere(sorting, where, f)
 }
 
 type rowsFunc func(ctx context.Context) (*sql.Rows, error)

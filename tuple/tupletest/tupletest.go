@@ -84,7 +84,7 @@ func basic(t testing.TB, db tuple.Store) {
 	require.NoError(t, err)
 	require.Equal(t, v1, v2)
 
-	it := tbl.Scan(nil)
+	it := tbl.Scan(tuple.SortAsc, nil)
 	defer it.Close()
 
 	var tuples []tuple.Tuple
@@ -176,7 +176,7 @@ func typed(t testing.TB, db tuple.Store) {
 	require.NoError(t, err, "\nkey : %#v\ndata: %#v", kfields, vfields)
 	require.Equal(t, data, v2, "\n%v\nvs\n%v", data, v2)
 
-	it := tbl.Scan(nil)
+	it := tbl.Scan(tuple.SortAsc, nil)
 	defer it.Close()
 
 	var tuples []tuple.Tuple
@@ -241,7 +241,7 @@ func scans(t testing.TB, db tuple.Store) {
 		if kpref != nil {
 			f = &tuple.Filter{KeyFilter: kpref}
 		}
-		it := tbl.Scan(f)
+		it := tbl.Scan(tuple.SortAsc, f)
 		defer it.Close()
 
 		var got []int

@@ -15,8 +15,8 @@ digraph DBs {
     sql_tuple [label="SQL" URL="./docs/sql-tuple.md"]
     mysql [label="MySQL"]
     sql_tuple -> mysql
-    # postgres [label="PostgreSQL"]
-    # sql_tuple -> postgres
+    postgres [label="PostgreSQL"]
+    sql_tuple -> postgres
 
     strict_tuple [label="Tuple store" URL="./docs/tuple-strict.md"]
     strict_tuple -> hie_kv

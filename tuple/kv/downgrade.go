@@ -147,7 +147,7 @@ func (tx *flatTx) Scan(pref flat.Key) flat.Iterator {
 			},
 		}
 	}
-	return &flatIterator{tx: tx, it: tx.tbl.Scan(f)}
+	return &flatIterator{tx: tx, it: tx.tbl.Scan(tuple.SortAsc, f)}
 }
 
 type flatIterator struct {

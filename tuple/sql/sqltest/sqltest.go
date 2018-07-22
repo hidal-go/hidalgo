@@ -50,10 +50,11 @@ func TestSQL(t *testing.T, name string, gen Database) {
 			destroy()
 			require.NoError(t, err)
 		}
-		s := sqltuple.New(conn, sqltuple.ByName(name).Dialect)
+		s := sqltuple.New(conn, db, sqltuple.ByName(name).Dialect)
 		return s, func() {
+			conn.Close()
 			if !recreate {
-				conn, err := sqltuple.OpenSQL(name, addr, db)
+				conn, err := sqltuple.OpenSQL(name, addr, "")
 				if err == nil {
 					_, err = conn.Exec(`DROP DATABASE ` + db)
 					conn.Close()
@@ -62,7 +63,6 @@ func TestSQL(t *testing.T, name string, gen Database) {
 					t.Errorf("cannot remove test database: %v", err)
 				}
 			}
-			conn.Close()
 			destroy()
 		}
 	})
