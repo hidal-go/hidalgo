@@ -5,4 +5,8 @@ into separate tables, and support lookup and scans on primary key. No secondary 
 
 **Supported backends:**
 
+* [SQL](./sql-tuple.md)
+
+* [Google Datastore](https://cloud.google.com/datastore/)
+
 * Emulated over [Hierarchical KV](./kv-hierarchical.md)

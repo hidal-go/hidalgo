@@ -1,39 +1,43 @@
 digraph DBs {
+    rankdir="BT"
+
     flat_kv [label="Flat KV" URL="./docs/kv-flat.md" color="#bbbbff" style=filled]
+    flat_kv -> hie_kv
     btree [label="B-Tree"]
-    flat_kv -> btree
+    btree -> flat_kv
     leveldb [label="LevelDB"]
-    flat_kv -> leveldb
+    leveldb -> flat_kv
     badger [label="Badger"]
-    flat_kv -> badger
+    badger -> flat_kv
 
     hie_kv [label="Hierarchical KV" URL="./docs/kv-hierarchical.md" color="#bbbbff" style=filled]
-    hie_kv -> flat_kv
+    hie_kv -> strict_tuple
+    hie_kv -> flat_kv [style=dashed]
     bolt [label="Bolt"]
-    hie_kv -> bolt
+    bolt -> hie_kv
 
     sql_tuple [label="SQL" URL="./docs/sql-tuple.md"]
+    sql_tuple -> strict_tuple
     mysql [label="MySQL"]
-    sql_tuple -> mysql
+    mysql -> sql_tuple
     postgres [label="PostgreSQL"]
-    sql_tuple -> postgres
+    postgres -> sql_tuple
 
     datastore [label="Google\nDatastore"]
-    strict_tuple -> datastore
+    datastore -> strict_tuple
 
     strict_tuple [label="Tuple store" URL="./docs/tuple-strict.md" color="#bbbbff" style=filled]
-    strict_tuple -> hie_kv
-    strict_tuple -> sql_tuple
+    strict_tuple -> flat_kv [style=dashed]
 
     legacy_nosql [label="NoSQL\n(legacy)", color="#dddddd" style=filled]
     legacy_mongo [label="MongoDB", color=grey]
-    legacy_nosql -> legacy_mongo [color=grey]
+    legacy_mongo -> legacy_nosql [color=grey]
     legacy_elastic [label="ElasticSearch", color=grey]
-    legacy_nosql -> legacy_elastic [color=grey]
+    legacy_elastic -> legacy_nosql [color=grey]
     legacy_ouch [label="go-kivik", color=grey]
-    legacy_nosql -> legacy_ouch [color=grey]
+    legacy_ouch -> legacy_nosql [color=grey]
     legacy_couch [label="CouchDB", color=grey]
-    legacy_ouch -> legacy_couch [color=grey]
+    legacy_couch -> legacy_ouch [color=grey]
     legacy_pouch [label="PouchDB", color=grey]
-    legacy_ouch -> legacy_pouch [color=grey]
+    legacy_pouch -> legacy_ouch [color=grey]
 }

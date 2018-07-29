@@ -10,4 +10,4 @@ hence the key is composed of names of these buckets (a path).
 
 * [Bolt](github.com/boltdb/bolt)
 
-* [Flat KV](./kv-flat.md)
+* Emulated over [Flat KV](./kv-flat.md)

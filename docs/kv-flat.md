@@ -11,3 +11,7 @@ By using a specific key separator these stores can implement [hierarchical key-v
 * [LevelDB](github.com/syndtr/goleveldb)
 
 * [Badger](github.com/dgraph-io/badger)
+
+* Downgrade of [Hierarchical KV](./kv-hierachical.md)
+
+* Downgrade of [Tuple store](./tuple-strict.md)
