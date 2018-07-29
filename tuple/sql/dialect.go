@@ -177,3 +177,10 @@ func (d *Dialect) nativeType(typ, comment string) (values.Type, error) {
 	}
 	return nil, fmt.Errorf("unsupported column type: %q", typ)
 }
+
+func escapeNullByte(s string) string {
+	return strings.Replace(s, "\u0000", `\x00`, -1)
+}
+func unescapeNullByte(s string) string {
+	return strings.Replace(s, `\x00`, "\u0000", -1)
+}

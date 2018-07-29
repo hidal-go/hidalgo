@@ -52,19 +52,27 @@ func (b *Builder) Idents(names ...string) {
 func (b *Builder) Literal(s string) {
 	b.Write(b.d.QuoteString(s))
 }
-func (b *Builder) eqPlace(names []string, args []interface{}, sep string) {
+func (b *Builder) opPlace(names []string, op string, args []interface{}, sep string) {
 	arr := make([]string, 0, len(names))
 	for i, name := range names {
-		arr = append(arr, b.d.QuoteIdentifier(name)+` = `+b.place(args[i]))
+		arr = append(arr, b.d.QuoteIdentifier(name)+` `+op+` `+b.place(args[i]))
 	}
 	b.Write(strings.Join(arr, sep))
 }
 func (b *Builder) EqPlace(names []string, args []interface{}) {
-	b.eqPlace(names, args, ", ")
+	b.opPlace(names, "=", args, ", ")
 }
 func (b *Builder) EqPlaceAnd(names []string, args []interface{}) {
 	b.Write("(")
-	b.eqPlace(names, args, ") AND (")
+	b.opPlace(names, "=", args, ") AND (")
+	b.Write(")")
+}
+func (b *Builder) OpPlace(names []string, op string, args []interface{}) {
+	b.opPlace(names, op, args, ", ")
+}
+func (b *Builder) OpPlaceAnd(names []string, op string, args []interface{}) {
+	b.Write("(")
+	b.opPlace(names, op, args, ") AND (")
 	b.Write(")")
 }
 func (b *Builder) String() string {

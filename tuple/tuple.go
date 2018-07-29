@@ -13,6 +13,7 @@ import (
 var (
 	ErrNotFound      = errors.New("tuple: not found")
 	ErrTableNotFound = errors.New("tuple: table not found")
+	ErrTableExists   = errors.New("tuple: table already exists")
 	ErrExists        = errors.New("tuple: this key already exists")
 	ErrReadOnly      = errors.New("tuple: read-only database")
 )
@@ -47,6 +48,28 @@ type Header struct {
 	Name string     // name of the table
 	Key  []KeyField // primary key fields
 	Data []Field    // payload fields
+}
+
+// KeyByName finds a key field by a name, or returns nil if it not exists.
+// It also returns an index in the tuple key.
+func (t Header) KeyByName(name string) (*KeyField, int) {
+	for i, c := range t.Key {
+		if c.Name == name {
+			return &c, i
+		}
+	}
+	return nil, -1
+}
+
+// DataByName finds a payload field by a name, or returns nil if it not exists.
+// It also returns an index in the tuple payload.
+func (t Header) DataByName(name string) (*Field, int) {
+	for i, c := range t.Data {
+		if c.Name == name {
+			return &c, i
+		}
+	}
+	return nil, -1
 }
 
 // Clone makes a copy of the header.
@@ -213,6 +236,22 @@ type Tx interface {
 	CreateTable(ctx context.Context, table Header) (Table, error)
 }
 
+type ScanOptions struct {
+	// KeysOnly is a hint for backend to omit fetching keys for an iterator.
+	KeysOnly bool
+	// Sort is an optional sorting order for a tuple key. Defaults to a native order of the backend.
+	Sort Sorting
+	// Filter is an optional filter for tuples.
+	Filter *Filter
+	// Limit limits the maximal number of tuples to return. Limit <= 0 indicates an unlimited number of results.
+	Limit int
+}
+
+type Scanner interface {
+	// Scan iterates over all tuples matching specific parameters.
+	Scan(opt *ScanOptions) Iterator
+}
+
 // Table represents an opened tuples table with a specific type (schema).
 type Table interface {
 	// Drop clears the data and removes the table.
@@ -233,15 +272,14 @@ type Table interface {
 	UpdateTuple(ctx context.Context, t Tuple, opt *UpdateOpt) error
 	// DeleteTuples removes all tuples that matches a filter.
 	DeleteTuples(ctx context.Context, f *Filter) error
-	// Scan iterates over all tuples with the key and the payload matching filters.
-	Scan(sorting Sorting, f *Filter) Iterator
+	Scanner
 }
 
 type Sorting int
 
 const (
 	SortAsc  = Sorting(+1)
-	SortNone = Sorting(0)
+	SortAny  = Sorting(0)
 	SortDesc = Sorting(-1)
 )
 

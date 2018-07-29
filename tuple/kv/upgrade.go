@@ -377,12 +377,16 @@ func (tbl *tupleTable) scan(f *tuple.Filter) *tupleIterator {
 	}
 }
 
-func (tbl *tupleTable) Scan(sorting tuple.Sorting, f *tuple.Filter) tuple.Iterator {
-	if sorting == tuple.SortDesc {
+func (tbl *tupleTable) Scan(opt *tuple.ScanOptions) tuple.Iterator {
+	if opt == nil {
+		opt = &tuple.ScanOptions{}
+	}
+	if opt.Sort == tuple.SortDesc {
 		// FIXME: support descending order
 		return &tupleIterator{err: fmt.Errorf("descending order is not supported yet")}
 	}
-	return tbl.scan(f)
+	// FIXME: support limit
+	return tbl.scan(opt.Filter)
 }
 
 type tupleIterator struct {

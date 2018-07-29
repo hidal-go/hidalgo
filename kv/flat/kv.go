@@ -79,7 +79,7 @@ type Iterator interface {
 	Key() Key
 	// Key return current value. The value will become invalid on Next or Close.
 	// Caller should not modify or store the value - use Clone.
-	Val() kv.Value
+	Val() Value
 }
 
 // GetBatch is an implementation of Tx.GetBatch for databases that has no native implementation for it.

@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"fmt"
 	"log"
+	"strconv"
 	"strings"
 	"sync"
 
@@ -437,6 +438,27 @@ func (tbl *sqlTable) scanTuple(row scanner) (tuple.Tuple, error) {
 	}
 	return t, nil
 }
+func (tbl *sqlTable) scanKey(row scanner) (tuple.Key, error) {
+	dest := make([]values.SortableDest, 0, len(tbl.h.Key))
+	in := make([]interface{}, 0, cap(dest))
+
+	for _, f := range tbl.h.Key {
+		v := f.Type.NewSortable()
+		dest = append(dest, v)
+		in = append(in, v.NativePtr())
+	}
+
+	if err := row.Scan(in...); err != nil {
+		return nil, err
+	}
+
+	key := make(tuple.Key, 0, len(dest))
+	for _, d := range dest {
+		v := d.Sortable()
+		key = append(key, v)
+	}
+	return key, nil
+}
 func (tbl *sqlTable) scanPayload(row scanner) (tuple.Data, error) {
 	dest := make([]values.ValueDest, 0, len(tbl.h.Data))
 	in := make([]interface{}, 0, cap(dest))
@@ -589,8 +611,11 @@ func (tbl *sqlTable) DeleteTuples(ctx context.Context, f *tuple.Filter) error {
 	// some filter were optimized, but some still remain
 	// fallback to iterate + delete
 
-	// TODO: select key only
-	it := tbl.scanWhere(tuple.SortNone, where, f)
+	it := tbl.scanWhere(&tuple.ScanOptions{
+		KeysOnly: true,
+		Sort:     tuple.SortAny,
+		Filter:   f,
+	}, where)
 	defer it.Close()
 
 	var allKeys []tuple.Key
@@ -635,15 +660,19 @@ func (tbl *sqlTable) DeleteTuples(ctx context.Context, f *tuple.Filter) error {
 	return it.Err()
 }
 
-func (tbl *sqlTable) scan(open rowsFunc, f *tuple.Filter) tuple.Iterator {
-	return &sqlIterator{tbl: tbl, open: open, f: f}
+func (tbl *sqlTable) scan(open rowsFunc, keysOnly bool, f *tuple.Filter) tuple.Iterator {
+	return &sqlIterator{tbl: tbl, open: open, f: f, keysOnly: keysOnly}
 }
 
-func (tbl *sqlTable) scanWhere(sorting tuple.Sorting, where func(*Builder), f *tuple.Filter) tuple.Iterator {
+func (tbl *sqlTable) scanWhere(opt *tuple.ScanOptions, where func(*Builder)) tuple.Iterator {
 	return tbl.scan(func(ctx context.Context) (*sql.Rows, error) {
 		b := tbl.sql()
 		b.Write(`SELECT `)
-		b.Idents(tbl.names()...)
+		if opt.KeysOnly {
+			b.Idents(tbl.keyNames()...)
+		} else {
+			b.Idents(tbl.names()...)
+		}
 		b.Write(` FROM `)
 		b.Idents(tbl.h.Name)
 		if where != nil {
@@ -651,7 +680,7 @@ func (tbl *sqlTable) scanWhere(sorting tuple.Sorting, where func(*Builder), f *t
 			where(b)
 		}
 		dir := ""
-		switch sorting {
+		switch opt.Sort {
 		case tuple.SortAsc:
 			dir = "ASC"
 		case tuple.SortDesc:
@@ -662,13 +691,21 @@ func (tbl *sqlTable) scanWhere(sorting tuple.Sorting, where func(*Builder), f *t
 			b.Idents(tbl.keyNames()...)
 			b.Write(" " + dir)
 		}
+		if opt.Limit > 0 {
+			b.Write(" LIMIT ")
+			b.Write(strconv.Itoa(opt.Limit))
+		}
 		return tbl.tx.queryb(ctx, b)
-	}, f)
+	}, opt.KeysOnly, opt.Filter)
 }
 
-func (tbl *sqlTable) Scan(sorting tuple.Sorting, f *tuple.Filter) tuple.Iterator {
-	f, where := tbl.asWhere(f)
-	return tbl.scanWhere(sorting, where, f)
+func (tbl *sqlTable) Scan(opt *tuple.ScanOptions) tuple.Iterator {
+	if opt == nil {
+		opt = &tuple.ScanOptions{}
+	}
+	f, where := tbl.asWhere(opt.Filter)
+	opt.Filter = f
+	return tbl.scanWhere(opt, where)
 }
 
 type rowsFunc func(ctx context.Context) (*sql.Rows, error)
@@ -676,9 +713,10 @@ type rowsFunc func(ctx context.Context) (*sql.Rows, error)
 type sqlIterator struct {
 	tbl *sqlTable
 
-	rows *sql.Rows
-	open rowsFunc
-	f    *tuple.Filter
+	rows     *sql.Rows
+	open     rowsFunc
+	keysOnly bool
+	f        *tuple.Filter
 
 	t   *tuple.Tuple
 	err error
@@ -721,7 +759,19 @@ func (it *sqlIterator) scan() {
 	if it.t != nil || it.rows == nil {
 		return
 	}
-	t, err := it.tbl.scanTuple(it.rows)
+	var (
+		t   tuple.Tuple
+		err error
+	)
+	if it.keysOnly {
+		var key tuple.Key
+		key, err = it.tbl.scanKey(it.rows)
+		if err == nil {
+			t.Key = key
+		}
+	} else {
+		t, err = it.tbl.scanTuple(it.rows)
+	}
 	if err != nil {
 		// TODO: user might skip this error
 		it.err = err

@@ -1,5 +1,5 @@
 digraph DBs {
-    flat_kv [label="Flat KV" URL="./docs/kv-flat.md"]
+    flat_kv [label="Flat KV" URL="./docs/kv-flat.md" color="#bbbbff" style=filled]
     btree [label="B-Tree"]
     flat_kv -> btree
     leveldb [label="LevelDB"]
@@ -7,7 +7,7 @@ digraph DBs {
     badger [label="Badger"]
     flat_kv -> badger
 
-    hie_kv [label="Hierarchical KV" URL="./docs/kv-hierarchical.md"]
+    hie_kv [label="Hierarchical KV" URL="./docs/kv-hierarchical.md" color="#bbbbff" style=filled]
     hie_kv -> flat_kv
     bolt [label="Bolt"]
     hie_kv -> bolt
@@ -18,11 +18,14 @@ digraph DBs {
     postgres [label="PostgreSQL"]
     sql_tuple -> postgres
 
-    strict_tuple [label="Tuple store" URL="./docs/tuple-strict.md"]
+    datastore [label="Google\nDatastore"]
+    strict_tuple -> datastore
+
+    strict_tuple [label="Tuple store" URL="./docs/tuple-strict.md" color="#bbbbff" style=filled]
     strict_tuple -> hie_kv
     strict_tuple -> sql_tuple
 
-    legacy_nosql [label="NoSQL\n(legacy)", color=grey]
+    legacy_nosql [label="NoSQL\n(legacy)", color="#dddddd" style=filled]
     legacy_mongo [label="MongoDB", color=grey]
     legacy_nosql -> legacy_mongo [color=grey]
     legacy_elastic [label="ElasticSearch", color=grey]
