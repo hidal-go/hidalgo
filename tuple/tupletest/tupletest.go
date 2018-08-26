@@ -54,6 +54,7 @@ var testList = []struct {
 	{name: "basic", test: basic},
 	{name: "typed", test: typed},
 	{name: "scans", test: scans},
+	{name: "tables", test: tables},
 }
 
 func basic(t testing.TB, db tuple.Store) {
@@ -271,4 +272,68 @@ func scans(t testing.TB, db tuple.Store) {
 	scan([]string{"a", "aa"}, 3)
 	scan([]string{"a", "aa", ""}, 3)
 	scan([]string{"a", "aa", "b"}, 3)
+}
+
+func tables(t testing.TB, db tuple.Store) {
+	ctx := context.Background()
+	const name1 = "test1"
+
+	schema := tuple.Header{
+		Name: name1,
+		Key: []tuple.KeyField{
+			{Name: "key1", Type: values.StringType{}},
+		},
+		Data: []tuple.Field{
+			{Name: "val1", Type: values.StringType{}},
+		},
+	}
+
+	tx, err := db.Tx(false)
+	require.NoError(t, err)
+
+	// access table when it not exists
+	tbl, err := tx.Table(ctx, name1)
+	require.Equal(t, tuple.ErrTableNotFound, err)
+	require.Nil(t, tbl)
+
+	list, err := tx.ListTables(ctx)
+	require.NoError(t, err)
+	require.Empty(t, list)
+
+	// create table on read-only transaction
+	_, err = tx.CreateTable(ctx, schema)
+	require.Equal(t, tuple.ErrReadOnly, err)
+
+	err = tx.Close()
+	require.NoError(t, err)
+
+	// reopen read-write transaction
+	tx, err = db.Tx(true)
+	require.NoError(t, err)
+
+	// table should not exist after failed creation
+	tbl, err = tx.Table(ctx, name1)
+	require.Equal(t, tuple.ErrTableNotFound, err)
+	require.Nil(t, tbl)
+
+	tbl, err = tx.CreateTable(ctx, schema)
+	require.NoError(t, err)
+	require.NotNil(t, tbl)
+
+	// TODO: check create + rollback
+	err = tx.Commit(ctx)
+	require.NoError(t, err)
+
+	tx, err = db.Tx(false)
+	require.NoError(t, err)
+
+	tbl, err = tx.Table(ctx, name1)
+	require.NoError(t, err)
+	require.NotNil(t, tbl)
+
+	err = tx.Close()
+	require.NoError(t, err)
+
+	// TODO: test multiple tables
+	// TODO: test different headers (only keys, only values)
 }

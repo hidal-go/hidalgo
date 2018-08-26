@@ -17,6 +17,16 @@ func New(kv kv.KV) tuple.Store {
 	return &tupleStore{db: kv}
 }
 
+func tupleErr(err error) error {
+	switch err {
+	case kv.ErrNotFound:
+		return tuple.ErrNotFound
+	case kv.ErrReadOnly:
+		return tuple.ErrReadOnly
+	}
+	return err
+}
+
 type tupleStore struct {
 	db kv.KV
 }
@@ -58,7 +68,7 @@ func (tx *tupleTx) Table(ctx context.Context, name string) (tuple.Table, error) 
 	if err == kv.ErrNotFound {
 		return nil, tuple.ErrTableNotFound
 	} else if err != nil {
-		return nil, err
+		return nil, tupleErr(err)
 	}
 	h, err := tuplepb.UnmarshalTable(data)
 	if err != nil {
@@ -72,7 +82,7 @@ func (tx *tupleTx) ListTables(ctx context.Context) ([]tuple.Table, error) {
 	it := tx.tx.Scan(tx.tableSchema(""))
 	defer it.Close()
 	if err := it.Err(); err != nil {
-		return nil, err
+		return nil, tupleErr(err)
 	}
 	var tables []tuple.Table
 	for it.Next(ctx) {
@@ -94,7 +104,7 @@ func (tx *tupleTx) CreateTable(ctx context.Context, table tuple.Header) (tuple.T
 	if err == nil {
 		return nil, tuple.ErrExists
 	} else if err != nil && err != kv.ErrNotFound {
-		return nil, err
+		return nil, tupleErr(err)
 	}
 	data, err := tuplepb.MarshalTable(&table)
 	if err != nil {
@@ -102,7 +112,7 @@ func (tx *tupleTx) CreateTable(ctx context.Context, table tuple.Header) (tuple.T
 	}
 	err = tx.tx.Put(key, data)
 	if err != nil {
-		return nil, err
+		return nil, tupleErr(err)
 	}
 	return &tupleTable{tx: tx, h: table.Clone()}, nil
 }
@@ -153,7 +163,7 @@ func (tbl *tupleTable) Clear(ctx context.Context) error {
 	defer it.Close()
 	for it.Next(ctx) {
 		if err := tbl.tx.tx.Del(it.Key()); err != nil {
-			return err
+			return tupleErr(err)
 		}
 	}
 	return it.Err()
@@ -227,7 +237,7 @@ func (tbl *tupleTable) GetTuple(ctx context.Context, key tuple.Key) (tuple.Data,
 	if err == kv.ErrNotFound {
 		return nil, tuple.ErrNotFound
 	} else if err != nil {
-		return nil, err
+		return nil, tupleErr(err)
 	}
 	return tbl.decodeTuple(data)
 }
@@ -242,7 +252,7 @@ func (tbl *tupleTable) GetTupleBatch(ctx context.Context, key []tuple.Key) ([]tu
 	}
 	data, err := tbl.tx.tx.GetBatch(ctx, keys)
 	if err != nil {
-		return nil, err
+		return nil, tupleErr(err)
 	}
 	rows := make([]tuple.Data, len(key))
 	for i, p := range data {
@@ -273,7 +283,7 @@ func (tbl *tupleTable) InsertTuple(ctx context.Context, t tuple.Tuple) (tuple.Ke
 	if err == nil {
 		return nil, tuple.ErrExists
 	} else if err != nil && err != kv.ErrNotFound {
-		return nil, err
+		return nil, tupleErr(err)
 	}
 	val, err := tbl.encodeTuple(t.Data)
 	if err != nil {
@@ -281,7 +291,7 @@ func (tbl *tupleTable) InsertTuple(ctx context.Context, t tuple.Tuple) (tuple.Ke
 	}
 	err = tbl.tx.tx.Put(key, val)
 	if err != nil {
-		return nil, err
+		return nil, tupleErr(err)
 	}
 	return t.Key, nil
 }
@@ -301,7 +311,7 @@ func (tbl *tupleTable) UpdateTuple(ctx context.Context, t tuple.Tuple, opt *tupl
 		if err == kv.ErrNotFound {
 			return tuple.ErrNotFound
 		} else if err != nil {
-			return err
+			return tupleErr(err)
 		}
 	}
 	val, err := tbl.encodeTuple(t.Data)
@@ -310,7 +320,7 @@ func (tbl *tupleTable) UpdateTuple(ctx context.Context, t tuple.Tuple, opt *tupl
 	}
 	err = tbl.tx.tx.Put(key, val)
 	if err != nil {
-		return err
+		return tupleErr(err)
 	}
 	return nil
 }
@@ -329,7 +339,7 @@ func (tbl *tupleTable) DeleteTuples(ctx context.Context, f *tuple.Filter) error 
 				// if data won't be filtered - delete tuples directly
 				for _, key := range arr {
 					if err := tbl.tx.tx.Del(tbl.row(key)); err != nil {
-						return err
+						return tupleErr(err)
 					}
 				}
 				return nil
@@ -341,7 +351,7 @@ func (tbl *tupleTable) DeleteTuples(ctx context.Context, f *tuple.Filter) error 
 	defer it.Close()
 	for it.Next(ctx) {
 		if err := tbl.tx.tx.Del(it.key()); err != nil {
-			return err
+			return tupleErr(err)
 		}
 	}
 	return it.Err()
