@@ -15,6 +15,8 @@ digraph DBs {
     hie_kv -> flat_kv [style=dashed]
     bolt [label="Bolt"]
     bolt -> hie_kv
+    bbolt [label="BBolt"]
+    bbolt -> hie_kv
 
     sql_tuple [label="SQL" URL="./docs/sql-tuple.md"]
     sql_tuple -> strict_tuple

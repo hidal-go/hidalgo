@@ -9,5 +9,6 @@ hence the key is composed of names of these buckets (a path).
 **Supported backends:**
 
 * [Bolt](github.com/boltdb/bolt)
+* [BBolt](github.com/coreos/bbolt)
 
 * Emulated over [Flat KV](./kv-flat.md)
