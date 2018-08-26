@@ -33,6 +33,63 @@ func (s *TupleStore) Close() error {
 	return s.c.Close()
 }
 
+func (s *TupleStore) metaRoot() *datastore.Key {
+	return datastore.NameKey(kindHidalgo, idHidalgo, nil)
+}
+func (s *TupleStore) tableKey(name string) *datastore.Key {
+	hi := s.metaRoot()
+	return datastore.NameKey(kindTable, name, hi)
+}
+
+type tableInfo struct {
+	h tuple.Header
+}
+
+func (t *tableInfo) Header() tuple.Header {
+	return t.h.Clone()
+}
+
+func (t *tableInfo) Open(tx tuple.Tx) (tuple.Table, error) {
+	dtx, ok := tx.(*Tx)
+	if !ok {
+		return nil, fmt.Errorf("datastore: unexpected tx type: %T", tx)
+	}
+	return &Table{tx: dtx, h: t.h}, nil
+}
+
+func (s *TupleStore) Table(ctx context.Context, name string) (tuple.TableInfo, error) {
+	var t tableObject
+	err := s.c.Get(ctx, s.tableKey(name), &t)
+	if err == datastore.ErrNoSuchEntity {
+		return nil, tuple.ErrTableNotFound
+	} else if err != nil {
+		return nil, err
+	}
+	h, err := tuplepb.UnmarshalTable(t.Data)
+	if err != nil {
+		return nil, err
+	}
+	return &tableInfo{h: *h}, nil
+}
+
+func (s *TupleStore) ListTables(ctx context.Context) ([]tuple.TableInfo, error) {
+	q := datastore.NewQuery(kindTable).Ancestor(s.metaRoot())
+	var tables []tableObject
+	_, err := s.c.GetAll(ctx, q, &tables)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]tuple.TableInfo, 0, len(tables))
+	for _, t := range tables {
+		h, err := tuplepb.UnmarshalTable(t.Data)
+		if err != nil {
+			return out, err
+		}
+		out = append(out, &tableInfo{h: *h})
+	}
+	return out, nil
+}
+
 func (s *TupleStore) Tx(rw bool) (tuple.Tx, error) {
 	return &Tx{s: s, rw: rw}, nil
 }
@@ -58,44 +115,27 @@ func (tx *Tx) Close() error {
 }
 
 func (tx *Tx) Table(ctx context.Context, name string) (tuple.Table, error) {
-	var t tableObject
-	err := tx.s.c.Get(ctx, tx.tableKey(name), &t)
-	if err == datastore.ErrNoSuchEntity {
-		return nil, tuple.ErrTableNotFound
-	} else if err != nil {
-		return nil, err
-	}
-	h, err := tuplepb.UnmarshalTable(t.Data)
+	info, err := tx.s.Table(ctx, name)
 	if err != nil {
 		return nil, err
 	}
-	return &Table{tx: tx, h: *h}, nil
+	return info.Open(tx)
 }
 
 func (tx *Tx) ListTables(ctx context.Context) ([]tuple.Table, error) {
-	q := datastore.NewQuery(kindTable).Ancestor(tx.metaRoot())
-	var tables []tableObject
-	_, err := tx.s.c.GetAll(ctx, q, &tables)
+	tables, err := tx.s.ListTables(ctx)
 	if err != nil {
 		return nil, err
 	}
 	out := make([]tuple.Table, 0, len(tables))
 	for _, t := range tables {
-		h, err := tuplepb.UnmarshalTable(t.Data)
+		tbl, err := t.Open(tx)
 		if err != nil {
 			return out, err
 		}
-		out = append(out, &Table{tx: tx, h: *h})
+		out = append(out, tbl)
 	}
 	return out, nil
-}
-
-func (tx *Tx) metaRoot() *datastore.Key {
-	return datastore.NameKey(kindHidalgo, idHidalgo, nil)
-}
-func (tx *Tx) tableKey(name string) *datastore.Key {
-	hi := tx.metaRoot()
-	return datastore.NameKey(kindTable, name, hi)
 }
 
 type tableObject struct {
@@ -110,7 +150,7 @@ func (tx *Tx) CreateTable(ctx context.Context, table tuple.Header) (tuple.Table,
 	if err != nil {
 		return nil, err
 	}
-	k := tx.tableKey(table.Name)
+	k := tx.s.tableKey(table.Name)
 	_, err = tx.s.c.RunInTransaction(ctx, func(tx *datastore.Transaction) error {
 		var t tableObject
 		err := tx.Get(k, &t)
@@ -134,6 +174,14 @@ type Table struct {
 	h  tuple.Header
 }
 
+func (tbl *Table) Header() tuple.Header {
+	return tbl.h.Clone()
+}
+
+func (tbl *Table) Open(tx tuple.Tx) (tuple.Table, error) {
+	return (&tableInfo{h: tbl.h}).Open(tx)
+}
+
 func (tbl *Table) cli() *datastore.Client {
 	return tbl.tx.s.c
 }
@@ -145,7 +193,7 @@ func (tbl *Table) Drop(ctx context.Context) error {
 	if err := tbl.Clear(ctx); err != nil {
 		return err
 	}
-	return tbl.cli().Delete(ctx, tbl.tx.tableKey(tbl.h.Name))
+	return tbl.cli().Delete(ctx, tbl.tx.s.tableKey(tbl.h.Name))
 }
 
 func (tbl *Table) Clear(ctx context.Context) error {

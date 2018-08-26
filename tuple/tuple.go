@@ -217,7 +217,13 @@ type Tuple struct {
 // Store is an interface for tuple stores with a strict schema.
 type Store interface {
 	base.DB
+	// Tx opens a read-only or read-write transaction in the tuple store.
 	Tx(rw bool) (Tx, error)
+	// Table returns a table info. It returns ErrTableNotFound if table does not exists.
+	// TableInfo can be used to open a Table from transactions more efficiently.
+	Table(ctx context.Context, name string) (TableInfo, error)
+	// ListTables lists all available tables.
+	ListTables(ctx context.Context) ([]TableInfo, error)
 }
 
 // UpdateOpt specifies options used in UpdateTuple.
@@ -252,8 +258,18 @@ type Scanner interface {
 	Scan(opt *ScanOptions) Iterator
 }
 
+// TableInfo represent a metadata of a tuple table.
+type TableInfo interface {
+	// Header returns a tuple header used in this table.
+	Header() Header
+	// Open binds a table to the transaction and opens it for further operations.
+	Open(tx Tx) (Table, error)
+}
+
 // Table represents an opened tuples table with a specific type (schema).
 type Table interface {
+	TableInfo
+
 	// Drop clears the data and removes the table.
 	Drop(ctx context.Context) error
 	// Clears removes all tuples from the table.

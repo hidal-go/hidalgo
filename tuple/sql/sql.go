@@ -7,7 +7,6 @@ import (
 	"log"
 	"strconv"
 	"strings"
-	"sync"
 
 	"github.com/hidal-go/hidalgo/tuple"
 	"github.com/hidal-go/hidalgo/values"
@@ -56,41 +55,16 @@ func (s *sqlStore) Close() error {
 	return s.db.Close()
 }
 
-func (s *sqlStore) Tx(rw bool) (tuple.Tx, error) {
-	tx, err := s.db.Begin()
-	if err != nil {
-		return nil, err
-	}
-	return &sqlTx{dia: &s.dia, tx: tx, dbName: s.dbName, rw: rw}, nil
-}
-
-type sqlTx struct {
-	dia    *Dialect
-	tx     *sql.Tx
-	dbName string
-	rw     bool
-	mu     sync.RWMutex
-	tables map[string]*sqlTable
-}
-
-func (tx *sqlTx) curSchema() string {
-	if s := tx.dia.DefaultSchema; s != "" {
+func (s *sqlStore) curSchema() string {
+	if s := s.dia.DefaultSchema; s != "" {
 		return s
 	}
-	return tx.dbName
+	return s.dbName
 }
 
-func (tx *sqlTx) Commit(ctx context.Context) error {
-	return tx.tx.Commit()
-}
-
-func (tx *sqlTx) Close() error {
-	return tx.tx.Rollback()
-}
-
-func (tx *sqlTx) convError(err error) error {
-	if tx.dia.Errors != nil {
-		err = tx.dia.Errors(err)
+func (s *sqlStore) convError(err error) error {
+	if s.dia.Errors != nil {
+		err = s.dia.Errors(err)
 	}
 	switch err {
 	case ErrTableNotFound:
@@ -99,81 +73,86 @@ func (tx *sqlTx) convError(err error) error {
 	return err
 }
 
-func (tx *sqlTx) query(ctx context.Context, qu string, args ...interface{}) (*sql.Rows, error) {
+func (s *sqlStore) query(ctx context.Context, tx *sql.Tx, qu string, args ...interface{}) (*sql.Rows, error) {
 	if debug {
 		log.Println(append([]interface{}{qu}, args...)...)
 	}
-	rows, err := tx.tx.QueryContext(ctx, qu, args...)
+	rows, err := tx.QueryContext(ctx, qu, args...)
 	if err != nil {
-		err = tx.convError(err)
+		err = s.convError(err)
 	}
 	return rows, err
 }
 
-func (tx *sqlTx) queryb(ctx context.Context, b *Builder) (*sql.Rows, error) {
+func (s *sqlStore) queryb(ctx context.Context, tx *sql.Tx, b *Builder) (*sql.Rows, error) {
 	qu, args := b.String(), b.Args()
-	return tx.query(ctx, qu, args...)
+	return s.query(ctx, tx, qu, args...)
 }
 
-func (tx *sqlTx) queryRow(ctx context.Context, qu string, args ...interface{}) *sql.Row {
+func (s *sqlStore) queryRow(ctx context.Context, tx *sql.Tx, qu string, args ...interface{}) *sql.Row {
 	if debug {
 		log.Println(append([]interface{}{qu}, args...)...)
 	}
-	return tx.tx.QueryRowContext(ctx, qu, args...)
+	return tx.QueryRowContext(ctx, qu, args...)
 }
 
-func (tx *sqlTx) exec(ctx context.Context, qu string, args ...interface{}) error {
+func (s *sqlStore) exec(ctx context.Context, tx *sql.Tx, qu string, args ...interface{}) error {
 	if debug {
 		log.Println(append([]interface{}{qu}, args...)...)
 	}
 	// TODO: prepare automatically
-	_, err := tx.tx.ExecContext(ctx, qu, args...)
-	err = tx.convError(err)
+	_, err := tx.ExecContext(ctx, qu, args...)
+	err = s.convError(err)
 	return err
 }
 
-func (tx *sqlTx) execb(ctx context.Context, b *Builder) error {
+func (s *sqlStore) execb(ctx context.Context, tx *sql.Tx, b *Builder) error {
 	qu, args := b.String(), b.Args()
-	return tx.exec(ctx, qu, args...)
+	return s.exec(ctx, tx, qu, args...)
 }
 
-func (tx *sqlTx) execStmt(ctx context.Context, st *sql.Stmt, args ...interface{}) error {
+func (s *sqlStore) execStmt(ctx context.Context, st *sql.Stmt, args ...interface{}) error {
 	if debug {
 		log.Println(append([]interface{}{"STMT"}, args...)...)
 	}
 	_, err := st.ExecContext(ctx, args...)
 	if err != nil {
-		err = tx.convError(err)
+		err = s.convError(err)
 	}
 	return err
 }
 
-func (tx *sqlTx) cacheTable(tbl *sqlTable) {
-	if debug {
-		log.Printf("%q, %#v, %#v", tbl.h.Name, tbl.h.Key, tbl.h.Data)
+func (s *sqlStore) Tx(rw bool) (tuple.Tx, error) {
+	tx, err := s.db.Begin()
+	if err != nil {
+		return nil, err
 	}
-	if tx.tables == nil {
-		tx.tables = make(map[string]*sqlTable)
-	}
-	tx.mu.Lock()
-	tx.tables[tbl.h.Name] = tbl
-	tx.mu.Unlock()
+	return &sqlTx{db: s, dia: &s.dia, tx: tx, rw: rw}, nil
+}
+func (s *sqlStore) nativeType(typ, comment string) (values.Type, error) {
+	return s.dia.nativeType(typ, comment)
 }
 
-func (tx *sqlTx) table(name string) *sqlTable {
-	tx.mu.RLock()
-	tbl := tx.tables[name]
-	tx.mu.RUnlock()
-	return tbl
+type sqlTableInfo struct {
+	h tuple.Header
 }
 
-func (tx *sqlTx) Table(ctx context.Context, name string) (tuple.Table, error) {
-	if tbl := tx.table(name); tbl != nil {
-		return tbl, nil
+func (t *sqlTableInfo) Header() tuple.Header {
+	return t.h.Clone()
+}
+
+func (t *sqlTableInfo) Open(tx tuple.Tx) (tuple.Table, error) {
+	stx, ok := tx.(*sqlTx)
+	if !ok {
+		return nil, fmt.Errorf("sql: unexpected tx type: %T", tx)
 	}
-	tbl := &sqlTable{tx: tx, h: tuple.Header{Name: name}}
-	rows, err := tx.query(ctx, tx.dia.ListColumns,
-		tx.curSchema(),
+	return &sqlTable{tx: stx, h: t.h}, nil
+}
+
+func (s *sqlStore) tableWith(ctx context.Context, tx *sql.Tx, name string) (tuple.TableInfo, error) {
+	header := tuple.Header{Name: name}
+	rows, err := s.query(ctx, tx, s.dia.ListColumns,
+		s.curSchema(),
 		name,
 	)
 	if err != nil {
@@ -204,7 +183,7 @@ func (tx *sqlTx) Table(ctx context.Context, name string) (tuple.Table, error) {
 		return nil, ErrTableNotFound
 	}
 	for _, c := range cols {
-		typ, err := tbl.nativeType(c.Type, c.Comment.String)
+		typ, err := s.nativeType(c.Type, c.Comment.String)
 		if err != nil {
 			return nil, err
 		}
@@ -213,45 +192,102 @@ func (tx *sqlTx) Table(ctx context.Context, name string) (tuple.Table, error) {
 			if !ok {
 				return nil, fmt.Errorf("non-sortable key type: %T", typ)
 			}
-			tbl.h.Key = append(tbl.h.Key, tuple.KeyField{
+			header.Key = append(header.Key, tuple.KeyField{
 				Name: c.Name,
 				Type: kt,
 			})
 		} else {
-			tbl.h.Data = append(tbl.h.Data, tuple.Field{
+			header.Data = append(header.Data, tuple.Field{
 				Name: c.Name,
 				Type: typ,
 			})
 		}
 	}
-	tx.cacheTable(tbl)
-	return tbl, nil
+	return &sqlTableInfo{h: header}, nil
 }
 
-func (tx *sqlTx) ListTables(ctx context.Context) ([]tuple.Table, error) {
-	rows, err := tx.query(ctx,
-		`SELECT table_name FROM information_schema.tables WHERE table_schema = `+tx.dia.Placeholder(0),
-		tx.curSchema(),
+func (s *sqlStore) Table(ctx context.Context, name string) (tuple.TableInfo, error) {
+	tx, err := s.db.BeginTx(ctx, &sql.TxOptions{ReadOnly: true})
+	if err != nil {
+		return nil, err
+	}
+	defer tx.Rollback()
+
+	return s.tableWith(ctx, tx, name)
+}
+
+func (s *sqlStore) listTablesWith(ctx context.Context, tx *sql.Tx) ([]tuple.TableInfo, error) {
+	rows, err := s.query(ctx, tx,
+		`SELECT table_name FROM information_schema.tables WHERE table_schema = `+s.dia.Placeholder(0),
+		s.curSchema(),
 	)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
 
-	var tables []tuple.Table
+	var tables []tuple.TableInfo
 	for rows.Next() {
 		var name string
 		if err := rows.Scan(&name); err != nil {
 			return tables, err
 		}
-		// TODO: invalidate table cache before listing?
-		tbl, err := tx.Table(ctx, name)
+		tbl, err := s.tableWith(ctx, tx, name)
 		if err != nil {
 			return tables, err
 		}
 		tables = append(tables, tbl)
 	}
 	return tables, nil
+}
+
+func (s *sqlStore) ListTables(ctx context.Context) ([]tuple.TableInfo, error) {
+	tx, err := s.db.BeginTx(ctx, &sql.TxOptions{ReadOnly: true})
+	if err != nil {
+		return nil, err
+	}
+	defer tx.Rollback()
+
+	return s.listTablesWith(ctx, tx)
+}
+
+type sqlTx struct {
+	db  *sqlStore
+	dia *Dialect
+	tx  *sql.Tx
+	rw  bool
+}
+
+func (tx *sqlTx) Commit(ctx context.Context) error {
+	return tx.tx.Commit()
+}
+
+func (tx *sqlTx) Close() error {
+	return tx.tx.Rollback()
+}
+
+func (tx *sqlTx) Table(ctx context.Context, name string) (tuple.Table, error) {
+	info, err := tx.db.tableWith(ctx, tx.tx, name)
+	if err != nil {
+		return nil, err
+	}
+	return info.Open(tx)
+}
+
+func (tx *sqlTx) ListTables(ctx context.Context) ([]tuple.Table, error) {
+	tables, err := tx.db.listTablesWith(ctx, tx.tx)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]tuple.Table, 0, len(tables))
+	for _, t := range tables {
+		tbl, err := t.Open(tx)
+		if err != nil {
+			return out, err
+		}
+		out = append(out, tbl)
+	}
+	return out, nil
 }
 
 func (tx *sqlTx) CreateTable(ctx context.Context, table tuple.Header) (tuple.Table, error) {
@@ -287,7 +323,7 @@ func (tx *sqlTx) CreateTable(ctx context.Context, table tuple.Header) (tuple.Tab
 		b.Write(")")
 	}
 	b.Write("\n);")
-	err := tx.execb(ctx, b)
+	err := tx.db.execb(ctx, tx.tx, b)
 	if err != nil {
 		return nil, err
 	}
@@ -300,7 +336,7 @@ func (tx *sqlTx) CreateTable(ctx context.Context, table tuple.Header) (tuple.Tab
 			}
 			b.Reset()
 			dia.ColumnCommentSet(b, tbl.h.Name, col, c)
-			return tx.execb(ctx, b)
+			return tx.db.execb(ctx, tx.tx, b)
 		}
 		for _, f := range table.Key {
 			if err := setComment(f.Name, f.Type); err != nil {
@@ -313,7 +349,6 @@ func (tx *sqlTx) CreateTable(ctx context.Context, table tuple.Header) (tuple.Tab
 			}
 		}
 	}
-	tx.cacheTable(tbl)
 	return tbl, nil
 }
 
@@ -322,14 +357,19 @@ type sqlTable struct {
 	h  tuple.Header
 }
 
+func (tbl *sqlTable) Header() tuple.Header {
+	return tbl.h.Clone()
+}
+
+func (tbl *sqlTable) Open(tx tuple.Tx) (tuple.Table, error) {
+	return (&sqlTableInfo{h: tbl.h}).Open(tx)
+}
+
 func (tbl *sqlTable) sqlType(t values.Type, key bool) string {
 	return tbl.tx.dia.sqlType(t, key)
 }
 func (tbl *sqlTable) sqlColumnDef(t values.Type, key bool) string {
 	return tbl.sqlType(t, key) + tbl.tx.dia.sqlColumnCommentInline(t)
-}
-func (tbl *sqlTable) nativeType(typ, comment string) (values.Type, error) {
-	return tbl.tx.dia.nativeType(typ, comment)
 }
 
 func (tbl *sqlTable) Drop(ctx context.Context) error {
@@ -339,7 +379,7 @@ func (tbl *sqlTable) Drop(ctx context.Context) error {
 	b := tbl.sql()
 	b.Write(`DROP TABLE `)
 	b.Idents(tbl.h.Name)
-	return tbl.tx.execb(ctx, b)
+	return tbl.tx.db.execb(ctx, tbl.tx.tx, b)
 }
 
 func (tbl *sqlTable) Clear(ctx context.Context) error {
@@ -349,7 +389,7 @@ func (tbl *sqlTable) Clear(ctx context.Context) error {
 	b := tbl.sql()
 	b.Write(`TRUNCATE TABLE `)
 	b.Idents(tbl.h.Name)
-	return tbl.tx.execb(ctx, b)
+	return tbl.tx.db.execb(ctx, tbl.tx.tx, b)
 }
 func (tbl *sqlTable) convValue(v values.Value) interface{} {
 	if v == nil {
@@ -492,7 +532,7 @@ func (tbl *sqlTable) GetTuple(ctx context.Context, key tuple.Key) (tuple.Data, e
 	b.Write(" WHERE ")
 	b.EqPlaceAnd(tbl.keyNames(), tbl.appendKey(nil, key))
 	b.Write(" LIMIT 1")
-	row := tbl.tx.queryRow(ctx, b.String(), b.Args()...)
+	row := tbl.tx.db.queryRow(ctx, tbl.tx.tx, b.String(), b.Args()...)
 	data, err := tbl.scanPayload(row)
 	if err == sql.ErrNoRows {
 		return nil, tuple.ErrNotFound
@@ -533,7 +573,7 @@ func (tbl *sqlTable) InsertTuple(ctx context.Context, t tuple.Tuple) (tuple.Key,
 	b.Write(") VALUES (")
 	b.Place(tbl.appendTuple(nil, t)...)
 	b.Write(")")
-	err := tbl.tx.execb(ctx, b)
+	err := tbl.tx.db.execb(ctx, tbl.tx.tx, b)
 	if err != nil {
 		return nil, err
 	}
@@ -560,7 +600,7 @@ func (tbl *sqlTable) UpdateTuple(ctx context.Context, t tuple.Tuple, opt *tuple.
 		b.EqPlace(tbl.payloadNames(), tbl.appendData(nil, t.Data))
 		b.Write(` WHERE `)
 		b.EqPlaceAnd(tbl.keyNames(), tbl.appendKey(nil, t.Key))
-		return tbl.tx.execb(ctx, b)
+		return tbl.tx.db.execb(ctx, tbl.tx.tx, b)
 	}
 	dia := tbl.tx.dia
 	if dia.OnConflict {
@@ -575,7 +615,7 @@ func (tbl *sqlTable) UpdateTuple(ctx context.Context, t tuple.Tuple, opt *tuple.
 		b.Idents(tbl.h.Name + "_pkey") // TODO: should be in the dialect
 		b.Write(` DO UPDATE SET `)
 		b.EqPlace(tbl.payloadNames(), tbl.appendData(nil, t.Data))
-		return tbl.tx.execb(ctx, b)
+		return tbl.tx.db.execb(ctx, tbl.tx.tx, b)
 	}
 	if dia.ReplaceStmt {
 		b := tbl.sql()
@@ -586,7 +626,7 @@ func (tbl *sqlTable) UpdateTuple(ctx context.Context, t tuple.Tuple, opt *tuple.
 		b.Write(") VALUES (")
 		b.Place(tbl.appendTuple(nil, t)...)
 		b.Write(")")
-		return tbl.tx.execb(ctx, b)
+		return tbl.tx.db.execb(ctx, tbl.tx.tx, b)
 	}
 	return fmt.Errorf("upsert is not supported")
 }
@@ -606,7 +646,7 @@ func (tbl *sqlTable) DeleteTuples(ctx context.Context, f *tuple.Filter) error {
 			b.Write(" WHERE ")
 			where(b)
 		}
-		return tbl.tx.execb(ctx, b)
+		return tbl.tx.db.execb(ctx, tbl.tx.tx, b)
 	}
 	// some filter were optimized, but some still remain
 	// fallback to iterate + delete
@@ -638,7 +678,7 @@ func (tbl *sqlTable) DeleteTuples(ctx context.Context, f *tuple.Filter) error {
 		b.Idents(tbl.h.Name)
 		b.Write(" WHERE ")
 		b.EqPlaceAnd(tbl.keyNames(), tbl.appendKey(nil, k))
-		return tbl.tx.execb(ctx, b)
+		return tbl.tx.db.execb(ctx, tbl.tx.tx, b)
 	}
 
 	if tbl.tx.dia.NoIteratorsWhenMutating {
@@ -695,7 +735,7 @@ func (tbl *sqlTable) scanWhere(opt *tuple.ScanOptions, where func(*Builder)) tup
 			b.Write(" LIMIT ")
 			b.Write(strconv.Itoa(opt.Limit))
 		}
-		return tbl.tx.queryb(ctx, b)
+		return tbl.tx.db.queryb(ctx, tbl.tx.tx, b)
 	}, opt.KeysOnly, opt.Filter)
 }
 

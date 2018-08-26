@@ -43,7 +43,98 @@ func (db *tupleStore) Tx(rw bool) (tuple.Tx, error) {
 	return &tupleTx{tx: tx}, nil
 }
 
+func (db *tupleStore) tableSchema(name string) kv.Key {
+	k := kv.SKey("system", "table")
+	if name != "" {
+		k = k.AppendBytes([]byte(name))
+	}
+	return k
+}
+
+func (db *tupleStore) tableWith(ctx context.Context, tx kv.Tx, name string) (*tupleTableInfo, error) {
+	// TODO: cache
+	data, err := tx.Get(ctx, db.tableSchema(name))
+	if err == kv.ErrNotFound {
+		return nil, tuple.ErrTableNotFound
+	} else if err != nil {
+		return nil, tupleErr(err)
+	}
+	h, err := tuplepb.UnmarshalTable(data)
+	if err != nil {
+		return nil, err
+	}
+	return &tupleTableInfo{h: *h}, nil
+}
+
+func (db *tupleStore) Table(ctx context.Context, name string) (tuple.TableInfo, error) {
+	tx, err := db.db.Tx(false)
+	if err != nil {
+		return nil, err
+	}
+	defer tx.Close()
+
+	info, err := db.tableWith(ctx, tx, name)
+	if err != nil {
+		return nil, err
+	}
+	return info, nil
+}
+
+func (db *tupleStore) listTablesWith(ctx context.Context, tx kv.Tx) ([]*tupleTableInfo, error) {
+	it := tx.Scan(db.tableSchema(""))
+	defer it.Close()
+	if err := it.Err(); err != nil {
+		return nil, tupleErr(err)
+	}
+	var tables []*tupleTableInfo
+	for it.Next(ctx) {
+		h, err := tuplepb.UnmarshalTable(it.Val())
+		if err != nil {
+			return tables, err
+		}
+		tables = append(tables, &tupleTableInfo{h: *h})
+	}
+	return tables, nil
+}
+
+func (db *tupleStore) ListTables(ctx context.Context) ([]tuple.TableInfo, error) {
+	tx, err := db.db.Tx(false)
+	if err != nil {
+		return nil, err
+	}
+	defer tx.Close()
+
+	tables, err := db.listTablesWith(ctx, tx)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]tuple.TableInfo, 0, len(tables))
+	for _, t := range tables {
+		out = append(out, t)
+	}
+	return out, nil
+}
+
+var _ tuple.TableInfo = (*tupleTableInfo)(nil)
+
+type tupleTableInfo struct {
+	h tuple.Header
+}
+
+func (t *tupleTableInfo) Header() tuple.Header {
+	return t.h.Clone()
+}
+
+func (t *tupleTableInfo) Open(tx tuple.Tx) (tuple.Table, error) {
+	ktx, ok := tx.(*tupleTx)
+	if !ok {
+		return nil, fmt.Errorf("tuplekv: unexpected tx type: %T", tx)
+	}
+	return &tupleTable{tx: ktx, h: t.h}, nil
+}
+
 type tupleTx struct {
+	db *tupleStore
 	tx kv.Tx
 }
 
@@ -55,51 +146,35 @@ func (tx *tupleTx) Close() error {
 	return tx.tx.Close()
 }
 
-func (tx *tupleTx) tableSchema(name string) kv.Key {
-	k := kv.SKey("system", "table")
-	if name != "" {
-		k = k.AppendBytes([]byte(name))
-	}
-	return k
-}
-
 func (tx *tupleTx) Table(ctx context.Context, name string) (tuple.Table, error) {
-	data, err := tx.tx.Get(ctx, tx.tableSchema(name))
-	if err == kv.ErrNotFound {
-		return nil, tuple.ErrTableNotFound
-	} else if err != nil {
-		return nil, tupleErr(err)
-	}
-	h, err := tuplepb.UnmarshalTable(data)
+	info, err := tx.db.tableWith(ctx, tx.tx, name)
 	if err != nil {
 		return nil, err
 	}
-	// TODO: cache into tx
-	return &tupleTable{tx: tx, h: *h}, nil
+	return info.Open(tx)
 }
 
 func (tx *tupleTx) ListTables(ctx context.Context) ([]tuple.Table, error) {
-	it := tx.tx.Scan(tx.tableSchema(""))
-	defer it.Close()
-	if err := it.Err(); err != nil {
-		return nil, tupleErr(err)
+	tables, err := tx.db.listTablesWith(ctx, tx.tx)
+	if err != nil {
+		return nil, err
 	}
-	var tables []tuple.Table
-	for it.Next(ctx) {
-		h, err := tuplepb.UnmarshalTable(it.Val())
+	out := make([]tuple.Table, 0, len(tables))
+	for _, t := range tables {
+		tbl, err := t.Open(tx)
 		if err != nil {
-			return tables, err
+			return nil, err
 		}
-		tables = append(tables, &tupleTable{tx: tx, h: *h})
+		out = append(out, tbl)
 	}
-	return tables, nil
+	return out, nil
 }
 
 func (tx *tupleTx) CreateTable(ctx context.Context, table tuple.Header) (tuple.Table, error) {
 	if err := table.Validate(); err != nil {
 		return nil, err
 	}
-	key := tx.tableSchema(table.Name)
+	key := tx.db.tableSchema(table.Name)
 	_, err := tx.tx.Get(ctx, key)
 	if err == nil {
 		return nil, tuple.ErrExists
@@ -114,6 +189,7 @@ func (tx *tupleTx) CreateTable(ctx context.Context, table tuple.Header) (tuple.T
 	if err != nil {
 		return nil, tupleErr(err)
 	}
+	// TODO: populate table info cache on commit
 	return &tupleTable{tx: tx, h: table.Clone()}, nil
 }
 
@@ -122,8 +198,16 @@ type tupleTable struct {
 	h  tuple.Header
 }
 
+func (tbl *tupleTable) Header() tuple.Header {
+	return tbl.h.Clone()
+}
+
+func (tbl *tupleTable) Open(tx tuple.Tx) (tuple.Table, error) {
+	return (&tupleTableInfo{h: tbl.h}).Open(tx)
+}
+
 func (tbl *tupleTable) schema() kv.Key {
-	return tbl.tx.tableSchema(tbl.h.Name)
+	return tbl.tx.db.tableSchema(tbl.h.Name)
 }
 
 func toKvKey(k tuple.Key) kv.Key {
