@@ -1,6 +1,8 @@
 package base
 
-import "context"
+import (
+	"github.com/dennwc/base"
+)
 
 // DB is a common interface implemented by all database abstractions.
 type DB interface {
@@ -9,20 +11,7 @@ type DB interface {
 }
 
 // Tx is a common interface implemented by all transactions.
-type Tx interface {
-	// Commit applies all changes made in the transaction.
-	Commit(ctx context.Context) error
-	// Close rolls back the transaction.
-	// Committed transactions will not be affected by calling Close.
-	Close() error
-}
+type Tx = base.Tx
 
 // Iterator is a common interface implemented by all iterators.
-type Iterator interface {
-	// Next advances an iterator.
-	Next(ctx context.Context) bool
-	// Err returns a last encountered error.
-	Err() error
-	// Close destroys an iterator.
-	Close() error
-}
+type Iterator = base.IteratorContext

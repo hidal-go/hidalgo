@@ -20,6 +20,12 @@
   version = "v1.1.0"
 
 [[projects]]
+  name = "github.com/dennwc/base"
+  packages = ["."]
+  revision = "64ce4c88d2ac34f84043725137c9f5494dda7ebd"
+  version = "v1.0.0"
+
+[[projects]]
   name = "github.com/dgraph-io/badger"
   packages = [
     ".",

@@ -2,6 +2,10 @@
 # for detailed Gopkg.toml documentation.
 
 [[constraint]]
+  name = "github.com/dennwc/base"
+  version = "1.x"
+
+[[constraint]]
   name = "github.com/boltdb/bolt"
   version = "1.3.1"
 
