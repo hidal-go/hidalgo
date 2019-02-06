@@ -19,7 +19,7 @@ import (
 	"context"
 	"time"
 
-	"github.com/coreos/bbolt"
+	bolt "github.com/coreos/bbolt"
 
 	"github.com/hidal-go/hidalgo/base"
 	"github.com/hidal-go/hidalgo/kv"
