@@ -3,8 +3,8 @@ package mongotest
 import (
 	"testing"
 
+	"github.com/globalsign/mgo"
 	"github.com/ory/dockertest"
-	"gopkg.in/mgo.v2"
 
 	"github.com/hidal-go/hidalgo/legacy/nosql"
 	"github.com/hidal-go/hidalgo/legacy/nosql/mongo"

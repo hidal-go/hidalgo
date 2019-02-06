@@ -18,6 +18,7 @@ require (
 	github.com/flimzy/diff v0.1.5 // indirect
 	github.com/flimzy/kivik v1.8.1 // indirect
 	github.com/flimzy/testy v0.0.13 // indirect
+	github.com/globalsign/mgo v0.0.0-20181015135952-eeefdecb41b8
 	github.com/go-kivik/couchdb v1.8.1
 	github.com/go-kivik/kivik v1.8.1
 	github.com/go-kivik/kiviktest v1.1.2 // indirect
@@ -41,7 +42,6 @@ require (
 	github.com/syndtr/goleveldb v0.0.0-20180307113352-169b1b37be73
 	go.etcd.io/bbolt v1.3.2 // indirect
 	google.golang.org/api v0.1.0
-	gopkg.in/mgo.v2 v2.0.0-20180705113604-9856a29383ce
 	gopkg.in/olivere/elastic.v5 v5.0.79
 	gotest.tools v2.2.0+incompatible // indirect
 )
