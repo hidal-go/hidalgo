@@ -242,6 +242,8 @@ func (tbl *tupleTable) row(key tuple.Key) kv.Key {
 	k := kv.SKey("data", "table", tbl.h.Name)
 	if key != nil {
 		k = k.Append(toKvKey(key))
+	} else {
+		k = k.Append(kv.Key{nil})
 	}
 	return k
 }
@@ -268,6 +270,9 @@ func (tbl *tupleTable) Clear(ctx context.Context) error {
 func (tbl *tupleTable) decodeKey(key kv.Key) (tuple.Key, error) {
 	k0 := key
 	pref := tbl.row(nil)
+	if n := len(pref); n != 0 && len(pref[n-1]) == 0 {
+		pref = pref[:n-1]
+	}
 	key = key[len(pref):]
 	if len(key) != len(tbl.h.Key) {
 		return nil, fmt.Errorf("decodeKey: wrong key size: %d vs %d (%v)", len(key), len(tbl.h.Key), k0)
@@ -482,6 +487,11 @@ func (tbl *tupleTable) DeleteTuples(ctx context.Context, f *tuple.Filter) error 
 
 func (tbl *tupleTable) scan(f *tuple.Filter) *tupleIterator {
 	pref := tbl.row(nil)
+	removeWildcard := func() {
+		if n := len(pref); n != 0 && len(pref[n-1]) == 0 {
+			pref = pref[:n-1]
+		}
+	}
 	if !f.IsAny() {
 		if kf, ok := f.KeyFilter.(tuple.KeyFilters); ok {
 			// find common prefix, if any
@@ -493,10 +503,12 @@ func (tbl *tupleTable) scan(f *tuple.Filter) *tupleIterator {
 					if !ok {
 						break loop
 					}
+					removeWildcard()
 					pref = pref.Append(toKvKey(tuple.Key{s}))
 				case filter.Range:
 					p, ok := vf.Prefix()
 					if ok && p != nil {
+						removeWildcard()
 						pref = pref.Append(toKvKey(tuple.Key{p}))
 					}
 					break loop

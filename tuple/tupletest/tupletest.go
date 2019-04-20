@@ -275,6 +275,26 @@ func scans(t *testing.T, db tuple.Store) {
 	scan([]string{"a", "aa"}, 3)
 	scan([]string{"a", "aa", ""}, 3)
 	scan([]string{"a", "aa", "b"}, 3)
+
+	tbl2, err := tx.CreateTable(ctx, tuple.Header{
+		Name: "test2",
+		Key: []tuple.KeyField{
+			{Name: "k1", Type: values.StringType{}},
+			{Name: "k2", Type: values.StringType{}},
+			{Name: "k3", Type: values.StringType{}},
+		},
+		Data: []tuple.Field{
+			{Name: "f1", Type: values.IntType{}},
+		},
+	})
+	require.NoError(t, err)
+
+	_, err = tbl2.InsertTuple(ctx, tuple.Tuple{
+		Key: tuple.SKey("a", "b", "a"), Data: tuple.Data{values.Int(-1)},
+	})
+	require.NoError(t, err)
+
+	scan(nil, 1, 5, 3, 6, 4, 2)
 }
 
 func tables(t *testing.T, db tuple.Store) {
