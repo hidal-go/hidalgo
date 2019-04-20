@@ -17,6 +17,7 @@ type Dialect struct {
 	StringKeyType       string
 	TimeType            string
 	StringTypeCollation string
+	AutoType            string
 	QuoteIdentifierFunc func(s string) string
 	Placeholder         func(i int) string
 	// DefaultSchema will be used to query table metadata.
@@ -33,7 +34,10 @@ type Dialect struct {
 	// ReplaceStmt indicates that backend supports REPLACE statement.
 	ReplaceStmt bool
 	// OnConflict indicates that backend supports ON CONFLICT in INSERT statement.
-	OnConflict          bool
+	OnConflict bool
+	// Returning indicates that INSERT queries needs an RETURNING keyword to return last
+	// inserted id.
+	Returning           bool
 	ColumnCommentInline func(s string) string
 	ColumnCommentSet    func(b *Builder, tbl, col, s string)
 }
@@ -133,6 +137,9 @@ func (d *Dialect) sqlColumnComment(t values.Type) string {
 	}
 	return c
 }
+func (d *Dialect) sqlColumnCommentAuto() string {
+	return d.sqlColumnComment(values.UIntType{}) + " Auto"
+}
 func (d *Dialect) sqlColumnCommentInline(t values.Type) string {
 	if d.ColumnCommentInline == nil {
 		return ""
@@ -143,9 +150,20 @@ func (d *Dialect) sqlColumnCommentInline(t values.Type) string {
 	}
 	return " " + d.ColumnCommentInline(d.QuoteString(c))
 }
+func (d *Dialect) sqlColumnCommentAutoInline() string {
+	if d.ColumnCommentInline == nil {
+		return ""
+	}
+	c := d.sqlColumnCommentAuto()
+	return " " + d.ColumnCommentInline(d.QuoteString(c))
+}
 
-func (d *Dialect) nativeType(typ, comment string) (values.Type, error) {
+func (d *Dialect) nativeType(typ, comment string) (values.Type, bool, error) {
 	typ = strings.ToLower(typ)
+	auto := strings.HasSuffix(comment, " Auto")
+	if auto {
+		comment = comment[:len(comment)-5]
+	}
 	var opt string
 	if i := strings.Index(typ, "("); i > 0 {
 		typ, opt = typ[:i], typ[i:]
@@ -155,27 +173,27 @@ func (d *Dialect) nativeType(typ, comment string) (values.Type, error) {
 	}
 	switch typ {
 	case "text", "varchar", "char":
-		return values.StringType{}, nil
+		return values.StringType{}, auto, nil
 	case "blob", "bytea", "varbinary", "binary":
-		return values.BytesType{}, nil
+		return values.BytesType{}, auto, nil
 	case "double", "double precision":
-		return values.FloatType{}, nil
+		return values.FloatType{}, auto, nil
 	case "boolean":
-		return values.BoolType{}, nil
+		return values.BoolType{}, auto, nil
 	case "tinyint":
 		if opt == "(1)" && comment == "Bool" { // TODO: or rather if it's MySQL
-			return values.BoolType{}, nil
+			return values.BoolType{}, auto, nil
 		}
 		fallthrough
 	case "bigint", "int", "integer", "mediumint", "smallint":
 		if strings.HasSuffix(opt, "unsigned") || comment == "UInt" {
-			return values.UIntType{}, nil
+			return values.UIntType{}, auto, nil
 		}
-		return values.IntType{}, nil
+		return values.IntType{}, auto, nil
 	case "timestamp", "datetime", "date", "time":
-		return values.TimeType{}, nil
+		return values.TimeType{}, auto, nil
 	}
-	return nil, fmt.Errorf("unsupported column type: %q", typ)
+	return nil, false, fmt.Errorf("unsupported column type: %q", typ)
 }
 
 func escapeNullByte(s string) string {

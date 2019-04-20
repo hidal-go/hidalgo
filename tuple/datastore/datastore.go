@@ -215,7 +215,7 @@ func (tbl *Table) Clear(ctx context.Context) error {
 	}
 }
 
-func (tbl *Table) key(key tuple.Key) *datastore.Key {
+func (tbl *Table) key(key tuple.Key, auto bool) *datastore.Key {
 	kind := tbl.h.Name
 	var k *datastore.Key
 	for i, c := range tbl.h.Key {
@@ -226,7 +226,11 @@ func (tbl *Table) key(key tuple.Key) *datastore.Key {
 		case values.IntType:
 			k = datastore.IDKey(kind, int64(v.(values.Int)), k)
 		case values.UIntType:
-			k = datastore.IDKey(kind, int64(v.(values.UInt)), k)
+			if auto && c.Auto {
+				k = datastore.IncompleteKey(kind, k)
+			} else {
+				k = datastore.IDKey(kind, int64(v.(values.UInt)), k)
+			}
 		default:
 			d, err := v.MarshalSortable()
 			if err != nil {
@@ -276,38 +280,46 @@ type payload struct {
 }
 
 func (p *payload) Load(props []datastore.Property) error {
-	p.t.Key = make(tuple.Key, len(p.h.Key))
+	keys := false
+	if p.t.Key == nil {
+		keys = true
+		p.t.Key = make(tuple.Key, len(p.h.Key))
+	}
 	p.t.Data = make(tuple.Data, len(p.h.Data))
 	for _, f := range props {
-		if f.Value == nil {
+		if f.Value == nil && !keys {
 			continue
 		}
-		if c, i := p.h.KeyByName(f.Name); c != nil {
-			val := f.Value
-			var v values.Sortable
-			switch c.Type.(type) {
-			case values.BytesType:
-				v = values.Bytes(val.([]byte))
-			case values.StringType:
-				v = values.String(val.(string))
-			case values.IntType:
-				v = values.Int(val.(int64))
-			case values.UIntType:
-				v = values.UInt(val.(int64))
-			case values.BoolType:
-				v = values.Bool(val.(bool))
-			case values.TimeType:
-				v = values.AsTime(val.(time.Time))
-			default:
-				d := c.Type.NewSortable()
-				err := d.UnmarshalSortable(val.([]byte))
-				if err != nil {
-					return err
+		if keys {
+			if c, i := p.h.KeyByName(f.Name); c != nil {
+				val := f.Value
+				var v values.Sortable
+				switch c.Type.(type) {
+				case values.BytesType:
+					v = values.Bytes(val.([]byte))
+				case values.StringType:
+					v = values.String(val.(string))
+				case values.IntType:
+					v = values.Int(val.(int64))
+				case values.UIntType:
+					v = values.UInt(val.(int64))
+				case values.BoolType:
+					v = values.Bool(val.(bool))
+				case values.TimeType:
+					v = values.AsTime(val.(time.Time))
+				default:
+					d := c.Type.NewSortable()
+					err := d.UnmarshalSortable(val.([]byte))
+					if err != nil {
+						return err
+					}
+					v = d.Sortable()
 				}
-				v = d.Sortable()
+				p.t.Key[i] = v
+				continue
 			}
-			p.t.Key[i] = v
-		} else if c, i := p.h.DataByName(f.Name); c != nil {
+		}
+		if c, i := p.h.DataByName(f.Name); c != nil && f.Value != nil {
 			val := f.Value
 			var v values.Value
 			switch c.Type.(type) {
@@ -413,7 +425,8 @@ func (tbl *Table) GetTuple(ctx context.Context, key tuple.Key) (tuple.Data, erro
 		return nil, err
 	}
 	p := &payload{h: &tbl.h}
-	err := tbl.cli().Get(ctx, tbl.key(key), p)
+	p.t.Key = key
+	err := tbl.cli().Get(ctx, tbl.key(key, false), p)
 	if err == datastore.ErrNoSuchEntity {
 		return nil, tuple.ErrNotFound
 	} else if err != nil {
@@ -428,7 +441,7 @@ func (tbl *Table) GetTupleBatch(ctx context.Context, keys []tuple.Key) ([]tuple.
 		if err := tbl.h.ValidateKey(k, false); err != nil {
 			return nil, err
 		}
-		dkeys = append(dkeys, tbl.key(k))
+		dkeys = append(dkeys, tbl.key(k, false))
 	}
 	data := make([]payload, len(keys))
 	for i := range data {
@@ -457,21 +470,25 @@ func (tbl *Table) InsertTuple(ctx context.Context, t tuple.Tuple) (tuple.Key, er
 	if err != nil {
 		return nil, err
 	}
-	k := tbl.key(t.Key)
+	k := tbl.key(t.Key, true)
 	if err := tx.Get(k, &payload{h: &tbl.h}); err == nil {
 		tx.Rollback()
 		return nil, tuple.ErrExists
 	}
-	_, err = tx.Put(k, &payload{h: &tbl.h, t: t})
+	pk, err := tx.Put(k, &payload{h: &tbl.h, t: t})
 	if err != nil {
 		tx.Rollback()
 		return nil, err
 	}
-	_, err = tx.Commit()
+	c, err := tx.Commit()
 	if err != nil {
 		return nil, err
 	}
-	return t.Key, nil
+	if len(tbl.h.Key) == 0 || !tbl.h.Key[0].Auto {
+		return t.Key, nil
+	}
+	id := c.Key(pk)
+	return tuple.Key{values.UInt(id.ID)}, nil
 }
 
 func (tbl *Table) UpdateTuple(ctx context.Context, t tuple.Tuple, opt *tuple.UpdateOpt) error {
@@ -486,14 +503,14 @@ func (tbl *Table) UpdateTuple(ctx context.Context, t tuple.Tuple, opt *tuple.Upd
 		opt = &tuple.UpdateOpt{}
 	}
 	if opt.Upsert {
-		_, err := tbl.cli().Put(ctx, tbl.key(t.Key), &payload{h: &tbl.h, t: t})
+		_, err := tbl.cli().Put(ctx, tbl.key(t.Key, false), &payload{h: &tbl.h, t: t})
 		return err
 	}
 	tx, err := tbl.cli().NewTransaction(ctx)
 	if err != nil {
 		return err
 	}
-	k := tbl.key(t.Key)
+	k := tbl.key(t.Key, false)
 	if err := tx.Get(k, &payload{h: &tbl.h}); err == datastore.ErrNoSuchEntity {
 		return tuple.ErrNotFound
 	}
@@ -521,7 +538,7 @@ func (tbl *Table) DeleteTuplesByKey(ctx context.Context, keys []tuple.Key) error
 		if err := tbl.h.ValidateKey(k, false); err != nil {
 			return err
 		}
-		dkeys = append(dkeys, tbl.key(k))
+		dkeys = append(dkeys, tbl.key(k, false))
 	}
 	return tbl.cli().DeleteMulti(ctx, dkeys)
 }
@@ -570,21 +587,28 @@ func (it *Iterator) Next(ctx context.Context) bool {
 	}
 	return tuple.FilterIterator(it, it.f, func() bool {
 		it.t = tuple.Tuple{}
-		p := &payload{h: &it.tbl.h}
-		var key *datastore.Key
-		key, it.err = it.it.Next(p)
+		var (
+			p   *payload
+			key *datastore.Key
+			dst interface{}
+		)
+		if !it.keysOnly {
+			p = &payload{h: &it.tbl.h}
+			p.t.Key = tuple.Key{} // disable key parsing
+			dst = p
+		}
+		key, it.err = it.it.Next(dst)
 		if it.err != nil {
 			return false
 		}
-		if it.keysOnly {
-			k, err := it.tbl.parseKey(key)
-			if err != nil {
-				it.err = err
-				return false
-			}
-			it.t = tuple.Tuple{Key: k}
-		} else {
-			it.t = p.t
+		k, err := it.tbl.parseKey(key)
+		if err != nil {
+			it.err = err
+			return false
+		}
+		it.t = tuple.Tuple{Key: k}
+		if p != nil {
+			it.t.Data = p.t.Data
 		}
 		return true
 	})

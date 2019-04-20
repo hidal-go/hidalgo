@@ -24,9 +24,11 @@ func init() {
 		},
 		Dialect: sqltuple.Dialect{
 			BytesType:               "BYTEA",
+			AutoType:                "BIGSERIAL",
 			QuoteIdentifierFunc:     pq.QuoteIdentifier,
 			DefaultSchema:           "public",
 			Unsigned:                false,
+			Returning:               true,
 			OnConflict:              true,
 			NoIteratorsWhenMutating: true,
 			Placeholder: func(i int) string {

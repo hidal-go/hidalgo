@@ -96,17 +96,22 @@ func (s *sqlStore) queryRow(ctx context.Context, tx *sql.Tx, qu string, args ...
 	return tx.QueryRowContext(ctx, qu, args...)
 }
 
-func (s *sqlStore) exec(ctx context.Context, tx *sql.Tx, qu string, args ...interface{}) error {
+func (s *sqlStore) querybRow(ctx context.Context, tx *sql.Tx, b *Builder) *sql.Row {
+	qu, args := b.String(), b.Args()
+	return s.queryRow(ctx, tx, qu, args...)
+}
+
+func (s *sqlStore) exec(ctx context.Context, tx *sql.Tx, qu string, args ...interface{}) (sql.Result, error) {
 	if debug {
 		log.Println(append([]interface{}{qu}, args...)...)
 	}
 	// TODO: prepare automatically
-	_, err := tx.ExecContext(ctx, qu, args...)
+	res, err := tx.ExecContext(ctx, qu, args...)
 	err = s.convError(err)
-	return err
+	return res, err
 }
 
-func (s *sqlStore) execb(ctx context.Context, tx *sql.Tx, b *Builder) error {
+func (s *sqlStore) execb(ctx context.Context, tx *sql.Tx, b *Builder) (sql.Result, error) {
 	qu, args := b.String(), b.Args()
 	return s.exec(ctx, tx, qu, args...)
 }
@@ -129,7 +134,7 @@ func (s *sqlStore) Tx(rw bool) (tuple.Tx, error) {
 	}
 	return &sqlTx{db: s, dia: &s.dia, tx: tx, rw: rw}, nil
 }
-func (s *sqlStore) nativeType(typ, comment string) (values.Type, error) {
+func (s *sqlStore) nativeType(typ, comment string) (values.Type, bool, error) {
 	return s.dia.nativeType(typ, comment)
 }
 
@@ -183,7 +188,7 @@ func (s *sqlStore) tableWith(ctx context.Context, tx *sql.Tx, name string) (tupl
 		return nil, ErrTableNotFound
 	}
 	for _, c := range cols {
-		typ, err := s.nativeType(c.Type, c.Comment.String)
+		typ, auto, err := s.nativeType(c.Type, c.Comment.String)
 		if err != nil {
 			return nil, err
 		}
@@ -195,6 +200,7 @@ func (s *sqlStore) tableWith(ctx context.Context, tx *sql.Tx, name string) (tupl
 			header.Key = append(header.Key, tuple.KeyField{
 				Name: c.Name,
 				Type: kt,
+				Auto: auto,
 			})
 		} else {
 			header.Data = append(header.Data, tuple.Field{
@@ -308,7 +314,11 @@ func (tx *sqlTx) CreateTable(ctx context.Context, table tuple.Header) (tuple.Tab
 		b.Write("\n\t")
 		b.Idents(f.Name)
 		b.Write(" ")
-		b.Write(tbl.sqlColumnDef(f.Type, true))
+		if f.Auto {
+			b.Write(tbl.sqlColumnAuto())
+		} else {
+			b.Write(tbl.sqlColumnDef(f.Type, true))
+		}
 	}
 	for _, f := range table.Data {
 		b.Write(",\n\t")
@@ -323,28 +333,34 @@ func (tx *sqlTx) CreateTable(ctx context.Context, table tuple.Header) (tuple.Tab
 		b.Write(")")
 	}
 	b.Write("\n);")
-	err := tx.db.execb(ctx, tx.tx, b)
+	_, err := tx.db.execb(ctx, tx.tx, b)
 	if err != nil {
 		return nil, err
 	}
 	b.Reset()
 	if dia := tbl.tx.dia; dia.ColumnCommentInline == nil && dia.ColumnCommentSet != nil {
-		setComment := func(col string, t values.Type) error {
-			c := dia.sqlColumnComment(t)
+		setComment := func(col string, t values.Type, auto bool) error {
+			var c string
+			if auto {
+				c = dia.sqlColumnCommentAuto()
+			} else {
+				c = dia.sqlColumnComment(t)
+			}
 			if c == "" {
 				return nil
 			}
 			b.Reset()
 			dia.ColumnCommentSet(b, tbl.h.Name, col, c)
-			return tx.db.execb(ctx, tx.tx, b)
+			_, err := tx.db.execb(ctx, tx.tx, b)
+			return err
 		}
 		for _, f := range table.Key {
-			if err := setComment(f.Name, f.Type); err != nil {
+			if err := setComment(f.Name, f.Type, f.Auto); err != nil {
 				return nil, err
 			}
 		}
 		for _, f := range table.Data {
-			if err := setComment(f.Name, f.Type); err != nil {
+			if err := setComment(f.Name, f.Type, false); err != nil {
 				return nil, err
 			}
 		}
@@ -372,6 +388,14 @@ func (tbl *sqlTable) sqlColumnDef(t values.Type, key bool) string {
 	return tbl.sqlType(t, key) + tbl.tx.dia.sqlColumnCommentInline(t)
 }
 
+func (tbl *sqlTable) sqlColumnAuto() string {
+	c := tbl.tx.dia.AutoType
+	if c == "" {
+		c = tbl.sqlType(values.UIntType{}, true) + " AUTO_INCREMENT"
+	}
+	return c + tbl.tx.dia.sqlColumnCommentAutoInline()
+}
+
 func (tbl *sqlTable) Drop(ctx context.Context) error {
 	if !tbl.tx.rw {
 		return tuple.ErrReadOnly
@@ -379,7 +403,8 @@ func (tbl *sqlTable) Drop(ctx context.Context) error {
 	b := tbl.sql()
 	b.Write(`DROP TABLE `)
 	b.Idents(tbl.h.Name)
-	return tbl.tx.db.execb(ctx, tbl.tx.tx, b)
+	_, err := tbl.tx.db.execb(ctx, tbl.tx.tx, b)
+	return err
 }
 
 func (tbl *sqlTable) Clear(ctx context.Context) error {
@@ -389,7 +414,8 @@ func (tbl *sqlTable) Clear(ctx context.Context) error {
 	b := tbl.sql()
 	b.Write(`TRUNCATE TABLE `)
 	b.Idents(tbl.h.Name)
-	return tbl.tx.db.execb(ctx, tbl.tx.tx, b)
+	_, err := tbl.tx.db.execb(ctx, tbl.tx.tx, b)
+	return err
 }
 func (tbl *sqlTable) convValue(v values.Value) interface{} {
 	if v == nil {
@@ -561,23 +587,48 @@ func (tbl *sqlTable) InsertTuple(ctx context.Context, t tuple.Tuple) (tuple.Key,
 	} else if err = tbl.h.ValidateData(t.Data); err != nil {
 		return nil, err
 	}
+	auto := false
 	if tbl.h.Key[0].Auto {
-		// FIXME: auto fields
-		return nil, fmt.Errorf("auto fields are not yet supported")
+		auto = true
 	}
 	b := tbl.sql()
 	b.Write("INSERT INTO ")
 	b.Idents(tbl.h.Name)
 	b.Write("(")
-	b.Idents(tbl.names()...)
+	if auto {
+		b.Idents(tbl.payloadNames()...)
+	} else {
+		b.Idents(tbl.names()...)
+	}
 	b.Write(") VALUES (")
-	b.Place(tbl.appendTuple(nil, t)...)
+	if auto {
+		b.Place(tbl.appendData(nil, t.Data)...)
+	} else {
+		b.Place(tbl.appendTuple(nil, t)...)
+	}
 	b.Write(")")
-	err := tbl.tx.db.execb(ctx, tbl.tx.tx, b)
+	if auto && tbl.tx.dia.Returning {
+		b.Write(" RETURNING ")
+		b.Idents(tbl.h.Key[0].Name)
+		var id uint64
+		err := tbl.tx.db.querybRow(ctx, tbl.tx.tx, b).Scan(&id)
+		if err != nil {
+			return nil, err
+		}
+		return tuple.Key{values.UInt(id)}, nil
+	}
+	res, err := tbl.tx.db.execb(ctx, tbl.tx.tx, b)
 	if err != nil {
 		return nil, err
 	}
-	return t.Key, nil
+	if !auto {
+		return t.Key, nil
+	}
+	id, err := res.LastInsertId()
+	if err != nil {
+		return nil, err
+	}
+	return tuple.Key{values.UInt(id)}, nil
 }
 
 func (tbl *sqlTable) sql() *Builder {
@@ -600,7 +651,8 @@ func (tbl *sqlTable) UpdateTuple(ctx context.Context, t tuple.Tuple, opt *tuple.
 		b.EqPlace(tbl.payloadNames(), tbl.appendData(nil, t.Data))
 		b.Write(` WHERE `)
 		b.EqPlaceAnd(tbl.keyNames(), tbl.appendKey(nil, t.Key))
-		return tbl.tx.db.execb(ctx, tbl.tx.tx, b)
+		_, err := tbl.tx.db.execb(ctx, tbl.tx.tx, b)
+		return err
 	}
 	dia := tbl.tx.dia
 	if dia.OnConflict {
@@ -615,7 +667,8 @@ func (tbl *sqlTable) UpdateTuple(ctx context.Context, t tuple.Tuple, opt *tuple.
 		b.Idents(tbl.h.Name + "_pkey") // TODO: should be in the dialect
 		b.Write(` DO UPDATE SET `)
 		b.EqPlace(tbl.payloadNames(), tbl.appendData(nil, t.Data))
-		return tbl.tx.db.execb(ctx, tbl.tx.tx, b)
+		_, err := tbl.tx.db.execb(ctx, tbl.tx.tx, b)
+		return err
 	}
 	if dia.ReplaceStmt {
 		b := tbl.sql()
@@ -626,7 +679,8 @@ func (tbl *sqlTable) UpdateTuple(ctx context.Context, t tuple.Tuple, opt *tuple.
 		b.Write(") VALUES (")
 		b.Place(tbl.appendTuple(nil, t)...)
 		b.Write(")")
-		return tbl.tx.db.execb(ctx, tbl.tx.tx, b)
+		_, err := tbl.tx.db.execb(ctx, tbl.tx.tx, b)
+		return err
 	}
 	return fmt.Errorf("upsert is not supported")
 }
@@ -646,7 +700,8 @@ func (tbl *sqlTable) DeleteTuples(ctx context.Context, f *tuple.Filter) error {
 			b.Write(" WHERE ")
 			where(b)
 		}
-		return tbl.tx.db.execb(ctx, tbl.tx.tx, b)
+		_, err := tbl.tx.db.execb(ctx, tbl.tx.tx, b)
+		return err
 	}
 	// some filter were optimized, but some still remain
 	// fallback to iterate + delete
@@ -678,7 +733,8 @@ func (tbl *sqlTable) DeleteTuples(ctx context.Context, f *tuple.Filter) error {
 		b.Idents(tbl.h.Name)
 		b.Write(" WHERE ")
 		b.EqPlaceAnd(tbl.keyNames(), tbl.appendKey(nil, k))
-		return tbl.tx.db.execb(ctx, tbl.tx.tx, b)
+		_, err := tbl.tx.db.execb(ctx, tbl.tx.tx, b)
+		return err
 	}
 
 	if tbl.tx.dia.NoIteratorsWhenMutating {

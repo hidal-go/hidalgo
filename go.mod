@@ -29,7 +29,7 @@ require (
 	github.com/gopherjs/jsbuiltin v0.0.0-20180426082241-50091555e127 // indirect
 	github.com/gotestyourself/gotestyourself v2.2.0+incompatible // indirect
 	github.com/imdario/mergo v0.3.7 // indirect
-	github.com/lib/pq v1.0.0
+	github.com/lib/pq v1.1.0
 	github.com/onsi/ginkgo v1.7.0 // indirect
 	github.com/onsi/gomega v1.4.3 // indirect
 	github.com/opencontainers/go-digest v1.0.0-rc1 // indirect

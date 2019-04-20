@@ -6,6 +6,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
 	"github.com/hidal-go/hidalgo/filter"
 	hkv "github.com/hidal-go/hidalgo/kv"
 	"github.com/hidal-go/hidalgo/kv/flat"
@@ -13,7 +16,6 @@ import (
 	"github.com/hidal-go/hidalgo/tuple"
 	"github.com/hidal-go/hidalgo/tuple/kv"
 	"github.com/hidal-go/hidalgo/values"
-	"github.com/stretchr/testify/require"
 )
 
 // Func is a constructor for database implementations.
@@ -49,15 +51,16 @@ func RunTest(t *testing.T, fnc Func) {
 
 var testList = []struct {
 	name string
-	test func(t testing.TB, db tuple.Store)
+	test func(t *testing.T, db tuple.Store)
 }{
 	{name: "basic", test: basic},
 	{name: "typed", test: typed},
 	{name: "scans", test: scans},
 	{name: "tables", test: tables},
+	{name: "auto", test: auto},
 }
 
-func basic(t testing.TB, db tuple.Store) {
+func basic(t *testing.T, db tuple.Store) {
 	tx, err := db.Tx(true)
 	require.NoError(t, err)
 	defer tx.Close()
@@ -100,7 +103,7 @@ func basic(t testing.TB, db tuple.Store) {
 	}, tuples)
 }
 
-func typed(t testing.TB, db tuple.Store) {
+func typed(t *testing.T, db tuple.Store) {
 	tx, err := db.Tx(true)
 	require.NoError(t, err)
 	defer tx.Close()
@@ -192,7 +195,7 @@ func typed(t testing.TB, db tuple.Store) {
 	}, tuples)
 }
 
-func scans(t testing.TB, db tuple.Store) {
+func scans(t *testing.T, db tuple.Store) {
 	tx, err := db.Tx(true)
 	require.NoError(t, err)
 	defer tx.Close()
@@ -274,12 +277,21 @@ func scans(t testing.TB, db tuple.Store) {
 	scan([]string{"a", "aa", "b"}, 3)
 }
 
-func tables(t testing.TB, db tuple.Store) {
+func tables(t *testing.T, db tuple.Store) {
+	t.Run("simple", func(t *testing.T) {
+		tablesSimple(t, db)
+	})
+	t.Run("auto", func(t *testing.T) {
+		tablesAuto(t, db)
+	})
+}
+
+func tablesSimple(t testing.TB, db tuple.Store) {
 	ctx := context.Background()
-	const name1 = "test1"
+	const name = "test1"
 
 	schema := tuple.Header{
-		Name: name1,
+		Name: name,
 		Key: []tuple.KeyField{
 			{Name: "key1", Type: values.StringType{}},
 		},
@@ -288,13 +300,22 @@ func tables(t testing.TB, db tuple.Store) {
 		},
 	}
 
-	tx, err := db.Tx(false)
-	require.NoError(t, err)
+	newTx := func(rw bool) tuple.Tx {
+		tx, err := db.Tx(rw)
+		require.NoError(t, err)
+		return tx
+	}
+
+	tx := newTx(false)
+
+	notExists := func() {
+		tbl, err := tx.Table(ctx, name)
+		require.Equal(t, tuple.ErrTableNotFound, err)
+		require.Nil(t, tbl)
+	}
 
 	// access table when it not exists
-	tbl, err := tx.Table(ctx, name1)
-	require.Equal(t, tuple.ErrTableNotFound, err)
-	require.Nil(t, tbl)
+	notExists()
 
 	list, err := tx.ListTables(ctx)
 	require.NoError(t, err)
@@ -304,15 +325,16 @@ func tables(t testing.TB, db tuple.Store) {
 	_, err = tx.CreateTable(ctx, schema)
 	require.Equal(t, tuple.ErrReadOnly, err)
 
+	notExists()
+
 	err = tx.Close()
 	require.NoError(t, err)
 
 	// reopen read-write transaction
-	tx, err = db.Tx(true)
-	require.NoError(t, err)
+	tx = newTx(true)
 
 	// table should not exist after failed creation
-	tbl, err = tx.Table(ctx, name1)
+	tbl, err := tx.Table(ctx, name)
 	require.Equal(t, tuple.ErrTableNotFound, err)
 	require.Nil(t, tbl)
 
@@ -324,16 +346,112 @@ func tables(t testing.TB, db tuple.Store) {
 	err = tx.Commit(ctx)
 	require.NoError(t, err)
 
-	tx, err = db.Tx(false)
+	tx = newTx(true)
+
+	tbl, err = tx.Table(ctx, name)
+	require.NoError(t, err)
+	assert.Equal(t, schema, tbl.Header())
+
+	err = tbl.Drop(ctx)
 	require.NoError(t, err)
 
-	tbl, err = tx.Table(ctx, name1)
+	tbl, err = tx.Table(ctx, name)
+	require.Equal(t, tuple.ErrTableNotFound, err)
+	require.Nil(t, tbl)
+
+	err = tx.Commit(ctx)
 	require.NoError(t, err)
-	require.NotNil(t, tbl)
+
+	tx = newTx(false)
+
+	notExists()
 
 	err = tx.Close()
 	require.NoError(t, err)
 
 	// TODO: test multiple tables
 	// TODO: test different headers (only keys, only values)
+}
+
+func tablesAuto(t testing.TB, db tuple.Store) {
+	ctx := context.Background()
+	const name = "test2"
+
+	schema := tuple.Header{
+		Name: name,
+		Key: []tuple.KeyField{
+			{Name: "key1", Type: values.UIntType{}, Auto: true},
+		},
+		Data: []tuple.Field{
+			{Name: "val1", Type: values.StringType{}},
+		},
+	}
+
+	newTx := func(rw bool) tuple.Tx {
+		tx, err := db.Tx(rw)
+		require.NoError(t, err)
+		return tx
+	}
+
+	tx := newTx(true)
+
+	tbl, err := tx.CreateTable(ctx, schema)
+	require.NoError(t, err)
+	require.NotNil(t, tbl)
+
+	err = tx.Commit(ctx)
+	require.NoError(t, err)
+
+	tx = newTx(false)
+
+	tbl, err = tx.Table(ctx, name)
+	require.NoError(t, err)
+	assert.Equal(t, schema, tbl.Header())
+
+	err = tx.Close()
+	require.NoError(t, err)
+}
+
+func auto(t *testing.T, db tuple.Store) {
+	tx, err := db.Tx(true)
+	require.NoError(t, err)
+	defer tx.Close()
+
+	ctx := context.TODO()
+	tbl, err := tx.CreateTable(ctx, tuple.Header{
+		Name: "test",
+		Key: []tuple.KeyField{
+			{Name: "k1", Type: values.UIntType{}, Auto: true},
+		},
+		Data: []tuple.Field{
+			{Name: "f1", Type: values.StringType{}},
+		},
+	})
+	require.NoError(t, err)
+
+	v1 := tuple.SData("1")
+	k1, err := tbl.InsertTuple(ctx, tuple.Tuple{
+		Key: tuple.AutoKey(), Data: v1,
+	})
+	require.NoError(t, err)
+	require.Equal(t, 1, len(k1))
+	require.NotNil(t, k1[0])
+
+	v2, err := tbl.GetTuple(ctx, k1)
+	require.NoError(t, err)
+	require.Equal(t, v1, v2)
+
+	it := tbl.Scan(&tuple.ScanOptions{Sort: tuple.SortAsc})
+	defer it.Close()
+
+	var tuples []tuple.Tuple
+	for it.Next(ctx) {
+		tuples = append(tuples, tuple.Tuple{
+			Key: it.Key(), Data: it.Data(),
+		})
+	}
+	require.NoError(t, it.Err())
+	require.Equal(t, []tuple.Tuple{
+		{Key: k1, Data: v1},
+	}, tuples)
 }

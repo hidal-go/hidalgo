@@ -196,6 +196,11 @@ func SKey(key ...string) Key {
 	return out
 }
 
+// AutoKey returns an auto-increment key value for insert.
+func AutoKey() Key {
+	return Key{nil}
+}
+
 // Data is a tuple payload.
 type Data []Value
 

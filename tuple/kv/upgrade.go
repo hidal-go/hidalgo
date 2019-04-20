@@ -51,6 +51,14 @@ func (db *tupleStore) tableSchema(name string) kv.Key {
 	return k
 }
 
+func (db *tupleStore) tableAuto(name string) kv.Key {
+	k := kv.SKey("system", "auto")
+	if name != "" {
+		k = k.AppendBytes([]byte(name))
+	}
+	return k
+}
+
 func (db *tupleStore) tableWith(ctx context.Context, tx kv.Tx, name string) (*tupleTableInfo, error) {
 	// TODO: cache
 	data, err := tx.Get(ctx, db.tableSchema(name))
@@ -210,6 +218,10 @@ func (tbl *tupleTable) schema() kv.Key {
 	return tbl.tx.db.tableSchema(tbl.h.Name)
 }
 
+func (tbl *tupleTable) auto() kv.Key {
+	return tbl.tx.db.tableAuto(tbl.h.Name)
+}
+
 func toKvKey(k tuple.Key) kv.Key {
 	if k == nil {
 		return nil
@@ -352,6 +364,30 @@ func (tbl *tupleTable) GetTupleBatch(ctx context.Context, key []tuple.Key) ([]tu
 	return rows, nil
 }
 
+func (tbl *tupleTable) nextAuto(ctx context.Context) (tuple.Key, error) {
+	key := tbl.auto()
+	v, err := tbl.tx.tx.Get(ctx, key)
+	if err == kv.ErrNotFound {
+		// first - set to 0
+		v = kv.Value{0}
+	} else if err != nil {
+		return nil, err
+	}
+	var last values.UInt
+	if err = last.UnmarshalBinary(v); err != nil {
+		return nil, err
+	}
+	last++
+	data, err := last.MarshalBinary()
+	if err != nil {
+		return nil, err
+	}
+	if err = tbl.tx.tx.Put(key, kv.Value(data)); err != nil {
+		return nil, err
+	}
+	return tuple.Key{last}, nil
+}
+
 func (tbl *tupleTable) InsertTuple(ctx context.Context, t tuple.Tuple) (tuple.Key, error) {
 	if err := tbl.h.ValidateKey(t.Key, true); err != nil {
 		return nil, err
@@ -359,8 +395,11 @@ func (tbl *tupleTable) InsertTuple(ctx context.Context, t tuple.Tuple) (tuple.Ke
 		return nil, err
 	}
 	if tbl.h.Key[0].Auto {
-		// FIXME: auto fields
-		return nil, fmt.Errorf("auto fields are not yet supported")
+		key, err := tbl.nextAuto(ctx)
+		if err != nil {
+			return nil, err
+		}
+		t.Key = key
 	}
 	key := tbl.row(t.Key)
 	_, err := tbl.tx.tx.Get(ctx, key)
