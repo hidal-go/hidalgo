@@ -89,14 +89,25 @@ type Tx struct {
 	tx *bolt.Tx
 }
 
+func (tx *Tx) root() *bolt.Bucket {
+	// a hack to get the root bucket
+	c := tx.tx.Cursor()
+	return c.Bucket()
+}
+
 func (tx *Tx) bucket(key kv.Key) (*bolt.Bucket, kv.Key) {
-	b := tx.tx.Bucket([]byte(root))
+	if len(key) <= 1 {
+		return tx.root(), key
+	}
+	b := tx.tx.Bucket(key[0])
+	key = key[1:]
 	for b != nil && len(key) > 1 {
 		b = b.Bucket(key[0])
 		key = key[1:]
 	}
 	return b, key
 }
+
 func (tx *Tx) Get(ctx context.Context, key kv.Key) (kv.Value, error) {
 	b, k := tx.bucket(key)
 	if b == nil || len(k) != 1 {
@@ -108,6 +119,7 @@ func (tx *Tx) Get(ctx context.Context, key kv.Key) (kv.Value, error) {
 	}
 	return v, nil
 }
+
 func (tx *Tx) GetBatch(ctx context.Context, keys []kv.Key) ([]kv.Value, error) {
 	vals := make([]kv.Value, len(keys))
 	for i, k := range keys {
@@ -121,11 +133,22 @@ func (tx *Tx) GetBatch(ctx context.Context, keys []kv.Key) ([]kv.Value, error) {
 func (tx *Tx) Commit(ctx context.Context) error {
 	return tx.tx.Commit()
 }
+
 func (tx *Tx) Close() error {
 	return tx.tx.Rollback()
 }
+
 func (tx *Tx) Put(k kv.Key, v kv.Value) error {
-	b, err := tx.tx.CreateBucketIfNotExists([]byte(root))
+	var (
+		b   *bolt.Bucket
+		err error
+	)
+	if len(k) <= 1 {
+		b = tx.root()
+	} else {
+		b, err = tx.tx.CreateBucketIfNotExists(k[0])
+		k = k[1:]
+	}
 	for err == nil && b != nil && len(k) > 1 {
 		b, err = b.CreateBucketIfNotExists(k[0])
 		k = k[1:]
@@ -137,6 +160,7 @@ func (tx *Tx) Put(k kv.Key, v kv.Value) error {
 	}
 	return b.Put(k[0], v)
 }
+
 func (tx *Tx) Del(k kv.Key) error {
 	b, k := tx.bucket(k)
 	if b == nil || len(k) != 1 {
@@ -144,6 +168,7 @@ func (tx *Tx) Del(k kv.Key) error {
 	}
 	return b.Delete(k[0])
 }
+
 func (tx *Tx) Scan(pref kv.Key) kv.Iterator {
 	kpref := pref
 	b, p := tx.bucket(pref)
@@ -214,6 +239,7 @@ func (it *Iterator) Next(ctx context.Context) bool {
 	}
 	return false
 }
+
 func (it *Iterator) Key() kv.Key {
 	if len(it.b) == 0 {
 		return nil
@@ -222,12 +248,15 @@ func (it *Iterator) Key() kv.Key {
 	k = append(k, append([]byte{}, it.k...))
 	return k
 }
+
 func (it *Iterator) Val() kv.Value {
 	return it.v
 }
+
 func (it *Iterator) Err() error {
 	return nil
 }
+
 func (it *Iterator) Close() error {
 	*it = Iterator{}
 	return nil
