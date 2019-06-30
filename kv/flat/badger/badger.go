@@ -52,10 +52,15 @@ func OpenPath(path string) (flat.KV, error) {
 }
 
 type DB struct {
-	db *badger.DB
+	db     *badger.DB
+	closed bool
 }
 
 func (db *DB) Close() error {
+	if db.closed {
+		return nil
+	}
+	db.closed = true
 	return db.db.Close()
 }
 

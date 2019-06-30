@@ -38,6 +38,7 @@ func RunTestLocal(t *testing.T, open kv.OpenPathFunc) {
 		}
 		return db, func() {
 			db.Close()
+			db.Close() // test double close
 			os.RemoveAll(dir)
 		}
 	})
