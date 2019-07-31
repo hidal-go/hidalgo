@@ -1,10 +1,12 @@
 package mongotest
 
 import (
+	"context"
 	"testing"
 
-	"github.com/globalsign/mgo"
 	"github.com/ory/dockertest"
+	gomongo "go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
 
 	"github.com/hidal-go/hidalgo/legacy/nosql"
 	"github.com/hidal-go/hidalgo/legacy/nosql/mongo"
@@ -36,11 +38,16 @@ func MongoVersion(vers string) nosqltest.Database {
 			addr := cont.GetHostPort("27017/tcp")
 
 			err = pool.Retry(func() error {
-				sess, err := mgo.Dial(addr)
+				sess, err := gomongo.NewClient(options.Client().ApplyURI(addr))
+				if err != nil {
+					t.Fatal(err)
+				}
+				//sess.Connect(context.TODO())
+
 				if err != nil {
 					return err
 				}
-				sess.Close()
+				sess.Disconnect(context.TODO())
 				return nil
 			})
 			if err != nil {

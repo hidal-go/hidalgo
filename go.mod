@@ -19,7 +19,6 @@ require (
 	github.com/flimzy/kivik v1.8.1 // indirect
 	github.com/flimzy/testy v0.1.16 // indirect
 	github.com/fortytw2/leaktest v1.3.0 // indirect
-	github.com/globalsign/mgo v0.0.0-20181015135952-eeefdecb41b8
 	github.com/go-kivik/couchdb v1.8.1
 	github.com/go-kivik/kivik v1.8.1
 	github.com/go-kivik/kiviktest v1.1.2 // indirect
@@ -49,10 +48,15 @@ require (
 	github.com/sirupsen/logrus v1.4.1 // indirect
 	github.com/stretchr/testify v1.3.0
 	github.com/syndtr/goleveldb v1.0.0
+	github.com/tidwall/pretty v1.0.0 // indirect
+	github.com/xdg/scram v0.0.0-20180814205039-7eeb5667e42c // indirect
+	github.com/xdg/stringprep v1.0.0 // indirect
 	go.etcd.io/bbolt v1.3.2 // indirect
+	go.mongodb.org/mongo-driver v1.0.4
 	go.opencensus.io v0.20.2 // indirect
-	golang.org/x/net v0.0.0-20190420063019-afa5a82059c6 // indirect
+	golang.org/x/net v0.0.0-20190620200207-3b0461eec859 // indirect
 	golang.org/x/oauth2 v0.0.0-20190402181905-9f3314589c9a // indirect
+	golang.org/x/sync v0.0.0-20190423024810-112230192c58 // indirect
 	golang.org/x/sys v0.0.0-20190419153524-e8e3143a4f4a // indirect
 	google.golang.org/api v0.3.2
 	google.golang.org/appengine v1.5.0 // indirect

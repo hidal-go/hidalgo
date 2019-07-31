@@ -2,17 +2,22 @@ package mongo
 
 import (
 	"context"
-	"encoding/base64"
 	"fmt"
+	"net/url"
 	"strings"
 	"time"
 
-	"github.com/globalsign/mgo"
-	"github.com/globalsign/mgo/bson"
-
 	"github.com/hidal-go/hidalgo/base"
 	"github.com/hidal-go/hidalgo/legacy/nosql"
+
+	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
+	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
 )
+
+type Doc struct {
+}
 
 const Name = "mongo"
 
@@ -43,29 +48,37 @@ func init() {
 	})
 }
 
-func dialMongo(addr string, dbName string, options nosql.Options) (*mgo.Session, error) {
-	if connVal, ok := options["session"]; ok {
-		if conn, ok := connVal.(*mgo.Session); ok {
+func dialMongo(addr string, dbName string, noSqloptions nosql.Options) (*mongo.Client, error) {
+	if connVal, ok := noSqloptions["session"]; ok {
+		if conn, ok := connVal.(*mongo.Client); ok {
 			return conn, nil
 		}
 	}
 	if strings.HasPrefix(addr, "mongodb://") || strings.ContainsAny(addr, `@/\`) {
 		// full mongodb url
-		return mgo.Dial(addr)
+		client, err := mongo.NewClient(options.Client().ApplyURI(addr))
+
+		if err != nil {
+			return nil, err
+		}
+		return client, client.Connect(nil)
 	}
-	var dialInfo mgo.DialInfo
-	dialInfo.Addrs = strings.Split(addr, ",")
-	if user := options.GetString("username", ""); user != "" {
-		dialInfo.Username = user
-		dialInfo.Password = options.GetString("password", "")
+	var connString = "mogodb://"
+
+	if user := noSqloptions.GetString("username", ""); user != "" {
+		connString = fmt.Sprintf("%s%s:%s", connString, url.QueryEscape(user), url.QueryEscape(noSqloptions.GetString("password", "")))
 	}
-	dialInfo.Database = options.GetString("database_name", dbName)
-	return mgo.DialWithInfo(&dialInfo)
+	connString = fmt.Sprintf("%s%s/%s", connString, addr, dbName)
+	client, err := mongo.NewClient(options.Client().ApplyURI(connString))
+	if err != nil {
+		return nil, err
+	}
+	return client, client.Connect(context.TODO())
 }
 
-func New(sess *mgo.Session) (*DB, error) {
+func New(sess *mongo.Client) (*DB, error) {
 	return &DB{
-		sess: sess, db: sess.DB(""),
+		sess: sess, db: sess.Database(""),
 		colls: make(map[string]collection),
 	}, nil
 }
@@ -79,47 +92,66 @@ func Dial(addr string, dbName string, opt nosql.Options) (*DB, error) {
 }
 
 type collection struct {
-	c         *mgo.Collection
+	c         *mongo.Collection
 	compPK    bool // compose PK from existing keys; if false, use _id instead of target field
 	primary   nosql.Index
 	secondary []nosql.Index
 }
 
 type DB struct {
-	sess  *mgo.Session
-	db    *mgo.Database
+	sess  *mongo.Client
+	db    *mongo.Database
 	colls map[string]collection
 }
 
 func (db *DB) Close() error {
-	db.sess.Close()
+	db.sess.Disconnect(context.TODO())
 	return nil
 }
 func (db *DB) EnsureIndex(ctx context.Context, col string, primary nosql.Index, secondary []nosql.Index) error {
 	if primary.Type != nosql.StringExact {
 		return fmt.Errorf("unsupported type of primary index: %v", primary.Type)
 	}
-	c := db.db.C(col)
+	c := db.db.Collection(col)
 	compPK := len(primary.Fields) != 1
 	if compPK {
-		err := c.EnsureIndex(mgo.Index{
-			Key:    []string(primary.Fields),
-			Unique: true,
-		})
+		indexView := c.Indexes()
+		indexOptions := options.Index().SetUnique(true)
+		keys := bson.D{{}}
+
+		for _, field := range primary.Fields {
+			keys = append(keys, primitive.E{Key: field, Value: 1})
+		}
+		index := mongo.IndexModel{}
+		index.Keys = keys
+		index.Options = indexOptions
+
+		_, err := indexView.CreateOne(nil, index)
+
 		if err != nil {
 			return err
 		}
 	}
 	for _, ind := range secondary {
-		err := c.EnsureIndex(mgo.Index{
-			Key:        []string(ind.Fields),
-			Unique:     false,
-			Background: true,
-			Sparse:     true,
-		})
+		indexView := c.Indexes()
+
+		indexOptions := options.Index().SetUnique(false).SetSparse(true).SetBackground(true)
+
+		keys := bson.D{{}}
+
+		for _, field := range ind.Fields {
+			keys = append(keys, primitive.E{Key: field, Value: 1})
+		}
+		index := mongo.IndexModel{}
+		index.Keys = keys
+		index.Options = indexOptions
+
+		_, err := indexView.CreateOne(ctx, index)
+
 		if err != nil {
 			return err
 		}
+
 	}
 	db.colls[col] = collection{
 		c:         c,
@@ -170,7 +202,7 @@ func fromBsonValue(v interface{}) nosql.Value {
 			arr = append(arr, string(str))
 		}
 		return arr
-	case bson.ObjectId:
+	case primitive.ObjectID:
 		return nosql.String(objidString(v))
 	case string:
 		return nosql.String(v)
@@ -260,7 +292,7 @@ func getOrGenID(key nosql.Key) (nosql.Key, string) {
 	var mid string
 	if key == nil {
 		// TODO: maybe allow to pass custom key types as nosql.Key
-		oid := objidString(bson.NewObjectId())
+		oid := objidString(primitive.NewObjectID())
 		mid = oid
 		key = nosql.Key{oid}
 	} else {
@@ -280,8 +312,8 @@ func (c *collection) convIns(key nosql.Key, d nosql.Document) (nosql.Key, bson.M
 	return key, m
 }
 
-func objidString(id bson.ObjectId) string {
-	return base64.StdEncoding.EncodeToString([]byte(id))
+func objidString(id primitive.ObjectID) string {
+	return id.Hex()
 }
 
 func compKey(key nosql.Key) string {
@@ -297,7 +329,7 @@ func (db *DB) Insert(ctx context.Context, col string, key nosql.Key, d nosql.Doc
 		return nil, fmt.Errorf("collection %q not found", col)
 	}
 	key, m := c.convIns(key, d)
-	if err := c.c.Insert(m); err != nil {
+	if _, err := c.c.InsertOne(ctx, m); err != nil {
 		return nil, err
 	}
 	return key, nil
@@ -305,8 +337,16 @@ func (db *DB) Insert(ctx context.Context, col string, key nosql.Key, d nosql.Doc
 func (db *DB) FindByKey(ctx context.Context, col string, key nosql.Key) (nosql.Document, error) {
 	c := db.colls[col]
 	var m bson.M
-	err := c.c.FindId(compKey(key)).One(&m)
-	if err == mgo.ErrNotFound {
+	objId, err := primitive.ObjectIDFromHex(compKey(key))
+
+	if err != nil {
+		return nil, err
+	}
+	res := c.c.FindOne(ctx, bson.M{"_id": objId})
+	elem := &Doc{}
+	err = res.Decode(elem)
+
+	if err == mongo.ErrNoDocuments {
 		return nil, nosql.ErrNotFound
 	} else if err != nil {
 		return nil, err
@@ -396,51 +436,76 @@ func (q *Query) Limit(n int) nosql.Query {
 	q.limit = n
 	return q
 }
-func (q *Query) build() *mgo.Query {
+func (q *Query) build() (*mongo.Cursor, error) {
 	var m interface{}
 	if q.query != nil {
 		m = q.query
 	}
-	qu := q.c.c.Find(m)
+	findOptions := options.Find()
 	if q.limit > 0 {
-		qu = qu.Limit(q.limit)
+		findOptions.SetLimit(int64(q.limit))
 	}
-	return qu
+
+	qu, err := q.c.c.Find(context.TODO(), m, findOptions)
+
+	return qu, err
 }
 func (q *Query) Count(ctx context.Context) (int64, error) {
-	n, err := q.build().Count()
-	return int64(n), err
+	cursor, err := q.build()
+
+	if err != nil {
+		return 0, err
+	}
+	defer cursor.Close(ctx)
+
+	count := 0
+	for cursor.Next(ctx) {
+		count++
+	}
+	return int64(count), nil
 }
 func (q *Query) One(ctx context.Context) (nosql.Document, error) {
 	var m bson.M
-	err := q.build().One(&m)
-	if err == mgo.ErrNotFound {
-		return nil, nosql.ErrNotFound
-	} else if err != nil {
+	cursor, err := q.build()
+
+	if err != nil {
 		return nil, err
 	}
+	defer cursor.Close(ctx)
+
+	if cursor.Next(ctx) {
+		if err := cursor.Decode(m); err != nil {
+			return nil, err
+		}
+	} else {
+		return nil, nosql.ErrNotFound
+	}
 	return q.c.convDoc(m), nil
+
 }
 func (q *Query) Iterate() nosql.DocIterator {
-	it := q.build().Iter()
+	it, err := q.build()
+
+	if err != nil {
+		return nil
+	}
 	return &Iterator{it: it, c: q.c}
 }
 
 type Iterator struct {
 	c   *collection
-	it  *mgo.Iter
+	it  *mongo.Cursor
 	res bson.M
 }
 
 func (it *Iterator) Next(ctx context.Context) bool {
-	it.res = make(bson.M)
-	return it.it.Next(&it.res)
+	return it.it.Next(ctx)
 }
 func (it *Iterator) Err() error {
 	return it.it.Err()
 }
 func (it *Iterator) Close() error {
-	return it.it.Close()
+	return it.it.Close(context.TODO())
 }
 func (it *Iterator) Key() nosql.Key {
 	return it.c.getKey(it.res)
@@ -489,7 +554,8 @@ func (d *Delete) Do(ctx context.Context) error {
 	if d.query != nil {
 		qu = d.query
 	}
-	_, err := d.col.c.RemoveAll(qu)
+	_, err := d.col.c.DeleteMany(ctx, qu)
+
 	return err
 }
 
@@ -533,9 +599,9 @@ func (u *Update) Do(ctx context.Context) error {
 		if len(u.upsert) != 0 {
 			u.update["$setOnInsert"] = u.upsert
 		}
-		_, err = u.col.c.UpsertId(key, u.update)
+		_, err = u.col.c.UpdateOne(ctx, key, u.update)
 	} else {
-		err = u.col.c.UpdateId(key, u.update)
+		_, err = u.col.c.UpdateOne(ctx, key, u.update)
 	}
 	return err
 }
@@ -571,7 +637,7 @@ func (w *inserter) Flush(ctx context.Context) error {
 	if len(w.buf) == 0 {
 		return w.err
 	}
-	if err := w.col.c.Insert(w.buf...); err != nil {
+	if _, err := w.col.c.InsertMany(ctx, w.buf, options.InsertMany()); err != nil {
 		w.err = err
 		return err
 	}
