@@ -218,6 +218,8 @@ func fromBsonValue(v interface{}) nosql.Value {
 		return nosql.Int(v)
 	case int64:
 		return nosql.Int(v)
+	case int32:
+		return nosql.Int(v)
 	case float64:
 		return nosql.Float(v)
 	case bool:
@@ -344,18 +346,18 @@ func (db *DB) Insert(ctx context.Context, col string, key nosql.Key, d nosql.Doc
 }
 func (db *DB) FindByKey(ctx context.Context, col string, key nosql.Key) (nosql.Document, error) {
 	c := db.colls[col]
-	var m bson.M
 
 	res := c.c.FindOne(ctx, bson.M{"_id": compKey(key)})
-	elem := &Doc{}
-	err := res.Decode(elem)
+	m := &bson.M{}
+
+	err := res.Decode(m)
 
 	if err == mongo.ErrNoDocuments {
 		return nil, nosql.ErrNotFound
 	} else if err != nil {
 		return nil, err
 	}
-	return c.convDoc(m), nil
+	return c.convDoc(*m), nil
 }
 func (db *DB) Query(col string) nosql.Query {
 	c := db.colls[col]
@@ -441,7 +443,7 @@ func (q *Query) Limit(n int) nosql.Query {
 	return q
 }
 func (q *Query) build() (*mongo.Cursor, error) {
-	var m interface{} = bson.D{{}}
+	var m interface{} = bson.D{}
 	if q.query != nil {
 		m = q.query
 	}
@@ -469,7 +471,7 @@ func (q *Query) Count(ctx context.Context) (int64, error) {
 	return int64(count), nil
 }
 func (q *Query) One(ctx context.Context) (nosql.Document, error) {
-	var m bson.M
+	var m = &bson.M{}
 	cursor, err := q.build()
 
 	if err != nil {
@@ -484,7 +486,7 @@ func (q *Query) One(ctx context.Context) (nosql.Document, error) {
 	} else {
 		return nil, nosql.ErrNotFound
 	}
-	return q.c.convDoc(m), nil
+	return q.c.convDoc(*m), nil
 
 }
 func (q *Query) Iterate() nosql.DocIterator {
@@ -503,7 +505,15 @@ type Iterator struct {
 }
 
 func (it *Iterator) Next(ctx context.Context) bool {
-	return it.it.Next(ctx)
+	elem := make(bson.M)
+	next := it.it.Next(ctx)
+	err := it.it.Decode(&elem)
+
+	if err == nil {
+		it.res = elem
+	}
+
+	return next
 }
 func (it *Iterator) Err() error {
 	return it.it.Err()
@@ -599,13 +609,15 @@ func (u *Update) Upsert(d nosql.Document) nosql.Update {
 func (u *Update) Do(ctx context.Context) error {
 	idFilter := bson.M{idField: compKey(u.key)}
 	var err error
+	updateOptions := options.Update()
 	if u.upsert != nil {
 		if len(u.upsert) != 0 {
+			updateOptions.SetUpsert(true)
 			u.update["$setOnInsert"] = u.upsert
 		}
-		_, err = u.col.c.UpdateOne(ctx, idFilter, u.update)
+		_, err = u.col.c.UpdateOne(ctx, idFilter, u.update, updateOptions)
 	} else {
-		_, err = u.col.c.UpdateOne(ctx, idFilter, u.update)
+		_, err = u.col.c.UpdateOne(ctx, idFilter, u.update, updateOptions)
 	}
 	return err
 }
