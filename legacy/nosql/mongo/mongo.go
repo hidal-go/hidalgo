@@ -14,6 +14,7 @@ import (
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
+	"go.mongodb.org/mongo-driver/x/bsonx"
 )
 
 type Doc struct {
@@ -61,7 +62,13 @@ func dialMongo(addr string, dbName string, noSqloptions nosql.Options) (*mongo.C
 		if err != nil {
 			return nil, err
 		}
-		return client, client.Connect(nil)
+		err = client.Connect(context.TODO())
+
+		if err != nil {
+			return nil, err
+		}
+
+		return client, err
 	}
 	var connString = "mogodb://"
 
@@ -76,9 +83,9 @@ func dialMongo(addr string, dbName string, noSqloptions nosql.Options) (*mongo.C
 	return client, client.Connect(context.TODO())
 }
 
-func New(sess *mongo.Client) (*DB, error) {
+func New(sess *mongo.Client, dbName string) (*DB, error) {
 	return &DB{
-		sess: sess, db: sess.Database(""),
+		sess: sess, db: sess.Database(dbName),
 		colls: make(map[string]collection),
 	}, nil
 }
@@ -88,7 +95,7 @@ func Dial(addr string, dbName string, opt nosql.Options) (*DB, error) {
 	if err != nil {
 		return nil, err
 	}
-	return New(sess)
+	return New(sess, dbName)
 }
 
 type collection struct {
@@ -117,16 +124,16 @@ func (db *DB) EnsureIndex(ctx context.Context, col string, primary nosql.Index, 
 	if compPK {
 		indexView := c.Indexes()
 		indexOptions := options.Index().SetUnique(true)
-		keys := bson.D{{}}
+		keys := bson.D{}
 
 		for _, field := range primary.Fields {
-			keys = append(keys, primitive.E{Key: field, Value: 1})
+			keys = append(keys, primitive.E{Key: field, Value: bsonx.Int32(1)})
 		}
 		index := mongo.IndexModel{}
 		index.Keys = keys
 		index.Options = indexOptions
 
-		_, err := indexView.CreateOne(nil, index)
+		_, err := indexView.CreateOne(ctx, index)
 
 		if err != nil {
 			return err
@@ -137,10 +144,10 @@ func (db *DB) EnsureIndex(ctx context.Context, col string, primary nosql.Index, 
 
 		indexOptions := options.Index().SetUnique(false).SetSparse(true).SetBackground(true)
 
-		keys := bson.D{{}}
+		keys := bson.D{}
 
 		for _, field := range ind.Fields {
-			keys = append(keys, primitive.E{Key: field, Value: 1})
+			keys = append(keys, primitive.E{Key: field, Value: bsonx.Int32(1)})
 		}
 		index := mongo.IndexModel{}
 		index.Keys = keys
@@ -314,6 +321,7 @@ func (c *collection) convIns(key nosql.Key, d nosql.Document) (nosql.Key, bson.M
 
 func objidString(id primitive.ObjectID) string {
 	return id.Hex()
+	//return base64.StdEncoding.EncodeToString(byteId)
 }
 
 func compKey(key nosql.Key) string {
@@ -437,7 +445,7 @@ func (q *Query) Limit(n int) nosql.Query {
 	return q
 }
 func (q *Query) build() (*mongo.Cursor, error) {
-	var m interface{}
+	var m interface{} = bson.D{{}}
 	if q.query != nil {
 		m = q.query
 	}
