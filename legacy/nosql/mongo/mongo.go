@@ -2,6 +2,7 @@ package mongo
 
 import (
 	"context"
+	"encoding/base64"
 	"fmt"
 	"net/url"
 	"strings"
@@ -320,8 +321,7 @@ func (c *collection) convIns(key nosql.Key, d nosql.Document) (nosql.Key, bson.M
 }
 
 func objidString(id primitive.ObjectID) string {
-	return id.Hex()
-	//return base64.StdEncoding.EncodeToString(byteId)
+	return base64.StdEncoding.EncodeToString(id[:])
 }
 
 func compKey(key nosql.Key) string {
@@ -345,14 +345,10 @@ func (db *DB) Insert(ctx context.Context, col string, key nosql.Key, d nosql.Doc
 func (db *DB) FindByKey(ctx context.Context, col string, key nosql.Key) (nosql.Document, error) {
 	c := db.colls[col]
 	var m bson.M
-	objId, err := primitive.ObjectIDFromHex(compKey(key))
 
-	if err != nil {
-		return nil, err
-	}
-	res := c.c.FindOne(ctx, bson.M{"_id": objId})
+	res := c.c.FindOne(ctx, bson.M{"_id": compKey(key)})
 	elem := &Doc{}
-	err = res.Decode(elem)
+	err := res.Decode(elem)
 
 	if err == mongo.ErrNoDocuments {
 		return nil, nosql.ErrNotFound
@@ -601,15 +597,15 @@ func (u *Update) Upsert(d nosql.Document) nosql.Update {
 	return u
 }
 func (u *Update) Do(ctx context.Context) error {
-	key := compKey(u.key)
+	idFilter := bson.M{idField: compKey(u.key)}
 	var err error
 	if u.upsert != nil {
 		if len(u.upsert) != 0 {
 			u.update["$setOnInsert"] = u.upsert
 		}
-		_, err = u.col.c.UpdateOne(ctx, key, u.update)
+		_, err = u.col.c.UpdateOne(ctx, idFilter, u.update)
 	} else {
-		_, err = u.col.c.UpdateOne(ctx, key, u.update)
+		_, err = u.col.c.UpdateOne(ctx, idFilter, u.update)
 	}
 	return err
 }
