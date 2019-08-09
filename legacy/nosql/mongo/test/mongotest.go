@@ -2,6 +2,7 @@ package mongotest
 
 import (
 	"context"
+	"fmt"
 	"testing"
 
 	"github.com/ory/dockertest"
@@ -35,18 +36,22 @@ func MongoVersion(vers string) nosqltest.Database {
 				t.Fatal(err)
 			}
 
-			addr := cont.GetHostPort("27017/tcp")
-
+			addr := fmt.Sprintf("mongodb://%s", cont.GetHostPort("27017/tcp"))
 			err = pool.Retry(func() error {
 				sess, err := gomongo.NewClient(options.Client().ApplyURI(addr))
+
 				if err != nil {
 					t.Fatal(err)
 				}
-				//sess.Connect(context.TODO())
+
+				if err == nil {
+					err = sess.Connect(context.TODO())
+				}
 
 				if err != nil {
 					return err
 				}
+
 				sess.Disconnect(context.TODO())
 				return nil
 			})
@@ -54,7 +59,6 @@ func MongoVersion(vers string) nosqltest.Database {
 				cont.Close()
 				t.Fatal(err)
 			}
-
 			qs, err := mongo.Dial(addr, "test", nil)
 			if err != nil {
 				cont.Close()

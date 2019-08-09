@@ -92,11 +92,14 @@ func New(sess *mongo.Client, dbName string) (*DB, error) {
 }
 
 func Dial(addr string, dbName string, opt nosql.Options) (*DB, error) {
-	sess, err := dialMongo(addr, dbName, opt)
+	//the dbName parameter is actually the defaultDatabase name, check if we had an override via the options
+	dbOverride := opt.GetString("database_name", dbName)
+
+	sess, err := dialMongo(addr, dbOverride, opt)
 	if err != nil {
 		return nil, err
 	}
-	return New(sess, dbName)
+	return New(sess, dbOverride)
 }
 
 type collection struct {
@@ -226,6 +229,9 @@ func fromBsonValue(v interface{}) nosql.Value {
 		return nosql.Bool(v)
 	case time.Time:
 		return nosql.Time(v)
+	case primitive.DateTime:
+		return nosql.Time(time.Unix(int64(v)/1000, int64(v)%1000*1000000))
+
 	case []byte:
 		return nosql.Bytes(v)
 	default:
@@ -493,33 +499,47 @@ func (q *Query) Iterate() nosql.DocIterator {
 	it, err := q.build()
 
 	if err != nil {
-		return nil
+
+		return &Iterator{it: it, err: err, c: q.c}
 	}
 	return &Iterator{it: it, c: q.c}
 }
 
 type Iterator struct {
 	c   *collection
+	err error
 	it  *mongo.Cursor
 	res bson.M
 }
 
 func (it *Iterator) Next(ctx context.Context) bool {
 	elem := make(bson.M)
-	next := it.it.Next(ctx)
-	err := it.it.Decode(&elem)
 
-	if err == nil {
-		it.res = elem
+	if it.it != nil {
+		next := it.it.Next(ctx)
+		err := it.it.Decode(&elem)
+
+		if err == nil {
+			it.res = elem
+		}
+
+		return next
+	} else {
+		return false
 	}
-
-	return next
 }
 func (it *Iterator) Err() error {
-	return it.it.Err()
+	if it.it != nil {
+		return it.it.Err()
+	} else {
+		return it.err
+	}
 }
 func (it *Iterator) Close() error {
-	return it.it.Close(context.TODO())
+	if it.it != nil {
+		return it.it.Close(context.TODO())
+	}
+	return nil
 }
 func (it *Iterator) Key() nosql.Key {
 	return it.c.getKey(it.res)
