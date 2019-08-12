@@ -460,18 +460,24 @@ func (q *Query) build() (*mongo.Cursor, error) {
 	return qu, err
 }
 func (q *Query) Count(ctx context.Context) (int64, error) {
-	cursor, err := q.build()
+
+	var m interface{} = bson.D{}
+	if q.query != nil {
+		m = q.query
+	}
+	countOptions := options.Count()
+
+	if q.limit > 0 {
+		countOptions.SetLimit(int64(q.limit))
+	}
+
+	count, err := q.c.c.CountDocuments(ctx, m, countOptions)
 
 	if err != nil {
 		return 0, err
 	}
-	defer cursor.Close(ctx)
 
-	count := 0
-	for cursor.Next(ctx) {
-		count++
-	}
-	return int64(count), nil
+	return count, nil
 }
 func (q *Query) One(ctx context.Context) (nosql.Document, error) {
 	var m = &bson.M{}
