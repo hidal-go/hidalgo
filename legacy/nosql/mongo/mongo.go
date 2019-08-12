@@ -18,9 +18,6 @@ import (
 	"go.mongodb.org/mongo-driver/x/bsonx"
 )
 
-type Doc struct {
-}
-
 const Name = "mongo"
 
 var (
@@ -71,12 +68,12 @@ func dialMongo(addr string, dbName string, noSqloptions nosql.Options) (*mongo.C
 
 		return client, err
 	}
-	var connString = "mogodb://"
+	var connString = "mongodb://"
 
 	if user := noSqloptions.GetString("username", ""); user != "" {
 		connString = fmt.Sprintf("%s%s:%s", connString, url.QueryEscape(user), url.QueryEscape(noSqloptions.GetString("password", "")))
 	}
-	connString = fmt.Sprintf("%s%s/%s", connString, addr, dbName)
+	connString = fmt.Sprintf("%s@%s/%s", connString, addr, dbName)
 	client, err := mongo.NewClient(options.Client().ApplyURI(connString))
 	if err != nil {
 		return nil, err
