@@ -126,15 +126,15 @@ func (db *DB) EnsureIndex(ctx context.Context, col string, primary nosql.Index, 
 		indexView := c.Indexes()
 		indexOptions := options.Index().SetUnique(true)
 		keys := make(bson.D, 0, len(primary.Fields))
-		
+
 		for _, field := range primary.Fields {
 			keys = append(keys, primitive.E{Key: field, Value: bsonx.Int32(1)})
 		}
 		index := mongo.IndexModel{
-			Keys: keys,
+			Keys:    keys,
 			Options: indexOptions,
 		}
-		
+
 		_, err := indexView.CreateOne(ctx, index)
 
 		if err != nil {
@@ -150,7 +150,7 @@ func (db *DB) EnsureIndex(ctx context.Context, col string, primary nosql.Index, 
 			keys = append(keys, primitive.E{Key: field, Value: bsonx.Int32(1)})
 		}
 		index := mongo.IndexModel{
-			Keys: keys,
+			Keys:    keys,
 			Options: indexOptions,
 		}
 
@@ -491,8 +491,8 @@ func (q *Query) One(ctx context.Context) (nosql.Document, error) {
 		return nil, nosql.ErrNotFound
 	}
 	if err := cursor.Decode(m); err != nil {
-			return nil, err
-	} 
+		return nil, err
+	}
 	return q.c.convDoc(*m), nil
 
 }
@@ -500,7 +500,6 @@ func (q *Query) Iterate() nosql.DocIterator {
 	it, err := q.build()
 
 	if err != nil {
-
 		return &Iterator{it: it, err: err, c: q.c}
 	}
 	return &Iterator{it: it, c: q.c}
@@ -517,24 +516,29 @@ func (it *Iterator) Next(ctx context.Context) bool {
 	elem := make(bson.M)
 
 	if it.it == nil {
-		return false;
+		return false
 	}
-	next := it.it.Next(ctx)
+	if !it.it.Next(ctx) {
+		return false
+	}
 	err := it.it.Decode(&elem)
 
 	if err == nil {
 		it.res = elem
 	}
 
-	return next
-	
+	return true
+
 }
 func (it *Iterator) Err() error {
+	if it.err != nil {
+		return it.err
+	}
 	if it.it != nil {
 		return it.it.Err()
 	}
-	return it.err
-	
+	return nil
+
 }
 func (it *Iterator) Close() error {
 	if it.it != nil {
@@ -629,17 +633,14 @@ func (u *Update) Upsert(d nosql.Document) nosql.Update {
 }
 func (u *Update) Do(ctx context.Context) error {
 	idFilter := bson.M{idField: compKey(u.key)}
-	var err error
+
 	updateOptions := options.Update()
-	if u.upsert != nil {
-		if len(u.upsert) != 0 {
-			updateOptions.SetUpsert(true)
-			u.update["$setOnInsert"] = u.upsert
-		}
-		
-	} 
-	_, err = u.col.c.UpdateOne(ctx, idFilter, u.update, updateOptions)
-	
+	if u.upsert != nil && len(u.upsert) != 0 {
+		updateOptions.SetUpsert(true)
+		u.update["$setOnInsert"] = u.upsert
+	}
+	_, err := u.col.c.UpdateOne(ctx, idFilter, u.update, updateOptions)
+
 	return err
 }
 

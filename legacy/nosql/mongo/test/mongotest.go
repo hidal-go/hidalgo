@@ -41,7 +41,7 @@ func MongoVersion(vers string) nosqltest.Database {
 				sess, err := gomongo.NewClient(options.Client().ApplyURI(addr))
 
 				if err != nil {
-					return err;
+					return err
 				}
 
 				err = sess.Connect(context.TODO())
