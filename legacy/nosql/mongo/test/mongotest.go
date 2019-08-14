@@ -41,13 +41,11 @@ func MongoVersion(vers string) nosqltest.Database {
 				sess, err := gomongo.NewClient(options.Client().ApplyURI(addr))
 
 				if err != nil {
-					t.Fatal(err)
+					return err;
 				}
 
-				if err == nil {
-					err = sess.Connect(context.TODO())
-				}
-
+				err = sess.Connect(context.TODO())
+				
 				if err != nil {
 					return err
 				}

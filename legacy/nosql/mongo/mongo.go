@@ -125,15 +125,16 @@ func (db *DB) EnsureIndex(ctx context.Context, col string, primary nosql.Index, 
 	if compPK {
 		indexView := c.Indexes()
 		indexOptions := options.Index().SetUnique(true)
-		keys := bson.D{}
-
+		keys := make(bson.D, 0, len(primary.Fields))
+		
 		for _, field := range primary.Fields {
 			keys = append(keys, primitive.E{Key: field, Value: bsonx.Int32(1)})
 		}
-		index := mongo.IndexModel{}
-		index.Keys = keys
-		index.Options = indexOptions
-
+		index := mongo.IndexModel{
+			Keys: keys,
+			Options: indexOptions,
+		}
+		
 		_, err := indexView.CreateOne(ctx, index)
 
 		if err != nil {
@@ -142,17 +143,16 @@ func (db *DB) EnsureIndex(ctx context.Context, col string, primary nosql.Index, 
 	}
 	for _, ind := range secondary {
 		indexView := c.Indexes()
-
 		indexOptions := options.Index().SetUnique(false).SetSparse(true).SetBackground(true)
-
-		keys := bson.D{}
+		keys := make(bson.D, 0, len(ind.Fields))
 
 		for _, field := range ind.Fields {
 			keys = append(keys, primitive.E{Key: field, Value: bsonx.Int32(1)})
 		}
-		index := mongo.IndexModel{}
-		index.Keys = keys
-		index.Options = indexOptions
+		index := mongo.IndexModel{
+			Keys: keys,
+			Options: indexOptions,
+		}
 
 		_, err := indexView.CreateOne(ctx, index)
 
@@ -227,8 +227,8 @@ func fromBsonValue(v interface{}) nosql.Value {
 	case time.Time:
 		return nosql.Time(v)
 	case primitive.DateTime:
-		return nosql.Time(time.Unix(int64(v)/1000, int64(v)%1000*1000000))
-
+		const ms = int64(time.Millisecond)
+		return nosql.Time(time.Unix(int64(v)/1000, int64(v)%1000*ms))
 	case []byte:
 		return nosql.Bytes(v)
 	default:
@@ -351,16 +351,15 @@ func (db *DB) FindByKey(ctx context.Context, col string, key nosql.Key) (nosql.D
 	c := db.colls[col]
 
 	res := c.c.FindOne(ctx, bson.M{"_id": compKey(key)})
-	m := &bson.M{}
-
-	err := res.Decode(m)
+	var m bson.M
+	err := res.Decode(&m)
 
 	if err == mongo.ErrNoDocuments {
 		return nil, nosql.ErrNotFound
 	} else if err != nil {
 		return nil, err
 	}
-	return c.convDoc(*m), nil
+	return c.convDoc(m), nil
 }
 func (db *DB) Query(col string) nosql.Query {
 	c := db.colls[col]
@@ -488,13 +487,12 @@ func (q *Query) One(ctx context.Context) (nosql.Document, error) {
 	}
 	defer cursor.Close(ctx)
 
-	if cursor.Next(ctx) {
-		if err := cursor.Decode(m); err != nil {
-			return nil, err
-		}
-	} else {
+	if !cursor.Next(ctx) {
 		return nil, nosql.ErrNotFound
 	}
+	if err := cursor.Decode(m); err != nil {
+			return nil, err
+	} 
 	return q.c.convDoc(*m), nil
 
 }
@@ -518,25 +516,25 @@ type Iterator struct {
 func (it *Iterator) Next(ctx context.Context) bool {
 	elem := make(bson.M)
 
-	if it.it != nil {
-		next := it.it.Next(ctx)
-		err := it.it.Decode(&elem)
-
-		if err == nil {
-			it.res = elem
-		}
-
-		return next
-	} else {
-		return false
+	if it.it == nil {
+		return false;
 	}
+	next := it.it.Next(ctx)
+	err := it.it.Decode(&elem)
+
+	if err == nil {
+		it.res = elem
+	}
+
+	return next
+	
 }
 func (it *Iterator) Err() error {
 	if it.it != nil {
 		return it.it.Err()
-	} else {
-		return it.err
 	}
+	return it.err
+	
 }
 func (it *Iterator) Close() error {
 	if it.it != nil {
@@ -638,10 +636,10 @@ func (u *Update) Do(ctx context.Context) error {
 			updateOptions.SetUpsert(true)
 			u.update["$setOnInsert"] = u.upsert
 		}
-		_, err = u.col.c.UpdateOne(ctx, idFilter, u.update, updateOptions)
-	} else {
-		_, err = u.col.c.UpdateOne(ctx, idFilter, u.update, updateOptions)
-	}
+		
+	} 
+	_, err = u.col.c.UpdateOne(ctx, idFilter, u.update, updateOptions)
+	
 	return err
 }
 
