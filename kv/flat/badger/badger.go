@@ -56,6 +56,10 @@ type DB struct {
 	closed bool
 }
 
+func (db *DB) DB() *badger.DB {
+	return db.db
+}
+
 func (db *DB) Close() error {
 	if db.closed {
 		return nil
