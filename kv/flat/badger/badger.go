@@ -3,7 +3,7 @@ package badger
 import (
 	"context"
 
-	"github.com/dgraph-io/badger"
+	"github.com/dgraph-io/badger/v2"
 
 	"github.com/hidal-go/hidalgo/base"
 	"github.com/hidal-go/hidalgo/kv"
@@ -42,8 +42,7 @@ func Open(opt badger.Options) (*DB, error) {
 }
 
 func OpenPath(path string) (flat.KV, error) {
-	opt := badger.DefaultOptions
-	opt.Dir = path
+	opt := badger.DefaultOptions(path)
 	db, err := Open(opt)
 	if err != nil {
 		return nil, err
@@ -78,7 +77,7 @@ type Tx struct {
 }
 
 func (tx *Tx) Commit(ctx context.Context) error {
-	return tx.tx.Commit(nil)
+	return tx.tx.Commit()
 }
 
 func (tx *Tx) Close() error {
@@ -150,7 +149,7 @@ func (it *Iterator) Key() flat.Key {
 }
 
 func (it *Iterator) Val() kv.Value {
-	v, err := it.it.Item().Value()
+	v, err := it.it.Item().ValueCopy(nil)
 	if err != nil {
 		it.err = err
 	}
