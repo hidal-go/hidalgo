@@ -84,6 +84,24 @@ func (kv *hieKV) Tx(rw bool) (kv.Tx, error) {
 	return &flatTx{kv: kv, tx: tx, rw: rw}, nil
 }
 
+func (kv *hieKV) View(fn func(tx kv.Tx) error) error {
+	tx, err := kv.Tx(false)
+	if err != nil {
+		return err
+	}
+	defer tx.Close()
+	return fn(tx)
+}
+
+func (kv *hieKV) Update(fn func(tx kv.Tx) error) error {
+	tx, err := kv.Tx(true)
+	if err != nil {
+		return err
+	}
+	defer tx.Close()
+	return fn(tx)
+}
+
 type flatTx struct {
 	kv *hieKV
 	tx Tx

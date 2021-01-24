@@ -20,6 +20,8 @@ var (
 type KV interface {
 	base.DB
 	Tx(rw bool) (Tx, error)
+	View(fn func(tx Tx) error) error
+	Update(fn func(tx Tx) error) error
 }
 
 // Key is a hierarchical binary key used in a database.

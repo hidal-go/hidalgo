@@ -134,6 +134,25 @@ func (s *sqlStore) Tx(rw bool) (tuple.Tx, error) {
 	}
 	return &sqlTx{db: s, dia: &s.dia, tx: tx, rw: rw}, nil
 }
+
+func (s *sqlStore) View(fn func(tx tuple.Tx) error) error {
+	tx, err := s.Tx(false)
+	if err != nil {
+		return err
+	}
+	defer tx.Close()
+	return fn(tx)
+}
+
+func (s *sqlStore) Update(fn func(tx tuple.Tx) error) error {
+	tx, err := s.Tx(true)
+	if err != nil {
+		return err
+	}
+	defer tx.Close()
+	return fn(tx)
+}
+
 func (s *sqlStore) nativeType(typ, comment string) (values.Type, bool, error) {
 	return s.dia.nativeType(typ, comment)
 }

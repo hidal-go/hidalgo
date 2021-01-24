@@ -72,6 +72,24 @@ func (db *DB) Tx(rw bool) (flat.Tx, error) {
 	return &Tx{tx: tx}, nil
 }
 
+func (db *DB) View(fn func(tx flat.Tx) error) error {
+	tx, err := db.Tx(false)
+	if err != nil {
+		return err
+	}
+	defer tx.Close()
+	return fn(tx)
+}
+
+func (db *DB) Update(fn func(tx flat.Tx) error) error {
+	tx, err := db.Tx(true)
+	if err != nil {
+		return err
+	}
+	defer tx.Close()
+	return fn(tx)
+}
+
 type Tx struct {
 	tx *badger.Txn
 }

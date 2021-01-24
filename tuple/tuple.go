@@ -224,6 +224,10 @@ type Store interface {
 	base.DB
 	// Tx opens a read-only or read-write transaction in the tuple store.
 	Tx(rw bool) (Tx, error)
+	// View provides functional-style read-only transactional access the tuple store.
+	View(func(tx Tx) error) error
+	// Update provides functional-style read-write transactional access to the tuple store.
+	Update(func(tx Tx) error) error
 	// Table returns a table info. It returns ErrTableNotFound if table does not exists.
 	// TableInfo can be used to open a Table from transactions more efficiently.
 	Table(ctx context.Context, name string) (TableInfo, error)
