@@ -59,6 +59,24 @@ func (kv *flatKV) Tx(rw bool) (flat.Tx, error) {
 	return &flatTx{tx: tx, tbl: tbl}, nil
 }
 
+func (kv *flatKV) View(fn func(tx flat.Tx) error) error {
+	tx, err := kv.Tx(false)
+	if err != nil {
+		return err
+	}
+	defer tx.Close()
+	return fn(tx)
+}
+
+func (kv *flatKV) Update(fn func(tx flat.Tx) error) error {
+	tx, err := kv.Tx(true)
+	if err != nil {
+		return err
+	}
+	defer tx.Close()
+	return fn(tx)
+}
+
 type flatTx struct {
 	tx  tuple.Tx
 	tbl tuple.Table

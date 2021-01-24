@@ -94,6 +94,24 @@ func (s *TupleStore) Tx(rw bool) (tuple.Tx, error) {
 	return &Tx{s: s, rw: rw}, nil
 }
 
+func (s *TupleStore) View(fn func(tx tuple.Tx) error) error {
+	tx, err := s.Tx(false)
+	if err != nil {
+		return err
+	}
+	defer tx.Close()
+	return fn(tx)
+}
+
+func (s *TupleStore) Update(fn func(tx tuple.Tx) error) error {
+	tx, err := s.Tx(true)
+	if err != nil {
+		return err
+	}
+	defer tx.Close()
+	return fn(tx)
+}
+
 const (
 	kindHidalgo = "_hidalgo"
 	idHidalgo   = "tuple"

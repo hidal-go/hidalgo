@@ -43,6 +43,24 @@ func (db *tupleStore) Tx(rw bool) (tuple.Tx, error) {
 	return &tupleTx{tx: tx}, nil
 }
 
+func (kv *tupleStore) View(fn func(tx tuple.Tx) error) error {
+	tx, err := kv.Tx(false)
+	if err != nil {
+		return err
+	}
+	defer tx.Close()
+	return fn(tx)
+}
+
+func (kv *tupleStore) Update(fn func(tx tuple.Tx) error) error {
+	tx, err := kv.Tx(true)
+	if err != nil {
+		return err
+	}
+	defer tx.Close()
+	return fn(tx)
+}
+
 func (db *tupleStore) tableSchema(name string) kv.Key {
 	k := kv.SKey("system", "table")
 	if name != "" {

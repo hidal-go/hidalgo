@@ -61,6 +61,24 @@ func (db *DB) Tx(rw bool) (flat.Tx, error) {
 	return &Tx{t: db.t, rw: rw}, nil
 }
 
+func (db *DB) View(fn func(tx flat.Tx) error) error {
+	tx, err := db.Tx(false)
+	if err != nil {
+		return err
+	}
+	defer tx.Close()
+	return fn(tx)
+}
+
+func (db *DB) Update(fn func(tx flat.Tx) error) error {
+	tx, err := db.Tx(true)
+	if err != nil {
+		return err
+	}
+	defer tx.Close()
+	return fn(tx)
+}
+
 type Tx struct {
 	t  *Tree
 	rw bool
