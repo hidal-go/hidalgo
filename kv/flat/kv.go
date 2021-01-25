@@ -21,7 +21,7 @@ type KV interface {
 	base.DB
 	Tx(rw bool) (Tx, error)
 	View(func(tx Tx) error) error
-	Update(func(tx Tx) error) error
+	Update(context.Context, func(tx Tx) error) error
 }
 
 // Key is a flat binary key used in a database.

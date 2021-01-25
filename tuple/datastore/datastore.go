@@ -95,21 +95,11 @@ func (s *TupleStore) Tx(rw bool) (tuple.Tx, error) {
 }
 
 func (s *TupleStore) View(fn func(tx tuple.Tx) error) error {
-	tx, err := s.Tx(false)
-	if err != nil {
-		return err
-	}
-	defer tx.Close()
-	return fn(tx)
+	return tuple.View(s, fn)
 }
 
-func (s *TupleStore) Update(fn func(tx tuple.Tx) error) error {
-	tx, err := s.Tx(true)
-	if err != nil {
-		return err
-	}
-	defer tx.Close()
-	return fn(tx)
+func (s *TupleStore) Update(ctx context.Context, fn func(tx tuple.Tx) error) error {
+	return tuple.Update(ctx, s, fn)
 }
 
 const (
