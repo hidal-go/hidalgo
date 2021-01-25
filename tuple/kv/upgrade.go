@@ -44,21 +44,11 @@ func (db *tupleStore) Tx(rw bool) (tuple.Tx, error) {
 }
 
 func (kv *tupleStore) View(fn func(tx tuple.Tx) error) error {
-	tx, err := kv.Tx(false)
-	if err != nil {
-		return err
-	}
-	defer tx.Close()
-	return fn(tx)
+	return tuple.View(kv, fn)
 }
 
-func (kv *tupleStore) Update(fn func(tx tuple.Tx) error) error {
-	tx, err := kv.Tx(true)
-	if err != nil {
-		return err
-	}
-	defer tx.Close()
-	return fn(tx)
+func (kv *tupleStore) Update(ctx context.Context, fn func(tx tuple.Tx) error) error {
+	return tuple.Update(ctx, kv, fn)
 }
 
 func (db *tupleStore) tableSchema(name string) kv.Key {

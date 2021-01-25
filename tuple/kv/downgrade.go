@@ -60,21 +60,11 @@ func (kv *flatKV) Tx(rw bool) (flat.Tx, error) {
 }
 
 func (kv *flatKV) View(fn func(tx flat.Tx) error) error {
-	tx, err := kv.Tx(false)
-	if err != nil {
-		return err
-	}
-	defer tx.Close()
-	return fn(tx)
+	return flat.View(kv, fn)
 }
 
-func (kv *flatKV) Update(fn func(tx flat.Tx) error) error {
-	tx, err := kv.Tx(true)
-	if err != nil {
-		return err
-	}
-	defer tx.Close()
-	return fn(tx)
+func (kv *flatKV) Update(ctx context.Context, fn func(tx flat.Tx) error) error {
+	return flat.Update(ctx, kv, fn)
 }
 
 type flatTx struct {

@@ -93,21 +93,11 @@ func (db *DB) Tx(rw bool) (flat.Tx, error) {
 }
 
 func (db *DB) View(fn func(tx flat.Tx) error) error {
-	tx, err := db.Tx(false)
-	if err != nil {
-		return err
-	}
-	defer tx.Close()
-	return fn(tx)
+	return flat.View(db, fn)
 }
 
-func (db *DB) Update(fn func(tx flat.Tx) error) error {
-	tx, err := db.Tx(true)
-	if err != nil {
-		return err
-	}
-	defer tx.Close()
-	return fn(tx)
+func (db *DB) Update(ctx context.Context, fn func(tx flat.Tx) error) error {
+	return flat.Update(ctx, db, fn)
 }
 
 type Tx struct {

@@ -94,21 +94,11 @@ func (d *KV) Tx(rw bool) (kv.Tx, error) {
 }
 
 func (d *KV) View(fn func(tx kv.Tx) error) error {
-	tx, err := d.Tx(false)
-	if err != nil {
-		return err
-	}
-	defer tx.Close()
-	return fn(tx)
+	return kv.View(d, fn)
 }
 
-func (d *KV) Update(fn func(tx kv.Tx) error) error {
-	tx, err := d.Tx(true)
-	if err != nil {
-		return err
-	}
-	defer tx.Close()
-	return fn(tx)
+func (d *KV) Update(ctx context.Context, fn func(tx kv.Tx) error) error {
+	return kv.Update(ctx, d, fn)
 }
 
 type kvTX struct {

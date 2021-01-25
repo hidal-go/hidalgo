@@ -73,33 +73,23 @@ func keyUnescape(k Key) kv.Key {
 	return k2
 }
 
-func (kv *hieKV) Close() error {
-	return kv.flat.Close()
+func (hkv *hieKV) Close() error {
+	return hkv.flat.Close()
 }
-func (kv *hieKV) Tx(rw bool) (kv.Tx, error) {
-	tx, err := kv.flat.Tx(rw)
+func (hkv *hieKV) Tx(rw bool) (kv.Tx, error) {
+	tx, err := hkv.flat.Tx(rw)
 	if err != nil {
 		return nil, err
 	}
-	return &flatTx{kv: kv, tx: tx, rw: rw}, nil
+	return &flatTx{kv: hkv, tx: tx, rw: rw}, nil
 }
 
-func (kv *hieKV) View(fn func(tx kv.Tx) error) error {
-	tx, err := kv.Tx(false)
-	if err != nil {
-		return err
-	}
-	defer tx.Close()
-	return fn(tx)
+func (hkv *hieKV) View(fn func(tx kv.Tx) error) error {
+	return kv.View(hkv, fn)
 }
 
-func (kv *hieKV) Update(fn func(tx kv.Tx) error) error {
-	tx, err := kv.Tx(true)
-	if err != nil {
-		return err
-	}
-	defer tx.Close()
-	return fn(tx)
+func (hkv *hieKV) Update(ctx context.Context, fn func(tx kv.Tx) error) error {
+	return kv.Update(ctx, hkv, fn)
 }
 
 type flatTx struct {
