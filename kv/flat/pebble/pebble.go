@@ -60,6 +60,14 @@ func (db *DB) Tx(rw bool) (flat.Tx, error) {
 	return &Tx{tx: db.db.NewIndexedBatch()}, nil
 }
 
+func (db *DB) View(fn func(tx flat.Tx) error) error {
+	return flat.View(db, fn)
+}
+
+func (db *DB) Update(ctx context.Context, fn func(tx flat.Tx) error) error {
+	return flat.Update(ctx, db, fn)
+}
+
 type Tx struct {
 	tx *pebble.Batch
 }
