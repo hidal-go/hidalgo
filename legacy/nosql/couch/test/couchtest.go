@@ -1,3 +1,4 @@
+//go:build !js
 // +build !js
 
 package couchtest
@@ -35,32 +36,30 @@ func CouchVersion(vers string) nosqltest.Database {
 			if err != nil {
 				t.Fatal(err)
 			}
+			defer cont.Close()
 
 			ctx := context.Background()
 
 			addr := cont.GetHostPort("5984/tcp")
 			addr = "http://test:test@" + addr + "/test"
-			err = pool.Retry(func() error {
+			_ = pool.Retry(func() error {
 				cli, _, err := couch.DialDriver(ctx, couch.DriverCouch, addr, "test")
 				if err != nil {
-					return err
+					t.Fatal(err)
 				}
 				_, err = cli.Version(ctx)
-				return err
+				if err != nil {
+					t.Fatal(err)
+				}
+				return nil
 			})
-			if err != nil {
-				cont.Close()
-				t.Fatal(err)
-			}
 
 			qs, err := couch.Dial(true, couch.DriverCouch, addr, "test", nil)
 			if err != nil {
-				cont.Close()
 				t.Fatal(err)
 			}
 			return qs, func() {
 				qs.Close()
-				cont.Close()
 			}
 		},
 	}
