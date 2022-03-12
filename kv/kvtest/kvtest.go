@@ -51,6 +51,7 @@ var testList = []struct {
 	test func(t testing.TB, db kv.KV)
 }{
 	{name: "basic", test: basic},
+	{name: "ro", test: readonly},
 }
 
 func basic(t testing.TB, db kv.KV) {
@@ -90,4 +91,32 @@ func basic(t testing.TB, db kv.KV) {
 	for _, k := range keys {
 		td.NotExists(k)
 	}
+}
+
+func readonly(t testing.TB, db kv.KV) {
+	td := NewTest(t, db)
+
+	key := kv.Key{[]byte("a")}
+	val := []byte("v")
+	td.Put(key, val)
+
+	nokey := kv.Key{[]byte("b")}
+
+	tx, err := db.Tx(false)
+	require.NoError(t, err)
+	defer tx.Close()
+
+	// writing anything on read-only tx must fail
+	err = tx.Put(key, val)
+	require.Equal(t, kv.ErrReadOnly, err)
+	err = tx.Put(nokey, val)
+	require.Equal(t, kv.ErrReadOnly, err)
+
+	// deleting records on read-only tx must fail
+	err = tx.Del(key)
+	require.Equal(t, kv.ErrReadOnly, err)
+
+	// deleting non-existed record on read-only tx must still fail
+	err = tx.Del(nokey)
+	require.Equal(t, kv.ErrReadOnly, err)
 }

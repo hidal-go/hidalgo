@@ -166,7 +166,11 @@ func (tx *Tx) Put(k kv.Key, v kv.Value) error {
 	} else if len(k[0]) == 0 && len(v) == 0 {
 		return nil // bucket creation, no need to put value
 	}
-	return b.Put(k[0], v)
+	err = b.Put(k[0], v)
+	if err == bolt.ErrTxNotWritable {
+		err = kv.ErrReadOnly
+	}
+	return err
 }
 
 func (tx *Tx) Del(k kv.Key) error {
@@ -174,7 +178,11 @@ func (tx *Tx) Del(k kv.Key) error {
 	if b == nil || len(k) != 1 {
 		return nil
 	}
-	return b.Delete(k[0])
+	err := b.Delete(k[0])
+	if err == bolt.ErrTxNotWritable {
+		err = kv.ErrReadOnly
+	}
+	return err
 }
 
 func (tx *Tx) Scan(pref kv.Key) kv.Iterator {
