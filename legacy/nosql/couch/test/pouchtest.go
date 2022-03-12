@@ -42,7 +42,7 @@ func Pouch() nosqltest.Database {
 			return qs, func() {
 				qs.Close()
 				ctx := context.TODO()
-				if c, err := kivik.New(ctx, couch.DriverPouch, dir); err == nil {
+				if c, err := kivik.New(couch.DriverPouch, dir); err == nil {
 					_ = c.DestroyDB(ctx, name)
 				}
 				if err := os.RemoveAll(dir); err != nil { // remove the test data

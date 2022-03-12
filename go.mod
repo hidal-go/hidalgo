@@ -20,10 +20,10 @@ require (
 	github.com/flimzy/kivik v1.8.1 // indirect
 	github.com/flimzy/testy v0.1.16 // indirect
 	github.com/fortytw2/leaktest v1.3.0 // indirect
-	github.com/go-kivik/couchdb v1.8.1
-	github.com/go-kivik/kivik v1.8.1
-	github.com/go-kivik/kiviktest v1.1.2 // indirect
-	github.com/go-kivik/pouchdb v1.3.5
+	github.com/go-kivik/couchdb v2.0.0+incompatible
+	github.com/go-kivik/kivik v2.0.0+incompatible
+	github.com/go-kivik/kiviktest v2.0.0+incompatible // indirect
+	github.com/go-kivik/pouchdb v2.0.0+incompatible
 	github.com/go-sql-driver/mysql v1.4.1
 	github.com/gogo/protobuf v1.3.1
 	github.com/google/uuid v1.1.1 // indirect
