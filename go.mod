@@ -6,7 +6,7 @@ require (
 	cloud.google.com/go/datastore v1.1.0
 	github.com/boltdb/bolt v1.3.1
 	github.com/dennwc/base v1.0.0
-	github.com/dgraph-io/badger v1.5.4
+	github.com/dgraph-io/badger/v2 v2.2007.4
 	github.com/go-kivik/couchdb v2.0.0+incompatible
 	github.com/go-kivik/kivik v2.0.0+incompatible
 	github.com/go-kivik/pouchdb v2.0.1+incompatible
@@ -26,24 +26,28 @@ require (
 require (
 	cloud.google.com/go v0.100.2 // indirect
 	cloud.google.com/go/compute v1.5.0 // indirect
-	github.com/AndreasBriese/bbloom v0.0.0-20190306092124-e2d15f34fcf9 // indirect
 	github.com/Azure/go-ansiterm v0.0.0-20170929234023-d6e3b3328b78 // indirect
 	github.com/Microsoft/go-winio v0.4.12 // indirect
 	github.com/Nvveen/Gotty v0.0.0-20120604004816-cd527374f1e5 // indirect
 	github.com/cenkalti/backoff v2.1.1+incompatible // indirect
+	github.com/cespare/xxhash v1.1.0 // indirect
+	github.com/cespare/xxhash/v2 v2.1.2 // indirect
 	github.com/containerd/continuity v0.0.0-20181203112020-004b46473808 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
-	github.com/dgryski/go-farm v0.0.0-20190416075124-e1214b5e05dc // indirect
+	github.com/dgraph-io/ristretto v0.1.0 // indirect
+	github.com/dgryski/go-farm v0.0.0-20200201041132-a6ae2369ad13 // indirect
 	github.com/docker/go-connections v0.4.0 // indirect
 	github.com/docker/go-units v0.3.3 // indirect
+	github.com/dustin/go-humanize v1.0.0 // indirect
 	github.com/flimzy/diff v0.1.5 // indirect
 	github.com/flimzy/kivik v1.8.1 // indirect
 	github.com/flimzy/testy v0.1.16 // indirect
 	github.com/go-kivik/kiviktest v1.1.2 // indirect
 	github.com/go-stack/stack v1.8.0 // indirect
+	github.com/golang/glog v1.0.0 // indirect
 	github.com/golang/groupcache v0.0.0-20200121045136-8c9f03a8e57e // indirect
 	github.com/golang/protobuf v1.5.2 // indirect
-	github.com/golang/snappy v0.0.3 // indirect
+	github.com/golang/snappy v0.0.4 // indirect
 	github.com/google/go-cmp v0.5.7 // indirect
 	github.com/google/uuid v1.3.0 // indirect
 	github.com/googleapis/gax-go/v2 v2.1.1 // indirect
@@ -52,6 +56,7 @@ require (
 	github.com/gotestyourself/gotestyourself v2.2.0+incompatible // indirect
 	github.com/imdario/mergo v0.3.7 // indirect
 	github.com/josharian/intern v1.0.0 // indirect
+	github.com/klauspost/compress v1.15.1 // indirect
 	github.com/mailru/easyjson v0.7.7 // indirect
 	github.com/onsi/ginkgo v1.8.0 // indirect
 	github.com/onsi/gomega v1.5.0 // indirect
