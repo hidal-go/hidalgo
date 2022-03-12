@@ -22,13 +22,13 @@ func Update(ctx context.Context, s Store, update func(tx Tx) error) error {
 }
 
 // View is a helper to open a read-only transaction to read the database.
-func View(s Store, view func(tx Tx) error) error {
+func View(ctx context.Context, s Store, view func(tx Tx) error) error {
 	tx, err := s.Tx(false)
 	if err != nil {
 		return err
 	}
+	defer tx.Close()
 	if err = view(tx); err != nil {
-		defer tx.Close()
 		return err
 	}
 	return tx.Close()

@@ -59,8 +59,8 @@ func (kv *flatKV) Tx(rw bool) (flat.Tx, error) {
 	return &flatTx{tx: tx, tbl: tbl}, nil
 }
 
-func (kv *flatKV) View(fn func(tx flat.Tx) error) error {
-	return flat.View(kv, fn)
+func (kv *flatKV) View(ctx context.Context, fn func(tx flat.Tx) error) error {
+	return flat.View(ctx, kv, fn)
 }
 
 func (kv *flatKV) Update(ctx context.Context, fn func(tx flat.Tx) error) error {

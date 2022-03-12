@@ -135,8 +135,8 @@ func (s *sqlStore) Tx(rw bool) (tuple.Tx, error) {
 	return &sqlTx{db: s, dia: &s.dia, tx: tx, rw: rw}, nil
 }
 
-func (s *sqlStore) View(fn func(tx tuple.Tx) error) error {
-	return tuple.View(s, fn)
+func (s *sqlStore) View(ctx context.Context, fn func(tx tuple.Tx) error) error {
+	return tuple.View(ctx, s, fn)
 }
 
 func (s *sqlStore) Update(ctx context.Context, fn func(tx tuple.Tx) error) error {

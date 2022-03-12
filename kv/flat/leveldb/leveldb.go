@@ -92,8 +92,8 @@ func (db *DB) Tx(rw bool) (flat.Tx, error) {
 	return tx, nil
 }
 
-func (db *DB) View(fn func(tx flat.Tx) error) error {
-	return flat.View(db, fn)
+func (db *DB) View(ctx context.Context, fn func(tx flat.Tx) error) error {
+	return flat.View(ctx, db, fn)
 }
 
 func (db *DB) Update(ctx context.Context, fn func(tx flat.Tx) error) error {

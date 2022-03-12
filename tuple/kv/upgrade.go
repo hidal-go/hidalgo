@@ -43,12 +43,12 @@ func (db *tupleStore) Tx(rw bool) (tuple.Tx, error) {
 	return &tupleTx{tx: tx}, nil
 }
 
-func (kv *tupleStore) View(fn func(tx tuple.Tx) error) error {
-	return tuple.View(kv, fn)
+func (db *tupleStore) View(ctx context.Context, fn func(tx tuple.Tx) error) error {
+	return tuple.View(ctx, db, fn)
 }
 
-func (kv *tupleStore) Update(ctx context.Context, fn func(tx tuple.Tx) error) error {
-	return tuple.Update(ctx, kv, fn)
+func (db *tupleStore) Update(ctx context.Context, fn func(tx tuple.Tx) error) error {
+	return tuple.Update(ctx, db, fn)
 }
 
 func (db *tupleStore) tableSchema(name string) kv.Key {

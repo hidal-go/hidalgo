@@ -225,7 +225,7 @@ type Store interface {
 	// Tx opens a read-only or read-write transaction in the tuple store.
 	Tx(rw bool) (Tx, error)
 	// View provides functional-style read-only transactional access the tuple store.
-	View(view func(tx Tx) error) error
+	View(ctx context.Context, view func(tx Tx) error) error
 	// Update provides functional-style read-write transactional access to the tuple store.
 	Update(ctx context.Context, update func(tx Tx) error) error
 	// Table returns a table info. It returns ErrTableNotFound if table does not exists.
@@ -281,7 +281,7 @@ type Table interface {
 
 	// Drop clears the data and removes the table.
 	Drop(ctx context.Context) error
-	// Clears removes all tuples from the table.
+	// Clear removes all tuples from the table.
 	Clear(ctx context.Context) error
 
 	// GetTuple fetches one tuple with a specific key.

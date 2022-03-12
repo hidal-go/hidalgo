@@ -84,8 +84,8 @@ func (hkv *hieKV) Tx(rw bool) (kv.Tx, error) {
 	return &flatTx{kv: hkv, tx: tx, rw: rw}, nil
 }
 
-func (hkv *hieKV) View(fn func(tx kv.Tx) error) error {
-	return kv.View(hkv, fn)
+func (hkv *hieKV) View(ctx context.Context, fn func(tx kv.Tx) error) error {
+	return kv.View(ctx, hkv, fn)
 }
 
 func (hkv *hieKV) Update(ctx context.Context, fn func(tx kv.Tx) error) error {

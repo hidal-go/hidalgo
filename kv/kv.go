@@ -20,7 +20,7 @@ var (
 type KV interface {
 	base.DB
 	Tx(rw bool) (Tx, error)
-	View(fn func(tx Tx) error) error
+	View(ctx context.Context, fn func(tx Tx) error) error
 	Update(ctx context.Context, fn func(tx Tx) error) error
 }
 
@@ -145,7 +145,7 @@ type Iterator interface {
 	// Key return current key. The value will become invalid on Next or Close.
 	// Caller should not modify or store the value - use Clone.
 	Key() Key
-	// Key return current value. The value will become invalid on Next or Close.
+	// Val return current value. The value will become invalid on Next or Close.
 	// Caller should not modify or store the value - use Clone.
 	Val() Value
 }

@@ -7,10 +7,11 @@ import (
 	"time"
 
 	"cloud.google.com/go/datastore"
+	"google.golang.org/api/iterator"
+
 	"github.com/hidal-go/hidalgo/tuple"
 	"github.com/hidal-go/hidalgo/tuple/tuplepb"
 	"github.com/hidal-go/hidalgo/values"
-	"google.golang.org/api/iterator"
 )
 
 func Open(ctx context.Context, projectID string) (tuple.Store, error) {
@@ -94,8 +95,8 @@ func (s *TupleStore) Tx(rw bool) (tuple.Tx, error) {
 	return &Tx{s: s, rw: rw}, nil
 }
 
-func (s *TupleStore) View(fn func(tx tuple.Tx) error) error {
-	return tuple.View(s, fn)
+func (s *TupleStore) View(ctx context.Context, fn func(tx tuple.Tx) error) error {
+	return tuple.View(ctx, s, fn)
 }
 
 func (s *TupleStore) Update(ctx context.Context, fn func(tx tuple.Tx) error) error {

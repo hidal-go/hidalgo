@@ -93,8 +93,8 @@ func (d *KV) Tx(rw bool) (kv.Tx, error) {
 	return &kvTX{kv: d, tx: tx, rw: rw}, nil
 }
 
-func (d *KV) View(fn func(tx kv.Tx) error) error {
-	return kv.View(d, fn)
+func (d *KV) View(ctx context.Context, fn func(tx kv.Tx) error) error {
+	return kv.View(ctx, d, fn)
 }
 
 func (d *KV) Update(ctx context.Context, fn func(tx kv.Tx) error) error {
