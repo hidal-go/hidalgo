@@ -6,15 +6,16 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/require"
+
 	"github.com/hidal-go/hidalgo/tuple"
 	"github.com/hidal-go/hidalgo/tuple/sql"
 	"github.com/hidal-go/hidalgo/tuple/tupletest"
-	"github.com/stretchr/testify/require"
 )
 
 type Database struct {
 	Recreate bool
-	Run      func(t testing.TB) (string, func())
+	Run      func(t testing.TB) string
 }
 
 func TestSQL(t *testing.T, name string, gen Database) {
@@ -23,35 +24,28 @@ func TestSQL(t *testing.T, name string, gen Database) {
 	)
 	recreate := gen.Recreate
 	if !recreate {
-		var closer func()
-		addr, closer = gen.Run(t)
-		defer closer()
+		addr = gen.Run(t)
 	}
-	tupletest.RunTest(t, func(t testing.TB) (tuple.Store, func()) {
+	tupletest.RunTest(t, func(t testing.TB) tuple.Store {
 		db := fmt.Sprintf("db_%x", rand.Int())
 		addr := addr
-		destroy := func() {}
 		if recreate {
-			addr, destroy = gen.Run(t)
+			addr = gen.Run(t)
 		}
 		conn, err := sqltuple.OpenSQL(name, addr, "")
 		if err != nil {
-			destroy()
 			require.NoError(t, err)
 		}
 		_, err = conn.Exec(`CREATE DATABASE ` + db)
 		conn.Close()
 		if err != nil {
-			destroy()
 			require.NoError(t, err)
 		}
 		conn, err = sqltuple.OpenSQL(name, addr, db)
 		if err != nil {
-			destroy()
 			require.NoError(t, err)
 		}
-		s := sqltuple.New(conn, db, sqltuple.ByName(name).Dialect)
-		return s, func() {
+		t.Cleanup(func() {
 			conn.Close()
 			if !recreate {
 				conn, err := sqltuple.OpenSQL(name, addr, "")
@@ -63,8 +57,8 @@ func TestSQL(t *testing.T, name string, gen Database) {
 					t.Errorf("cannot remove test database: %v", err)
 				}
 			}
-			destroy()
-		}
+		})
+		return sqltuple.New(conn, db, sqltuple.ByName(name).Dialect)
 	})
 }
 

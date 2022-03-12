@@ -197,8 +197,6 @@ func fromBsonValue(v interface{}) nosql.Value {
 	switch v := v.(type) {
 	case nil:
 		return nil
-	case bson.M:
-		return fromBsonDoc(v)
 	case []interface{}:
 		arr := make(nosql.Strings, 0, len(v))
 		for _, s := range v {
@@ -212,6 +210,19 @@ func fromBsonValue(v interface{}) nosql.Value {
 		return arr
 	case primitive.ObjectID:
 		return nosql.String(objidString(v))
+	case primitive.M:
+		return fromBsonDoc(v)
+	case primitive.A:
+		arr := make(nosql.Strings, 0, len(v))
+		for _, s := range v {
+			sv := fromBsonValue(s)
+			str, ok := sv.(nosql.String)
+			if !ok {
+				panic(fmt.Errorf("unsupported value in array: %T", sv))
+			}
+			arr = append(arr, string(str))
+		}
+		return arr
 	case string:
 		return nosql.String(v)
 	case int:
@@ -235,17 +246,17 @@ func fromBsonValue(v interface{}) nosql.Value {
 		panic(fmt.Errorf("unsupported type: %T", v))
 	}
 }
-func toBsonDoc(d nosql.Document) bson.M {
+func toBsonDoc(d nosql.Document) primitive.M {
 	if d == nil {
 		return nil
 	}
-	m := make(bson.M, len(d))
+	m := make(primitive.M, len(d))
 	for k, v := range d {
 		m[k] = toBsonValue(v)
 	}
 	return m
 }
-func fromBsonDoc(d bson.M) nosql.Document {
+func fromBsonDoc(d primitive.M) nosql.Document {
 	if d == nil {
 		return nil
 	}
@@ -258,7 +269,7 @@ func fromBsonDoc(d bson.M) nosql.Document {
 
 const idField = "_id"
 
-func (c *collection) getKey(m bson.M) nosql.Key {
+func (c *collection) getKey(m primitive.M) nosql.Key {
 	if !c.compPK {
 		// key field renamed to _id - just return it
 		if v, ok := m[idField].(string); ok {
@@ -276,7 +287,7 @@ func (c *collection) getKey(m bson.M) nosql.Key {
 	return key
 }
 
-func (c *collection) setKey(m bson.M, key nosql.Key) {
+func (c *collection) setKey(m primitive.M, key nosql.Key) {
 	if !c.compPK {
 		// delete source field, since we already added it as _id
 		delete(m, c.primary.Fields[0])
@@ -287,7 +298,7 @@ func (c *collection) setKey(m bson.M, key nosql.Key) {
 	}
 }
 
-func (c *collection) convDoc(m bson.M) nosql.Document {
+func (c *collection) convDoc(m primitive.M) nosql.Document {
 	if c.compPK {
 		// key field computed from multiple source fields - remove it
 		delete(m, idField)
@@ -314,7 +325,7 @@ func getOrGenID(key nosql.Key) (nosql.Key, string) {
 	return key, mid
 }
 
-func (c *collection) convIns(key nosql.Key, d nosql.Document) (nosql.Key, bson.M) {
+func (c *collection) convIns(key nosql.Key, d nosql.Document) (nosql.Key, primitive.M) {
 	m := toBsonDoc(d)
 
 	var mid string
@@ -350,8 +361,8 @@ func (db *DB) Insert(ctx context.Context, col string, key nosql.Key, d nosql.Doc
 func (db *DB) FindByKey(ctx context.Context, col string, key nosql.Key) (nosql.Document, error) {
 	c := db.colls[col]
 
-	res := c.c.FindOne(ctx, bson.M{"_id": compKey(key)})
-	var m bson.M
+	res := c.c.FindOne(ctx, primitive.M{"_id": compKey(key)})
+	var m primitive.M
 	err := res.Decode(&m)
 
 	if err == mongo.ErrNoDocuments {
@@ -367,15 +378,15 @@ func (db *DB) Query(col string) nosql.Query {
 }
 func (db *DB) Update(col string, key nosql.Key) nosql.Update {
 	c := db.colls[col]
-	return &Update{col: &c, key: key, update: make(bson.M)}
+	return &Update{col: &c, key: key, update: make(primitive.M)}
 }
 func (db *DB) Delete(col string) nosql.Delete {
 	c := db.colls[col]
 	return &Delete{col: &c}
 }
 
-func buildFilters(filters []nosql.FieldFilter) bson.M {
-	m := make(bson.M, len(filters))
+func buildFilters(filters []nosql.FieldFilter) primitive.M {
+	m := make(primitive.M, len(filters))
 	for _, f := range filters {
 		name := strings.Join(f.Path, ".")
 		v := toBsonValue(f.Value)
@@ -383,16 +394,16 @@ func buildFilters(filters []nosql.FieldFilter) bson.M {
 			m[name] = v
 			continue
 		}
-		var mf bson.M
+		var mf primitive.M
 		switch mp := m[name].(type) {
 		case nil:
-		case bson.M:
+		case primitive.M:
 			mf = mp
 		default:
 			continue
 		}
 		if mf == nil {
-			mf = make(bson.M)
+			mf = make(primitive.M)
 		}
 		switch f.Filter {
 		case nosql.NotEqual:
@@ -419,7 +430,7 @@ func buildFilters(filters []nosql.FieldFilter) bson.M {
 	return m
 }
 
-func mergeFilters(dst, src bson.M) {
+func mergeFilters(dst, src primitive.M) {
 	for k, v := range src {
 		dst[k] = v
 	}
@@ -428,7 +439,7 @@ func mergeFilters(dst, src bson.M) {
 type Query struct {
 	c     *collection
 	limit int
-	query bson.M
+	query primitive.M
 }
 
 func (q *Query) WithFields(filters ...nosql.FieldFilter) nosql.Query {
@@ -479,7 +490,7 @@ func (q *Query) Count(ctx context.Context) (int64, error) {
 	return count, nil
 }
 func (q *Query) One(ctx context.Context) (nosql.Document, error) {
-	var m = &bson.M{}
+	var m = &primitive.M{}
 	cursor, err := q.build()
 
 	if err != nil {
@@ -509,11 +520,11 @@ type Iterator struct {
 	c   *collection
 	err error
 	it  *mongo.Cursor
-	res bson.M
+	res primitive.M
 }
 
 func (it *Iterator) Next(ctx context.Context) bool {
-	elem := make(bson.M)
+	elem := make(primitive.M)
 
 	if it.it == nil {
 		return false
@@ -555,7 +566,7 @@ func (it *Iterator) Doc() nosql.Document {
 
 type Delete struct {
 	col   *collection
-	query bson.M
+	query primitive.M
 }
 
 func (d *Delete) WithFields(filters ...nosql.FieldFilter) nosql.Delete {
@@ -571,7 +582,7 @@ func (d *Delete) Keys(keys ...nosql.Key) nosql.Delete {
 	if len(keys) == 0 {
 		return d
 	}
-	m := make(bson.M, 1)
+	m := make(primitive.M, 1)
 	if len(keys) == 1 {
 		m[idField] = compKey(keys[0])
 	} else {
@@ -579,7 +590,7 @@ func (d *Delete) Keys(keys ...nosql.Key) nosql.Delete {
 		for _, k := range keys {
 			ids = append(ids, compKey(k))
 		}
-		m[idField] = bson.M{"$in": ids}
+		m[idField] = primitive.M{"$in": ids}
 	}
 	if d.query == nil {
 		d.query = m
@@ -592,6 +603,8 @@ func (d *Delete) Do(ctx context.Context) error {
 	var qu interface{}
 	if d.query != nil {
 		qu = d.query
+	} else {
+		qu = primitive.M{}
 	}
 	_, err := d.col.c.DeleteMany(ctx, qu)
 
@@ -601,23 +614,23 @@ func (d *Delete) Do(ctx context.Context) error {
 type Update struct {
 	col    *collection
 	key    nosql.Key
-	upsert bson.M
-	update bson.M
+	upsert primitive.M
+	update primitive.M
 }
 
 func (u *Update) Inc(field string, dn int) nosql.Update {
-	inc, _ := u.update["$inc"].(bson.M)
+	inc, _ := u.update["$inc"].(primitive.M)
 	if inc == nil {
-		inc = make(bson.M)
+		inc = make(primitive.M)
 	}
 	inc[field] = dn
 	u.update["$inc"] = inc
 	return u
 }
 func (u *Update) Push(field string, v nosql.Value) nosql.Update {
-	push, _ := u.update["$push"].(bson.M)
+	push, _ := u.update["$push"].(primitive.M)
 	if push == nil {
-		push = make(bson.M)
+		push = make(primitive.M)
 	}
 	push[field] = toBsonValue(v)
 	u.update["$push"] = push
@@ -626,13 +639,13 @@ func (u *Update) Push(field string, v nosql.Value) nosql.Update {
 func (u *Update) Upsert(d nosql.Document) nosql.Update {
 	u.upsert = toBsonDoc(d)
 	if u.upsert == nil {
-		u.upsert = make(bson.M)
+		u.upsert = make(primitive.M)
 	}
 	u.col.setKey(u.upsert, u.key)
 	return u
 }
 func (u *Update) Do(ctx context.Context) error {
-	idFilter := bson.M{idField: compKey(u.key)}
+	idFilter := primitive.M{idField: compKey(u.key)}
 
 	updateOptions := options.Update()
 	if u.upsert != nil && len(u.upsert) != 0 {

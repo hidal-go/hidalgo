@@ -11,9 +11,9 @@ import (
 )
 
 func TestKV2Tuple(t *testing.T) {
-	tupletest.RunTest(t, func(t testing.TB) (tuple.Store, func()) {
+	tupletest.RunTest(t, func(t testing.TB) tuple.Store {
 		kdb := btree.New()
 		db := tuplekv.New(flat.Upgrade(kdb))
-		return db, func() {}
+		return db
 	})
 }

@@ -6,13 +6,14 @@ import (
 	"testing"
 
 	"cloud.google.com/go/datastore"
+	"github.com/ory/dockertest"
+
 	"github.com/hidal-go/hidalgo/tuple"
 	"github.com/hidal-go/hidalgo/tuple/tupletest"
-	"github.com/ory/dockertest"
 )
 
 func TestDatastore(t *testing.T) {
-	tupletest.RunTest(t, func(t testing.TB) (tuple.Store, func()) {
+	tupletest.RunTest(t, func(t testing.TB) tuple.Store {
 		pool, err := dockertest.NewPool("")
 		if err != nil {
 			t.Fatal(err)
@@ -36,6 +37,9 @@ func TestDatastore(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
+		t.Cleanup(func() {
+			_ = cont.Close()
+		})
 
 		ctx := context.Background()
 		host := cont.GetHostPort("8080/tcp")
@@ -49,12 +53,11 @@ func TestDatastore(t *testing.T) {
 		}
 		cli, err := datastore.NewClient(ctx, proj)
 		if err != nil {
-			cont.Close()
 			t.Fatal(err)
 		}
-		return OpenClient(cli), func() {
-			cli.Close()
-			cont.Close()
-		}
+		t.Cleanup(func() {
+			_ = cli.Close()
+		})
+		return OpenClient(cli)
 	})
 }

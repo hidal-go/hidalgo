@@ -6,20 +6,20 @@ import (
 	"strconv"
 	"testing"
 
-	"github.com/hidal-go/hidalgo/kv"
 	"github.com/stretchr/testify/require"
+
+	"github.com/hidal-go/hidalgo/kv"
 )
 
 // Func is a constructor for database implementations.
 // It returns an empty database and a function to destroy it.
-type Func func(t testing.TB) (kv.KV, func())
+type Func func(t testing.TB) kv.KV
 
 // RunTest runs all tests for key-value implementations.
 func RunTest(t *testing.T, fnc Func) {
 	for _, c := range testList {
 		t.Run(c.name, func(t *testing.T) {
-			db, closer := fnc(t)
-			defer closer()
+			db := fnc(t)
 			c.test(t, db)
 		})
 	}
@@ -27,20 +27,22 @@ func RunTest(t *testing.T, fnc Func) {
 
 // RunTestLocal is a wrapper for RunTest that automatically creates a temporary directory and opens a database.
 func RunTestLocal(t *testing.T, open kv.OpenPathFunc) {
-	RunTest(t, func(t testing.TB) (kv.KV, func()) {
+	RunTest(t, func(t testing.TB) kv.KV {
 		dir, err := ioutil.TempDir("", "dal-kv-")
 		require.NoError(t, err)
+		t.Cleanup(func() {
+			_ = os.RemoveAll(dir)
+		})
 
 		db, err := open(dir)
 		if err != nil {
-			os.RemoveAll(dir)
 			require.NoError(t, err)
 		}
-		return db, func() {
+		t.Cleanup(func() {
 			db.Close()
 			db.Close() // test double close
-			os.RemoveAll(dir)
-		}
+		})
+		return db
 	})
 }
 

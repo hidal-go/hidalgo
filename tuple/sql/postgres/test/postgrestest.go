@@ -3,10 +3,11 @@ package mysqltest
 import (
 	"testing"
 
+	"github.com/ory/dockertest"
+
 	"github.com/hidal-go/hidalgo/tuple/sql"
 	"github.com/hidal-go/hidalgo/tuple/sql/postgres"
 	"github.com/hidal-go/hidalgo/tuple/sql/sqltest"
-	"github.com/ory/dockertest"
 )
 
 var versions = []string{
@@ -27,7 +28,7 @@ func PostgresVersion(vers string) sqltest.Database {
 	const image = "postgres"
 	return sqltest.Database{
 		Recreate: false,
-		Run: func(t testing.TB) (string, func()) {
+		Run: func(t testing.TB) string {
 			pool, err := dockertest.NewPool("")
 			if err != nil {
 				t.Fatal(err)
@@ -39,6 +40,9 @@ func PostgresVersion(vers string) sqltest.Database {
 			if err != nil {
 				t.Fatal(err)
 			}
+			t.Cleanup(func() {
+				_ = cont.Close()
+			})
 
 			const port = "5432/tcp"
 			addr := `postgres://postgres:postgres@` + cont.GetHostPort(port)
@@ -52,12 +56,9 @@ func PostgresVersion(vers string) sqltest.Database {
 				return cli.Ping()
 			})
 			if err != nil {
-				cont.Close()
 				t.Fatal(err)
 			}
-			return addr, func() {
-				cont.Close()
-			}
+			return addr
 		},
 	}
 }

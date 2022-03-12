@@ -9,25 +9,22 @@ import (
 	"testing"
 	"time"
 
-	"github.com/hidal-go/hidalgo/legacy/nosql"
 	"github.com/stretchr/testify/require"
+
+	"github.com/hidal-go/hidalgo/legacy/nosql"
 )
 
 type Database struct {
 	Traits nosql.Traits
-	Run    func(t testing.TB) (nosql.Database, func())
+	Run    func(t testing.TB) nosql.Database
 }
 
 func TestNoSQL(t *testing.T, gen Database) {
 	tr := gen.Traits
-	var (
-		db     nosql.Database
-		closer func()
-	)
+	var db nosql.Database
 	recreate := false // conf.Recreate
 	if !recreate {
-		db, closer = gen.Run(t)
-		defer closer()
+		db = gen.Run(t)
 	}
 
 	for _, kt := range keyTypes {
@@ -37,9 +34,7 @@ func TestNoSQL(t *testing.T, gen Database) {
 					col := fmt.Sprintf("col_%x", rand.Int())
 					db := db
 					if recreate {
-						var closer func()
-						db, closer = gen.Run(t)
-						defer closer()
+						db = gen.Run(t)
 					}
 					c.t(t, tableConf{
 						ctx: context.TODO(),

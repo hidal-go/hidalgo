@@ -20,31 +20,29 @@ import (
 
 // Func is a constructor for database implementations.
 // It returns an empty database and a function to destroy it.
-type Func func(t testing.TB) (tuple.Store, func())
+type Func func(t testing.TB) tuple.Store
 
 // RunTest runs all tests for tuple store implementations.
 func RunTest(t *testing.T, fnc Func) {
 	for _, c := range testList {
 		t.Run(c.name, func(t *testing.T) {
-			db, closer := fnc(t)
-			defer closer()
+			db := fnc(t)
 			c.test(t, db)
 		})
 	}
 	t.Run("kv", func(t *testing.T) {
-		kvtest.RunTest(t, func(t testing.TB) (hkv.KV, func()) {
-			db, closer := fnc(t)
+		kvtest.RunTest(t, func(t testing.TB) hkv.KV {
+			db := fnc(t)
 
 			ctx := context.TODO()
 			kdb, err := tuplekv.NewKV(ctx, db, "kv")
 			if err != nil {
-				closer()
 				require.NoError(t, err)
 			}
-			return flat.Upgrade(kdb), func() {
-				kdb.Close()
-				closer()
-			}
+			t.Cleanup(func() {
+				_ = kdb.Close()
+			})
+			return flat.Upgrade(kdb)
 		})
 	})
 }

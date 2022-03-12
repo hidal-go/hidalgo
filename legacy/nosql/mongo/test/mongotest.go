@@ -25,7 +25,7 @@ func init() {
 func MongoVersion(vers string) nosqltest.Database {
 	return nosqltest.Database{
 		Traits: mongo.Traits(),
-		Run: func(t testing.TB) (nosql.Database, func()) {
+		Run: func(t testing.TB) nosql.Database {
 			pool, err := dockertest.NewPool("")
 			if err != nil {
 				t.Fatal(err)
@@ -35,6 +35,9 @@ func MongoVersion(vers string) nosqltest.Database {
 			if err != nil {
 				t.Fatal(err)
 			}
+			t.Cleanup(func() {
+				_ = cont.Close()
+			})
 
 			addr := fmt.Sprintf("mongodb://%s", cont.GetHostPort("27017/tcp"))
 			err = pool.Retry(func() error {
@@ -43,29 +46,26 @@ func MongoVersion(vers string) nosqltest.Database {
 				if err != nil {
 					return err
 				}
+				defer sess.Disconnect(context.TODO())
 
 				err = sess.Connect(context.TODO())
-				
+
 				if err != nil {
 					return err
 				}
-
-				sess.Disconnect(context.TODO())
 				return nil
 			})
 			if err != nil {
-				cont.Close()
 				t.Fatal(err)
 			}
 			qs, err := mongo.Dial(addr, "test", nil)
 			if err != nil {
-				cont.Close()
 				t.Fatal(err)
 			}
-			return qs, func() {
-				qs.Close()
-				cont.Close()
-			}
+			t.Cleanup(func() {
+				_ = qs.Close()
+			})
+			return qs
 		},
 	}
 }

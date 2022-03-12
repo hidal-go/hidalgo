@@ -12,32 +12,25 @@ import (
 	"github.com/hidal-go/hidalgo/legacy/nosql/nosqltest"
 )
 
-var versions = []struct {
-	Vers   string
-	Legacy bool
-}{
-	{Vers: "6.2.4"},
-	{Vers: "5.6.9", Legacy: true},
+var versions = []string{
+	"6.2.4",
 }
 
 func init() {
 	var vers []nosqltest.Version
 	for _, v := range versions {
 		vers = append(vers, nosqltest.Version{
-			Name: v.Vers, Factory: ElasticVersion(v.Vers, v.Legacy),
+			Name: v, Factory: ElasticVersion(v),
 		})
 	}
 	nosqltest.Register(elastic.Name, vers...)
 }
 
-func ElasticVersion(vers string, legacy bool) nosqltest.Database {
+func ElasticVersion(vers string) nosqltest.Database {
 	return nosqltest.Database{
 		Traits: elastic.Traits(),
-		Run: func(t testing.TB) (nosql.Database, func()) {
-			name := "docker.elastic.co/elasticsearch/elasticsearch-oss"
-			if legacy {
-				name = "elasticsearch"
-			}
+		Run: func(t testing.TB) nosql.Database {
+			name := "docker.elastic.co/elasticsearch/elasticsearch"
 
 			pool, err := dockertest.NewPool("")
 			if err != nil {
@@ -48,6 +41,9 @@ func ElasticVersion(vers string, legacy bool) nosqltest.Database {
 			if err != nil {
 				t.Fatal(err)
 			}
+			t.Cleanup(func() {
+				_ = cont.Close()
+			})
 
 			// Running this command might be necessary on the host:
 			// sysctl -w vm.max_map_count=262144
@@ -65,19 +61,17 @@ func ElasticVersion(vers string, legacy bool) nosqltest.Database {
 				return err
 			})
 			if err != nil {
-				cont.Close()
 				t.Fatal(err)
 			}
 
 			db, err := elastic.Dial(addr, "test", nil)
 			if err != nil {
-				cont.Close()
 				t.Fatal(addr, err)
 			}
-			return db, func() {
-				db.Close()
-				cont.Close()
-			}
+			t.Cleanup(func() {
+				_ = db.Close()
+			})
+			return db
 		},
 	}
 }

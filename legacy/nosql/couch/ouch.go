@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net/http"
 	"net/url"
 	"runtime"
 	"strings"
@@ -35,7 +36,7 @@ func DialDriver(ctx context.Context, driver string, addr string, dbName string) 
 	}
 	dsn := strings.TrimSuffix(addr, dbName)
 
-	cli, err := kivik.New(ctx, driver, dsn)
+	cli, err := kivik.New(driver, dsn)
 	return cli, dbName, err
 }
 
@@ -52,10 +53,7 @@ func Dial(create bool, driver string, addr string, ns string, opt nosql.Options)
 		err = client.CreateDB(ctx, dbName)
 	}
 	if err == nil {
-		db, err = client.DB(ctx, dbName)
-	}
-	if err != nil {
-		return nil, fmt.Errorf("cannot open db %q: %v", dbName, err)
+		db = client.DB(ctx, dbName)
 	}
 
 	return &DB{
@@ -182,17 +180,13 @@ func (db *DB) findByKey(ctx context.Context, col string, key nosql.Key) (nosql.D
 }
 
 func (db *DB) findByOuchKey(ctx context.Context, cK string) (nosql.Document, string, string, error) {
-	row, err := db.db.Get(ctx, cK)
+	row := db.db.Get(ctx, cK)
+	rowDoc := make(map[string]interface{})
+	err := row.ScanDoc(&rowDoc)
 	if err != nil {
-		if kivik.StatusCode(err) == kivik.StatusNotFound {
+		if kivik.StatusCode(err) == http.StatusNotFound {
 			return nil, "", "", nosql.ErrNotFound
 		}
-		return nil, "", "", err
-	}
-
-	rowDoc := make(map[string]interface{})
-	err = row.ScanDoc(&rowDoc)
-	if err != nil {
 		return nil, "", "", err
 	}
 	decoded := fromOuchDoc(rowDoc)

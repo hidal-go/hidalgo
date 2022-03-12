@@ -1,3 +1,4 @@
+//go:build !js
 // +build !js
 
 package couchtest
@@ -6,10 +7,11 @@ import (
 	"context"
 	"testing"
 
+	"github.com/ory/dockertest"
+
 	"github.com/hidal-go/hidalgo/legacy/nosql"
 	"github.com/hidal-go/hidalgo/legacy/nosql/couch"
 	"github.com/hidal-go/hidalgo/legacy/nosql/nosqltest"
-	"github.com/ory/dockertest"
 )
 
 func init() {
@@ -22,7 +24,7 @@ func init() {
 func CouchVersion(vers string) nosqltest.Database {
 	return nosqltest.Database{
 		Traits: couch.Traits(),
-		Run: func(t testing.TB) (nosql.Database, func()) {
+		Run: func(t testing.TB) nosql.Database {
 			pool, err := dockertest.NewPool("")
 			if err != nil {
 				t.Fatal(err)
@@ -35,6 +37,9 @@ func CouchVersion(vers string) nosqltest.Database {
 			if err != nil {
 				t.Fatal(err)
 			}
+			t.Cleanup(func() {
+				_ = cont.Close()
+			})
 
 			ctx := context.Background()
 
@@ -49,19 +54,17 @@ func CouchVersion(vers string) nosqltest.Database {
 				return err
 			})
 			if err != nil {
-				cont.Close()
 				t.Fatal(err)
 			}
 
 			qs, err := couch.Dial(true, couch.DriverCouch, addr, "test", nil)
 			if err != nil {
-				cont.Close()
 				t.Fatal(err)
 			}
-			return qs, func() {
-				qs.Close()
-				cont.Close()
-			}
+			t.Cleanup(func() {
+				_ = qs.Close()
+			})
+			return qs
 		},
 	}
 }
