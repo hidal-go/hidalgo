@@ -17,7 +17,6 @@ require (
 	github.com/docker/go-connections v0.4.0 // indirect
 	github.com/docker/go-units v0.3.3 // indirect
 	github.com/flimzy/diff v0.1.5 // indirect
-	github.com/flimzy/kivik v1.8.1 // indirect
 	github.com/flimzy/testy v0.1.16 // indirect
 	github.com/fortytw2/leaktest v1.3.0 // indirect
 	github.com/go-kivik/couchdb v2.0.0+incompatible
@@ -30,7 +29,6 @@ require (
 	github.com/gopherjs/jsbuiltin v0.0.0-20180426082241-50091555e127 // indirect
 	github.com/gotestyourself/gotestyourself v2.2.0+incompatible // indirect
 	github.com/hashicorp/golang-lru v0.5.1 // indirect
-	github.com/imdario/mergo v0.3.7 // indirect
 	github.com/konsorten/go-windows-terminal-sequences v1.0.2 // indirect
 	github.com/lib/pq v1.1.0
 	github.com/mailru/easyjson v0.0.0-20190403194419-1ea4449da983 // indirect
@@ -45,6 +43,7 @@ require (
 	github.com/tidwall/pretty v1.0.0 // indirect
 	github.com/xdg/scram v0.0.0-20180814205039-7eeb5667e42c // indirect
 	github.com/xdg/stringprep v1.0.0 // indirect
+	gitlab.com/flimzy/testy v0.10.2 // indirect
 	go.etcd.io/bbolt v1.3.2 // indirect
 	go.mongodb.org/mongo-driver v1.0.4
 	go.opencensus.io v0.20.2 // indirect
