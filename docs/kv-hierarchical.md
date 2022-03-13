@@ -17,7 +17,26 @@ By storing a schema and using row serialization, these stores can implement [tup
 
 **Backend features:**
 
-| Backend | Persistence | Concurrency | Transactions |
-|---------|-------------|-------------|--------------|
-| Bolt    | X           | X           | X            |
-| BBolt   | X           | X           | X            |
+| Backend                 | Persistence | Concurrency | Transactions |
+|-------------------------|-------------|-------------|--------------|
+| Bolt                    | X           | X           | X            |
+| BBolt                   | X           | X           | X            |
+| [Flat KV](./kv-flat.md) | X           | X           | X            |
+
+**Backend optimizations:**
+
+| Backend                 | Seek | Prefix | 
+|-------------------------|------|--------|
+| Bolt                    | X    | X      |
+| BBolt                   | X    | X      |
+| [Flat KV](./kv-flat.md) | X    | X      |
+
+Notes:
+
+- Even though all backends expose `Tx` interface, some may behave incorrectly
+  during concurrent writes to the same key. This is why transactions support
+  may be marked unavailable for some backends. Contributions welcome :)
+- Support for any of the features in meta-backends like flat KV store will depend
+  on when the underlying backend support.
+- Some features may be marked as not implemented for meta backend in this table,
+  which means that they will not yet work for any of the underlying backends.
