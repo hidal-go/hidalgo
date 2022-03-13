@@ -9,6 +9,8 @@ digraph DBs {
     leveldb -> flat_kv
     badger [label="Badger"]
     badger -> flat_kv
+    pebble [label="Pebble"]
+    pebble -> flat_kv
 
     hie_kv [label="Hierarchical KV" URL="./docs/kv-hierarchical.md" color="#bbbbff" style=filled]
     hie_kv -> strict_tuple
