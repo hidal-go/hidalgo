@@ -3,16 +3,28 @@ package kv
 import "context"
 
 // Update is a helper to open a read-write transaction and update the database.
+// The update function may be called multiple times in case of conflicts with other writes.
 func Update(ctx context.Context, kv KV, update func(tx Tx) error) error {
-	tx, err := kv.Tx(true)
-	if err != nil {
-		return err
+	for {
+		err := func() error {
+			tx, err := kv.Tx(true)
+			if err != nil {
+				return err
+			}
+			defer tx.Close()
+			err = update(tx)
+			if err != nil {
+				return err
+			}
+			return tx.Commit(ctx)
+		}()
+		if err == ErrConflict {
+			continue
+		} else if err != nil {
+			return err
+		}
+		return nil
 	}
-	defer tx.Close()
-	if err = update(tx); err != nil {
-		return err
-	}
-	return tx.Commit(ctx)
 }
 
 // View is a helper to open a read-only transaction to read the database.

@@ -1,9 +1,11 @@
 package kvtest
 
 import (
+	"context"
 	"io/ioutil"
 	"os"
 	"strconv"
+	"sync"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -15,10 +17,20 @@ import (
 // It returns an empty database and a function to destroy it.
 type Func func(t testing.TB) kv.KV
 
+type Options struct {
+	NoTx bool // implementation doesn't support proper transactions
+}
+
 // RunTest runs all tests for key-value implementations.
-func RunTest(t *testing.T, fnc Func) {
+func RunTest(t *testing.T, fnc Func, opts *Options) {
+	if opts == nil {
+		opts = &Options{}
+	}
 	for _, c := range testList {
 		t.Run(c.name, func(t *testing.T) {
+			if c.txOnly && opts.NoTx {
+				t.Skip("implementation doesn't support transactions")
+			}
 			db := fnc(t)
 			c.test(t, db)
 		})
@@ -26,7 +38,10 @@ func RunTest(t *testing.T, fnc Func) {
 }
 
 // RunTestLocal is a wrapper for RunTest that automatically creates a temporary directory and opens a database.
-func RunTestLocal(t *testing.T, open kv.OpenPathFunc) {
+func RunTestLocal(t *testing.T, open kv.OpenPathFunc, opts *Options) {
+	if opts == nil {
+		opts = &Options{}
+	}
 	RunTest(t, func(t testing.TB) kv.KV {
 		dir, err := ioutil.TempDir("", "dal-kv-")
 		require.NoError(t, err)
@@ -43,15 +58,17 @@ func RunTestLocal(t *testing.T, open kv.OpenPathFunc) {
 			db.Close() // test double close
 		})
 		return db
-	})
+	}, opts)
 }
 
 var testList = []struct {
-	name string
-	test func(t testing.TB, db kv.KV)
+	name   string
+	test   func(t testing.TB, db kv.KV)
+	txOnly bool // requires transactions
 }{
 	{name: "basic", test: basic},
 	{name: "ro", test: readonly},
+	{name: "increment", test: increment, txOnly: true},
 }
 
 func basic(t testing.TB, db kv.KV) {
@@ -119,4 +136,48 @@ func readonly(t testing.TB, db kv.KV) {
 	// deleting non-existed record on read-only tx must still fail
 	err = tx.Del(nokey)
 	require.Equal(t, kv.ErrReadOnly, err)
+}
+
+func increment(t testing.TB, db kv.KV) {
+	td := NewTest(t, db)
+
+	key := kv.Key{[]byte("a")}
+	td.Put(key, []byte("0"))
+
+	const n = 10
+	ready := make(chan struct{})
+	errc := make(chan error, n)
+	var wg sync.WaitGroup
+	for i := 0; i < n; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			ctx := context.Background()
+			<-ready
+			err := kv.Update(ctx, db, func(tx kv.Tx) error {
+				val, err := tx.Get(ctx, key)
+				if err != nil {
+					return err
+				}
+				v, err := strconv.Atoi(string(val))
+				if err != nil {
+					return err
+				}
+				v++
+				val = []byte(strconv.Itoa(v))
+				return tx.Put(key, val)
+			})
+			if err != nil {
+				errc <- err
+			}
+		}()
+	}
+	close(ready)
+	wg.Wait()
+	select {
+	case err := <-errc:
+		require.NoError(t, err)
+	default:
+	}
+	td.Expect(key, []byte("10"))
 }

@@ -14,6 +14,9 @@ var (
 	ErrNotFound = kv.ErrNotFound
 	// ErrReadOnly is returned when write operation is performed on read-only database or transaction.
 	ErrReadOnly = kv.ErrReadOnly
+	// ErrConflict is returned when write operation performed be current transaction cannot be committed
+	// because of another concurrent write. Caller must restart the transaction.
+	ErrConflict = kv.ErrConflict
 )
 
 // KV is an interface for flat key-value databases.

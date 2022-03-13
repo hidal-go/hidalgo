@@ -7,7 +7,6 @@ import (
 	"github.com/cockroachdb/pebble"
 
 	"github.com/hidal-go/hidalgo/base"
-	"github.com/hidal-go/hidalgo/kv"
 	"github.com/hidal-go/hidalgo/kv/flat"
 )
 
@@ -27,16 +26,21 @@ func init() {
 
 var _ flat.KV = (*DB)(nil)
 
-func New(d *pebble.DB) *DB {
-	return &DB{db: d}
-}
-
-func OpenPath(path string) (flat.KV, error) {
-	db, err := pebble.Open(path, &pebble.Options{})
+// OpenPathOptions is similar to OpenPath, but allow customizing Pebble options.
+func OpenPathOptions(path string, opts *pebble.Options) (*DB, error) {
+	db, err := pebble.Open(path, opts)
 	if err != nil {
 		return nil, err
 	}
-	return New(db), nil
+	return &DB{db: db}, nil
+}
+
+func OpenPath(path string) (flat.KV, error) {
+	db, err := OpenPathOptions(path, &pebble.Options{})
+	if err != nil {
+		return nil, err
+	}
+	return db, nil
 }
 
 type DB struct {
@@ -57,7 +61,7 @@ func (db *DB) Close() error {
 }
 
 func (db *DB) Tx(rw bool) (flat.Tx, error) {
-	return &Tx{tx: db.db.NewIndexedBatch()}, nil
+	return &Tx{tx: db.db.NewIndexedBatch(), rw: rw}, nil
 }
 
 func (db *DB) View(ctx context.Context, fn func(tx flat.Tx) error) error {
@@ -70,10 +74,14 @@ func (db *DB) Update(ctx context.Context, fn func(tx flat.Tx) error) error {
 
 type Tx struct {
 	tx *pebble.Batch
+	rw bool
 }
 
 func (tx *Tx) Commit(ctx context.Context) error {
-	return tx.tx.Commit(nil)
+	if !tx.rw {
+		return flat.ErrReadOnly
+	}
+	return tx.tx.Commit(pebble.Sync)
 }
 
 func (tx *Tx) Close() error {
@@ -84,16 +92,16 @@ func (tx *Tx) Get(ctx context.Context, key flat.Key) (flat.Value, error) {
 	if len(key) == 0 {
 		return nil, flat.ErrNotFound
 	}
-	found, closer, err := tx.tx.Get(key)
+	val, closer, err := tx.tx.Get(key)
 	if err == pebble.ErrNotFound {
 		return nil, flat.ErrNotFound
 	} else if err != nil {
 		return nil, err
 	}
+	defer closer.Close()
 
-	ret := make([]byte, len(found))
-	copy(ret, found)
-	closer.Close()
+	ret := make([]byte, len(val))
+	copy(ret, val)
 	return ret, nil
 }
 
@@ -102,10 +110,16 @@ func (tx *Tx) GetBatch(ctx context.Context, keys []flat.Key) ([]flat.Value, erro
 }
 
 func (tx *Tx) Put(k flat.Key, v flat.Value) error {
+	if !tx.rw {
+		return flat.ErrReadOnly
+	}
 	return tx.tx.Set(k, v, pebble.Sync)
 }
 
 func (tx *Tx) Del(k flat.Key) error {
+	if !tx.rw {
+		return flat.ErrReadOnly
+	}
 	return tx.tx.Delete(k, pebble.Sync)
 }
 
@@ -145,7 +159,7 @@ func (it *Iterator) Key() flat.Key {
 	return it.it.Key()
 }
 
-func (it *Iterator) Val() kv.Value {
+func (it *Iterator) Val() flat.Value {
 	return it.it.Value()
 }
 

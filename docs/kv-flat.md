@@ -6,12 +6,23 @@ By using a specific key separator these stores can implement [hierarchical key-v
 
 **Supported backends:**
 
-* In-memory [B-Tree](github.com/cznic/b)
+* In-memory [B-Tree](https://github.com/cznic/b)
 
-* [LevelDB](github.com/syndtr/goleveldb)
+* [Badger](https://github.com/dgraph-io/badger)
 
-* [Badger](github.com/dgraph-io/badger)
+* [Pebble](https://github.com/cockroachdb/pebble) (experimental)
+
+* [LevelDB](https://github.com/syndtr/goleveldb)
 
 * Downgrade of [Hierarchical KV](./kv-hierachical.md)
 
 * Downgrade of [Tuple store](./tuple-strict.md)
+
+**Backend features:**
+
+| Backend | Persistence | Transactions |
+|---------|-------------|--------------|
+| B-Tree  | -           | X            |
+| Badger  | X           | X            |
+| Pebble  | X           | -            |
+| LevelDB | X           | X            |

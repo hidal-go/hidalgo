@@ -8,5 +8,5 @@ import (
 )
 
 func TestBadger(t *testing.T) {
-	kvtest.RunTestLocal(t, flat.UpgradeOpenPath(OpenPath))
+	kvtest.RunTestLocal(t, flat.UpgradeOpenPath(OpenPath), nil)
 }

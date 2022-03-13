@@ -11,5 +11,5 @@ import (
 func TestBtree(t *testing.T) {
 	kvtest.RunTest(t, func(t testing.TB) kv.KV {
 		return flat.Upgrade(New())
-	})
+	}, nil)
 }

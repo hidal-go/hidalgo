@@ -14,6 +14,9 @@ var (
 	ErrNotFound = errors.New("kv: not found")
 	// ErrReadOnly is returned when write operation is performed on read-only database or transaction.
 	ErrReadOnly = errors.New("kv: read only")
+	// ErrConflict is returned when write operation performed be current transaction cannot be committed
+	// because of another concurrent write. Caller must restart the transaction.
+	ErrConflict = errors.New("kv: read only")
 )
 
 // KV is an interface for hierarchical key-value databases.

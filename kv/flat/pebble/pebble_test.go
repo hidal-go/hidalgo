@@ -8,5 +8,7 @@ import (
 )
 
 func TestPebble(t *testing.T) {
-	kvtest.RunTestLocal(t, flat.UpgradeOpenPath(OpenPath))
+	kvtest.RunTestLocal(t, flat.UpgradeOpenPath(OpenPath), &kvtest.Options{
+		NoTx: true,
+	})
 }

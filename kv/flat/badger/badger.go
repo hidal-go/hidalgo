@@ -6,7 +6,6 @@ import (
 	"github.com/dgraph-io/badger/v2"
 
 	"github.com/hidal-go/hidalgo/base"
-	"github.com/hidal-go/hidalgo/kv"
 	"github.com/hidal-go/hidalgo/kv/flat"
 )
 
@@ -85,7 +84,11 @@ type Tx struct {
 }
 
 func (tx *Tx) Commit(ctx context.Context) error {
-	return tx.tx.Commit()
+	err := tx.tx.Commit()
+	if err == badger.ErrConflict {
+		err = flat.ErrConflict
+	}
+	return err
 }
 
 func (tx *Tx) Close() error {
@@ -111,11 +114,19 @@ func (tx *Tx) GetBatch(ctx context.Context, keys []flat.Key) ([]flat.Value, erro
 }
 
 func (tx *Tx) Put(k flat.Key, v flat.Value) error {
-	return tx.tx.Set(k, v)
+	err := tx.tx.Set(k, v)
+	if err == badger.ErrConflict {
+		err = flat.ErrConflict
+	}
+	return err
 }
 
 func (tx *Tx) Del(k flat.Key) error {
-	return tx.tx.Delete(k)
+	err := tx.tx.Delete(k)
+	if err == badger.ErrConflict {
+		err = flat.ErrConflict
+	}
+	return err
 }
 
 func (tx *Tx) Scan(pref flat.Key) flat.Iterator {
@@ -156,7 +167,7 @@ func (it *Iterator) Key() flat.Key {
 	return it.it.Item().Key()
 }
 
-func (it *Iterator) Val() kv.Value {
+func (it *Iterator) Val() flat.Value {
 	v, err := it.it.Item().ValueCopy(nil)
 	if err != nil {
 		it.err = err
