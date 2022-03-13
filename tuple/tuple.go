@@ -311,6 +311,8 @@ const (
 // Iterator is an iterator over a tuple store.
 type Iterator interface {
 	base.Iterator
+	// Reset the iterator to the starting state. Closed iterator can not reset.
+	Reset()
 	// Key returns a primary key of the tuple.
 	Key() Key
 	// Data returns a payload the tuple.

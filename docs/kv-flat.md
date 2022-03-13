@@ -20,9 +20,11 @@ By using a specific key separator these stores can implement [hierarchical key-v
 
 **Backend features:**
 
-| Backend | Persistence | Transactions |
-|---------|-------------|--------------|
-| B-Tree  | -           | X            |
-| Badger  | X           | X            |
-| Pebble  | X           | -            |
-| LevelDB | X           | X            |
+| Backend | Persistence | Concurrency | Transactions |
+|---------|-------------|-------------|--------------|
+| B-Tree  | -           | -           | -            |
+| Badger  | X           | X           | X            |
+| Pebble  | X           | X           | -            |
+| LevelDB | X           | X           | X            |
+| Tuple   | X           | X           | -            |
+

@@ -123,16 +123,41 @@ func (tx *Tx) Del(k flat.Key) error {
 	return tx.tx.Delete(k, pebble.Sync)
 }
 
-func (tx *Tx) Scan(pref flat.Key) flat.Iterator {
-	it := tx.tx.NewIter(nil)
-	return &Iterator{it: it, pref: pref, first: true}
+func (tx *Tx) Scan(opts ...flat.IteratorOption) flat.Iterator {
+	pit := tx.tx.NewIter(nil)
+	var it flat.Iterator = &Iterator{it: pit, first: true}
+	it = flat.ApplyIteratorOptions(it, opts)
+	return it
 }
+
+var (
+	_ flat.Seeker         = &Iterator{}
+	_ flat.PrefixIterator = &Iterator{}
+)
 
 type Iterator struct {
 	it    *pebble.Iterator
 	pref  flat.Key
 	first bool
 	err   error
+}
+
+func (it *Iterator) Reset() {
+	it.first = true
+	it.err = nil
+}
+
+func (it *Iterator) WithPrefix(pref flat.Key) flat.Iterator {
+	it.Reset()
+	it.pref = pref
+	return it
+}
+
+func (it *Iterator) Seek(ctx context.Context, key flat.Key) bool {
+	it.Reset()
+	it.first = false
+	it.it.SeekGE(key)
+	return it.isValid()
 }
 
 func (it *Iterator) Next(ctx context.Context) bool {

@@ -59,7 +59,7 @@ func TestSQL(t *testing.T, name string, gen Database) {
 			}
 		})
 		return sqltuple.New(conn, db, sqltuple.ByName(name).Dialect)
-	})
+	}, nil)
 }
 
 func BenchmarkSQL(t *testing.B, gen Database) {

@@ -9,6 +9,9 @@ import (
 )
 
 func TestElastic(t *testing.T) {
+	if testing.Short() {
+		t.SkipNow()
+	}
 	nosqltest.Test(t, elastic.Name)
 }
 

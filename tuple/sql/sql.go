@@ -827,6 +827,15 @@ type sqlIterator struct {
 	err error
 }
 
+func (it *sqlIterator) Reset() {
+	it.err = nil
+	it.t = nil
+	if it.rows != nil {
+		_ = it.rows.Close()
+		it.rows = nil
+	}
+}
+
 func (it *sqlIterator) Next(ctx context.Context) bool {
 	if it.err != nil {
 		return false

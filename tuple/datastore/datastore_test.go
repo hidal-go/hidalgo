@@ -59,5 +59,5 @@ func TestDatastore(t *testing.T) {
 			_ = cli.Close()
 		})
 		return OpenClient(cli)
-	})
+	}, nil)
 }

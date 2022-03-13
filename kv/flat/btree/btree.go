@@ -111,15 +111,58 @@ func (tx *Tx) Del(k flat.Key) error {
 	tx.t.Delete(k)
 	return nil
 }
-func (tx *Tx) Scan(pref flat.Key) flat.Iterator {
-	return &Iterator{t: tx.t, pref: pref}
+
+func (tx *Tx) Scan(opts ...flat.IteratorOption) flat.Iterator {
+	var it flat.Iterator = &Iterator{t: tx.t}
+	it = flat.ApplyIteratorOptions(it, opts)
+	return it
 }
+
+var (
+	_ flat.Seeker         = &Iterator{}
+	_ flat.PrefixIterator = &Iterator{}
+)
 
 type Iterator struct {
 	t    *Tree
 	pref []byte
 	e    *Enumerator
 	k, v []byte
+}
+
+func (it *Iterator) Reset() {
+	if it.e != nil {
+		it.e.Close()
+		it.e = nil
+	}
+	it.k = nil
+	it.v = nil
+}
+
+func (it *Iterator) WithPrefix(pref flat.Key) flat.Iterator {
+	it.Reset()
+	it.pref = pref
+	return it
+}
+
+func (it *Iterator) next() bool {
+	k, v, err := it.e.Next()
+	if err == io.EOF {
+		return false
+	} else if !bytes.HasPrefix(k, it.pref) {
+		return false
+	}
+	it.k, it.v = k, v
+	return true
+}
+
+func (it *Iterator) Seek(ctx context.Context, key flat.Key) bool {
+	if it.t == nil {
+		return false
+	}
+	it.Reset()
+	it.e, _ = it.t.Seek(key)
+	return it.next()
 }
 
 func (it *Iterator) Next(ctx context.Context) bool {
@@ -129,14 +172,7 @@ func (it *Iterator) Next(ctx context.Context) bool {
 	if it.e == nil {
 		it.e, _ = it.t.Seek(it.pref)
 	}
-	k, v, err := it.e.Next()
-	if err == io.EOF {
-		return false
-	} else if !bytes.HasPrefix(k, it.pref) {
-		return false
-	}
-	it.k, it.v = k, v
-	return true
+	return it.next()
 }
 func (it *Iterator) Key() flat.Key   { return it.k }
 func (it *Iterator) Val() flat.Value { return it.v }

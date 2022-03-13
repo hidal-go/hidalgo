@@ -15,5 +15,7 @@ func TestKV2Tuple(t *testing.T) {
 		kdb := btree.New()
 		db := tuplekv.New(flat.Upgrade(kdb))
 		return db
+	}, &tupletest.Options{
+		NoLocks: true,
 	})
 }

@@ -40,10 +40,10 @@ func View(ctx context.Context, kv KV, view func(tx Tx) error) error {
 	return tx.Close()
 }
 
-// Each is a helper to to enumerate all key-value pairs with a specific prefix.
+// Each is a helper to enumerate all key-value pairs with a specific prefix.
 // See Iterator for rules of using returned values.
-func Each(ctx context.Context, tx Tx, pref Key, fnc func(k Key, v Value) error) error {
-	it := tx.Scan(pref)
+func Each(ctx context.Context, tx Tx, fnc func(k Key, v Value) error, opts ...IteratorOption) error {
+	it := tx.Scan(opts...)
 	defer it.Close()
 	for it.Next(ctx) {
 		if err := fnc(it.Key(), it.Val()); err != nil {

@@ -55,6 +55,28 @@ func (k Key) Compare(k2 Key) int {
 	return 0
 }
 
+// HasPrefix checks if a key has a given prefix.
+func (k Key) HasPrefix(pref Key) bool {
+	if len(pref) == 0 {
+		return true
+	} else if len(k) < len(pref) {
+		return false
+	}
+	for i, p := range pref {
+		s := k[i]
+		if i == len(pref)-1 {
+			if !bytes.HasPrefix(s, p) {
+				return false
+			}
+		} else {
+			if !bytes.Equal(s, p) {
+				return false
+			}
+		}
+	}
+	return true
+}
+
 // Append key parts and return a new value.
 // Value is not a deep copy, use Clone for this.
 func (k Key) Append(parts Key) Key {
@@ -138,19 +160,8 @@ type Tx interface {
 	Put(k Key, v Value) error
 	// Del removes the key from the database. See Put for consistency guaranties.
 	Del(k Key) error
-	// Scan will iterate over all key-value pairs with a specific key prefix.
-	Scan(pref Key) Iterator
-}
-
-// Iterator is an iterator over hierarchical key-value store.
-type Iterator interface {
-	base.Iterator
-	// Key return current key. The value will become invalid on Next or Close.
-	// Caller should not modify or store the value - use Clone.
-	Key() Key
-	// Val return current value. The value will become invalid on Next or Close.
-	// Caller should not modify or store the value - use Clone.
-	Val() Value
+	// Scan starts iteration over key-value pairs. Returned results are affected by IteratorOption.
+	Scan(opts ...IteratorOption) Iterator
 }
 
 // GetBatch is an implementation of Tx.GetBatch for databases that has no native implementation for it.

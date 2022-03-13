@@ -8,6 +8,7 @@ import (
 
 	"github.com/hidal-go/hidalgo/filter"
 	"github.com/hidal-go/hidalgo/kv"
+	"github.com/hidal-go/hidalgo/kv/options"
 	"github.com/hidal-go/hidalgo/tuple"
 	"github.com/hidal-go/hidalgo/tuple/tuplepb"
 	"github.com/hidal-go/hidalgo/values"
@@ -97,7 +98,7 @@ func (db *tupleStore) Table(ctx context.Context, name string) (tuple.TableInfo, 
 }
 
 func (db *tupleStore) listTablesWith(ctx context.Context, tx kv.Tx) ([]*tupleTableInfo, error) {
-	it := tx.Scan(db.tableSchema(""))
+	it := tx.Scan(options.WithPrefixKV(db.tableSchema("")))
 	defer it.Close()
 	if err := it.Err(); err != nil {
 		return nil, tupleErr(err)
@@ -265,7 +266,7 @@ func (tbl *tupleTable) Drop(ctx context.Context) error {
 
 func (tbl *tupleTable) Clear(ctx context.Context) error {
 	// TODO: support prefix delete on kv
-	it := tbl.tx.tx.Scan(tbl.row(nil))
+	it := tbl.tx.tx.Scan(options.WithPrefixKV(tbl.row(nil)))
 	defer it.Close()
 	for it.Next(ctx) {
 		if err := tbl.tx.tx.Del(it.Key()); err != nil {
@@ -526,7 +527,7 @@ func (tbl *tupleTable) scan(f *tuple.Filter) *tupleIterator {
 	}
 	return &tupleIterator{
 		tbl: tbl, f: f,
-		it: tbl.tx.tx.Scan(pref),
+		it: tbl.tx.tx.Scan(options.WithPrefixKV(pref)),
 	}
 }
 
@@ -547,6 +548,11 @@ type tupleIterator struct {
 	f   *tuple.Filter
 	it  kv.Iterator
 	err error
+}
+
+func (it *tupleIterator) Reset() {
+	it.err = nil
+	it.it.Reset()
 }
 
 func (it *tupleIterator) Close() error {
@@ -585,7 +591,11 @@ func (it *tupleIterator) Key() tuple.Key {
 	if it.it == nil {
 		return nil
 	}
-	data, err := it.tbl.decodeKey(it.key())
+	key := it.key()
+	if len(key) == 0 {
+		return nil
+	}
+	data, err := it.tbl.decodeKey(key)
 	if err != nil {
 		it.err = err
 	}

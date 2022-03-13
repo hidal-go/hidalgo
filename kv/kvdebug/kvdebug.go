@@ -208,34 +208,42 @@ func (tx *kvTX) Del(k kv.Key) error {
 	return err
 }
 
-func (tx *kvTX) Scan(pref kv.Key) kv.Iterator {
+func (tx *kvTX) Scan(opts ...kv.IteratorOption) kv.Iterator {
 	d := tx.kv
 	atomic.AddInt64(&d.running.iter, 1)
 	atomic.AddInt64(&d.stats.Iter.N, 1)
 	if d.logging() {
-		log.Printf("scan: %q", pref)
+		log.Printf("scan: %+v", opts)
 	}
-	return &kvIter{kv: tx.kv, it: tx.tx.Scan(pref), pref: pref}
+	return &kvIter{kv: tx.kv, it: tx.tx.Scan(opts...)}
 }
 
 type kvIter struct {
-	kv   *KV
-	pref kv.Key
-	it   kv.Iterator
-	err  error
+	kv  *KV
+	it  kv.Iterator
+	err error
+}
+
+func (it *kvIter) Reset() {
+	d := it.kv
+	it.it.Reset()
+	it.err = nil
+	if d.logging() {
+		log.Printf("reset")
+	}
 }
 
 func (it *kvIter) Next(ctx context.Context) bool {
 	d := it.kv
 	if !it.it.Next(ctx) {
 		if d.logging() {
-			log.Printf("scan: %q: %v", it.pref, false)
+			log.Printf("scan: %v", false)
 		}
 		return false
 	}
 	atomic.AddInt64(&d.stats.Iter.Next, 1)
 	if d.logging() {
-		log.Printf("scan: %q: %q = %q", it.pref, it.it.Key(), it.it.Val())
+		log.Printf("scan: %q = %q", it.it.Key(), it.it.Val())
 	}
 	return true
 }

@@ -33,7 +33,8 @@ type hieKV struct {
 	flat KV
 }
 
-func keyEscape(k kv.Key) Key {
+// KeyEscape converts kv.Key to a flat Key.
+func KeyEscape(k kv.Key) Key {
 	var k2 Key
 	for i, s := range k {
 		if i != 0 {
@@ -49,7 +50,8 @@ func keyEscape(k kv.Key) Key {
 	return k2
 }
 
-func keyUnescape(k Key) kv.Key {
+// KeyUnescape converts flat Key into kv.Key.
+func KeyUnescape(k Key) kv.Key {
 	var (
 		k2  kv.Key
 		cur Key
@@ -102,7 +104,7 @@ func (tx *flatTx) key(key kv.Key) Key {
 	if len(key) == 0 {
 		return nil
 	}
-	return keyEscape(key)
+	return KeyEscape(key)
 }
 
 func (tx *flatTx) Get(ctx context.Context, key kv.Key) (kv.Value, error) {
@@ -136,8 +138,20 @@ func (tx *flatTx) Del(k kv.Key) error {
 	return tx.tx.Del(tx.key(k))
 }
 
-func (tx *flatTx) Scan(pref kv.Key) kv.Iterator {
-	return &prefIter{kv: tx.kv, Iterator: tx.tx.Scan(tx.key(pref))}
+func (tx *flatTx) Scan(opts ...kv.IteratorOption) kv.Iterator {
+	var (
+		native   []IteratorOption
+		fallback []kv.IteratorOption
+	)
+	for _, opt := range opts {
+		if v, ok := opt.(IteratorOption); ok {
+			native = append(native, v)
+		} else {
+			fallback = append(fallback, opt)
+		}
+	}
+	it := &prefIter{kv: tx.kv, Iterator: tx.tx.Scan(native...)}
+	return kv.ApplyIteratorOptions(it, fallback)
 }
 
 type prefIter struct {
@@ -150,5 +164,5 @@ func (it *prefIter) Val() kv.Value {
 }
 
 func (it *prefIter) Key() kv.Key {
-	return keyUnescape(it.Iterator.Key())
+	return KeyUnescape(it.Iterator.Key())
 }

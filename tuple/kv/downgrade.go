@@ -145,26 +145,37 @@ func (tx *flatTx) Del(k flat.Key) error {
 	})
 }
 
-func (tx *flatTx) Scan(pref flat.Key) flat.Iterator {
-	var f *tuple.Filter
-	if len(pref) != 0 {
-		kpref := flatKeyPart(pref)
-		f = &tuple.Filter{
-			KeyFilter: tuple.KeyFilters{
-				filter.Prefix(kpref),
-			},
-		}
-	}
-	return &flatIterator{tx: tx, it: tx.tbl.Scan(&tuple.ScanOptions{
-		Sort:   tuple.SortAsc,
-		Filter: f,
-	})}
+func (tx *flatTx) Scan(opts ...flat.IteratorOption) flat.Iterator {
+	tit := &flatIterator{tx: tx}
+	tit.seek(nil)
+	var it flat.Iterator = tit
+	it = flat.ApplyIteratorOptions(it, opts)
+	return it
 }
 
+var (
+	_ flat.Seeker         = &flatIterator{}
+	_ flat.PrefixIterator = &flatIterator{}
+)
+
 type flatIterator struct {
-	tx  *flatTx
-	it  tuple.Iterator
-	err error
+	tx   *flatTx
+	pref flat.Key
+	it   tuple.Iterator
+	err  error
+}
+
+func (it *flatIterator) Reset() {
+	it.err = nil
+	if it.it != nil {
+		it.it.Reset()
+	}
+}
+
+func (it *flatIterator) WithPrefix(pref flat.Key) flat.Iterator {
+	it.pref = pref
+	it.seek(nil)
+	return it
 }
 
 func (it *flatIterator) Close() error {
@@ -176,6 +187,39 @@ func (it *flatIterator) Err() error {
 		return err
 	}
 	return it.err
+}
+
+func (it *flatIterator) filters() tuple.KeyFilters {
+	if len(it.pref) == 0 {
+		return nil
+	}
+	return tuple.KeyFilters{
+		filter.Prefix(flatKeyPart(it.pref)),
+	}
+}
+
+func (it *flatIterator) seek(key flat.Key) {
+	it.Reset()
+	if it.it != nil {
+		_ = it.it.Close()
+	}
+	filters := it.filters()
+	if len(key) != 0 {
+		filters = append(filters, filter.GTE(flatKeyPart(key)))
+	}
+	var f *tuple.Filter
+	if len(filters) != 0 {
+		f = &tuple.Filter{KeyFilter: filters}
+	}
+	it.it = it.tx.tbl.Scan(&tuple.ScanOptions{
+		Sort:   tuple.SortAsc,
+		Filter: f,
+	})
+}
+
+func (it *flatIterator) Seek(ctx context.Context, key flat.Key) bool {
+	it.seek(key)
+	return it.it.Next(ctx)
 }
 
 func (it *flatIterator) Next(ctx context.Context) bool {

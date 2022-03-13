@@ -158,20 +158,47 @@ func (tx *Tx) Del(k flat.Key) error {
 	}
 	return tx.tx.Delete(k, tx.db.wo)
 }
-func (tx *Tx) Scan(pref flat.Key) flat.Iterator {
-	r, ro := util.BytesPrefix(pref), tx.db.ro
-	var it iterator.Iterator
-	if tx.tx != nil {
-		it = tx.tx.NewIterator(r, ro)
-	} else {
-		it = tx.sn.NewIterator(r, ro)
-	}
-	return &Iterator{it: it, first: true}
+func (tx *Tx) Scan(opts ...flat.IteratorOption) flat.Iterator {
+	lit := &Iterator{tx: tx}
+	lit.WithPrefix(nil)
+	var it flat.Iterator = lit
+	it = flat.ApplyIteratorOptions(it, opts)
+	return it
 }
 
+var (
+	_ flat.Seeker         = &Iterator{}
+	_ flat.PrefixIterator = &Iterator{}
+)
+
 type Iterator struct {
+	tx    *Tx
 	it    iterator.Iterator
 	first bool
+}
+
+func (it *Iterator) Reset() {
+	it.first = true
+}
+
+func (it *Iterator) WithPrefix(pref flat.Key) flat.Iterator {
+	it.Reset()
+	if it.it != nil {
+		it.it.Release()
+	}
+	r, ro := util.BytesPrefix(pref), it.tx.db.ro
+	if it.tx.tx != nil {
+		it.it = it.tx.tx.NewIterator(r, ro)
+	} else {
+		it.it = it.tx.sn.NewIterator(r, ro)
+	}
+	return it
+}
+
+func (it *Iterator) Seek(ctx context.Context, key flat.Key) bool {
+	it.Reset()
+	it.first = false
+	return it.it.Seek(key)
 }
 
 func (it *Iterator) Next(ctx context.Context) bool {

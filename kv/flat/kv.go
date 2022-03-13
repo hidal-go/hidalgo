@@ -72,19 +72,8 @@ type Tx interface {
 	Put(k Key, v Value) error
 	// Del removes the key from the database. See Put for consistency guaranties.
 	Del(k Key) error
-	// Scan will iterate over all key-value pairs with a specific key prefix.
-	Scan(pref Key) Iterator
-}
-
-// Iterator is an iterator over flat key-value store.
-type Iterator interface {
-	base.Iterator
-	// Key return current key. The value will become invalid on Next or Close.
-	// Caller should not modify or store the value - use Clone.
-	Key() Key
-	// Key return current value. The value will become invalid on Next or Close.
-	// Caller should not modify or store the value - use Clone.
-	Val() Value
+	// Scan starts iteration over key-value pairs. Returned results are affected by IteratorOption.
+	Scan(opts ...IteratorOption) Iterator
 }
 
 // GetBatch is an implementation of Tx.GetBatch for databases that has no native implementation for it.

@@ -17,7 +17,7 @@ By storing a schema and using row serialization, these stores can implement [tup
 
 **Backend features:**
 
-| Backend | Persistence | Transactions |
-|---------|-------------|--------------|
-| Bolt    | X           | X            |
-| BBolt   | X           | X            |
+| Backend | Persistence | Concurrency | Transactions |
+|---------|-------------|-------------|--------------|
+| Bolt    | X           | X           | X            |
+| BBolt   | X           | X           | X            |

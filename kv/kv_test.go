@@ -54,6 +54,66 @@ func TestKeyCompare(t *testing.T) {
 	}
 }
 
+var keyHasPrefixCases = []struct {
+	key, pref Key
+	exp       bool
+}{
+	{
+		key:  SKey("a"),
+		pref: SKey("a"),
+		exp:  true,
+	},
+	{
+		key:  SKey("a"),
+		pref: SKey("b"),
+		exp:  false,
+	},
+	{
+		key:  SKey("a"),
+		pref: SKey("a", "b"),
+		exp:  false,
+	},
+	{
+		key:  SKey("a", "b"),
+		pref: SKey("a"),
+		exp:  true,
+	},
+	{
+		key:  SKey("a", "b"),
+		pref: SKey("a", "a"),
+		exp:  false,
+	},
+	{
+		key:  nil,
+		pref: SKey("a", "b"),
+		exp:  false,
+	},
+	{
+		key:  SKey("a", "b"),
+		pref: nil,
+		exp:  true,
+	},
+	{
+		key:  SKey("ab"),
+		pref: SKey("a", "b"),
+		exp:  false,
+	},
+	{
+		key:  SKey("a", "b"),
+		pref: SKey("ab"),
+		exp:  false,
+	},
+}
+
+func TestKeyHasPrefix(t *testing.T) {
+	for _, c := range keyHasPrefixCases {
+		t.Run("", func(t *testing.T) {
+			d := c.key.HasPrefix(c.pref)
+			require.Equal(t, c.exp, d)
+		})
+	}
+}
+
 func TestKeyAppend(t *testing.T) {
 	k := SKey("a", "b", "c")
 	k = k.Append(SKey("d"))

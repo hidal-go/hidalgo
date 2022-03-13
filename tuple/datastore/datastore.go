@@ -587,6 +587,14 @@ type Iterator struct {
 	err error
 }
 
+func (it *Iterator) Reset() {
+	it.t = tuple.Tuple{}
+	it.err = nil
+	if it.it != nil {
+		it.it = nil
+	}
+}
+
 func (it *Iterator) Next(ctx context.Context) bool {
 	if it.err != nil {
 		return false

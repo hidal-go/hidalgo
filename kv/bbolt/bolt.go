@@ -185,58 +185,95 @@ func (tx *Tx) Del(k kv.Key) error {
 	return err
 }
 
-func (tx *Tx) Scan(pref kv.Key) kv.Iterator {
+func (tx *Tx) Scan(opts ...kv.IteratorOption) kv.Iterator {
+	var it kv.Iterator = &Iterator{
+		tx:    tx,
+		rootb: tx.root(),
+	}
+	it.Reset()
+	return kv.ApplyIteratorOptions(it, opts)
+}
+
+var (
+	_ kv.Seeker         = &Iterator{}
+	_ kv.PrefixIterator = &Iterator{}
+)
+
+type Iterator struct {
+	tx    *Tx // only used for iterator optimization
+	rootb *bolt.Bucket
+	rootk kv.Key // used to reconstruct a full key
+	pref  kv.Key // prefix to check all keys against
+	stack struct {
+		k kv.Key
+		b []*bolt.Bucket
+		c []*bolt.Cursor
+	}
+	k, v []byte // inside the current bucket
+}
+
+func (it *Iterator) Reset() {
+	it.k = nil
+	it.v = nil
+	it.stack.c = nil
+	it.stack.b = nil
+	if cap(it.stack.k) >= len(it.rootk) {
+		it.stack.k = it.stack.k[:len(it.rootk)]
+	} else {
+		// we will append to it
+		it.stack.k = it.rootk.Clone()
+	}
+	copy(it.stack.k, it.rootk)
+	if it.rootb != nil {
+		it.stack.b = []*bolt.Bucket{it.rootb}
+	}
+}
+
+func (it *Iterator) WithPrefix(pref kv.Key) kv.Iterator {
+	it.Reset()
 	kpref := pref
-	b, p := tx.bucket(pref)
+	b, p := it.tx.bucket(pref)
 	if b == nil || len(p) > 1 {
 		// if the prefix key is still longer than 1, it means that
 		// a bucket mentioned in the prefix does not exists and
 		// we can safely return an empty iterator
-		return &Iterator{}
+		*it = Iterator{tx: it.tx}
+		return it
 	}
 	// the key for bucket we iterate
-	kpref = kpref[:len(kpref)-len(p)]
-	return &Iterator{
-		b:    []*bolt.Bucket{b},
-		pref: p,
-		root: kpref.Clone(), // we will append to it
-	}
+	it.rootk = kpref[:len(kpref)-len(p)]
+	it.rootb = b
+	it.pref = p
+	it.Reset()
+	return it
 }
 
-type Iterator struct {
-	root kv.Key // used to reconstruct a full key
-	pref kv.Key // prefix to check all keys against
-	b    []*bolt.Bucket
-	c    []*bolt.Cursor
-	k, v []byte
-}
-
-func (it *Iterator) Next(ctx context.Context) bool {
-	for len(it.b) > 0 {
-		i := len(it.b) - 1
-		cb := it.b[i]
-		if len(it.c) < len(it.b) {
+func (it *Iterator) next(pref kv.Key) bool {
+	for len(it.stack.b) > 0 {
+		i := len(it.stack.b) - 1
+		cb := it.stack.b[i]
+		if len(it.stack.c) < len(it.stack.b) {
 			c := cb.Cursor()
-			it.c = append(it.c, c)
-			if i >= len(it.pref) {
+			it.stack.c = append(it.stack.c, c)
+			if i >= len(pref) {
 				it.k, it.v = c.First()
 			} else {
-				it.k, it.v = c.Seek(it.pref[i])
+				it.k, it.v = c.Seek(pref[i])
 			}
 		} else {
-			c := it.c[i]
+			c := it.stack.c[i]
 			it.k, it.v = c.Next()
 		}
 		if it.k != nil {
 			// found a key, check prefix
-			if i >= len(it.pref) || bytes.HasPrefix(it.k, it.pref[i]) {
+			if i >= len(pref) || bytes.HasPrefix(it.k, pref[i]) {
 				// prefix matches, or is not specified
 				if it.v == nil {
 					// it's a bucket
-					cb := it.b[len(it.b)-1]
+					cb := it.stack.b[len(it.stack.b)-1]
 					if b := cb.Bucket(it.k); b != nil {
-						it.b = append(it.b, b)
-						it.root = append(it.root, it.k)
+						it.stack.b = append(it.stack.b, b)
+						it.stack.k = append(it.stack.k, it.k)
 						continue
 					}
 					// or maybe it's a key after all
@@ -247,20 +284,32 @@ func (it *Iterator) Next(ctx context.Context) bool {
 		}
 		// iterator is ended, or we reached the end of the prefix
 		// return to top-level bucket
-		it.c = it.c[:len(it.c)-1]
-		it.b = it.b[:len(it.b)-1]
-		if len(it.root) > 0 { // since we hide top-level bucket it can be smaller
-			it.root = it.root[:len(it.root)-1]
+		it.stack.c = it.stack.c[:len(it.stack.c)-1]
+		it.stack.b = it.stack.b[:len(it.stack.b)-1]
+		if len(it.stack.k) > 0 { // since we hide top-level bucket it can be smaller
+			it.stack.k = it.stack.k[:len(it.stack.k)-1]
 		}
 	}
 	return false
 }
 
+func (it *Iterator) Seek(ctx context.Context, key kv.Key) bool {
+	it.Reset()
+	if !it.next(key) {
+		return false
+	}
+	return it.Key().HasPrefix(it.pref)
+}
+
+func (it *Iterator) Next(ctx context.Context) bool {
+	return it.next(it.pref)
+}
+
 func (it *Iterator) Key() kv.Key {
-	if len(it.b) == 0 {
+	if len(it.stack.b) == 0 {
 		return nil
 	}
-	k := it.root.Clone()
+	k := it.stack.k.Clone()
 	k = append(k, append([]byte{}, it.k...))
 	return k
 }

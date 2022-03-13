@@ -22,8 +22,15 @@ import (
 // It returns an empty database and a function to destroy it.
 type Func func(t testing.TB) tuple.Store
 
+type Options struct {
+	NoLocks bool // not safe for concurrent writes
+}
+
 // RunTest runs all tests for tuple store implementations.
-func RunTest(t *testing.T, fnc Func) {
+func RunTest(t *testing.T, fnc Func, opts *Options) {
+	if opts == nil {
+		opts = &Options{}
+	}
 	for _, c := range testList {
 		t.Run(c.name, func(t *testing.T) {
 			db := fnc(t)
@@ -43,6 +50,9 @@ func RunTest(t *testing.T, fnc Func) {
 				_ = kdb.Close()
 			})
 			return flat.Upgrade(kdb)
+		}, &kvtest.Options{
+			NoLocks: opts.NoLocks,
+			NoTx:    true, // FIXME
 		})
 	})
 }

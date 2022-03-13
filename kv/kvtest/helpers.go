@@ -4,8 +4,9 @@ import (
 	"context"
 	"testing"
 
-	"github.com/hidal-go/hidalgo/kv"
 	"github.com/stretchr/testify/require"
+
+	"github.com/hidal-go/hidalgo/kv"
 )
 
 func NewTest(t testing.TB, db kv.KV) *Test {
@@ -68,15 +69,10 @@ func (t Test) Del(key kv.Key) {
 	require.NoError(t.t, err)
 }
 
-func (t Test) Scan(pref kv.Key, exp []kv.Pair) {
-	tx, err := t.db.Tx(false)
-	require.NoError(t.t, err)
-	defer tx.Close()
-
-	it := tx.Scan(pref)
-	defer it.Close()
-	require.NoError(t.t, it.Err())
-
+func (t Test) ExpectIt(it kv.Iterator, exp []kv.Pair) {
+	if len(exp) == 0 {
+		exp = nil
+	}
 	ctx := context.TODO()
 	var got []kv.Pair
 	for it.Next(ctx) {
@@ -87,4 +83,30 @@ func (t Test) Scan(pref kv.Key, exp []kv.Pair) {
 	}
 	require.NoError(t.t, it.Err())
 	require.Equal(t.t, exp, got)
+}
+
+func (t Test) Scan(exp []kv.Pair, opts ...kv.IteratorOption) {
+	tx, err := t.db.Tx(false)
+	require.NoError(t.t, err)
+	defer tx.Close()
+
+	it := tx.Scan(opts...)
+	defer it.Close()
+	require.NoError(t.t, it.Err())
+
+	t.ExpectIt(it, exp)
+}
+
+func (t Test) ScanReset(exp []kv.Pair, opts ...kv.IteratorOption) {
+	tx, err := t.db.Tx(false)
+	require.NoError(t.t, err)
+	defer tx.Close()
+
+	it := tx.Scan(opts...)
+	defer it.Close()
+	require.NoError(t.t, it.Err())
+
+	t.ExpectIt(it, exp)
+	it.Reset()
+	t.ExpectIt(it, exp)
 }

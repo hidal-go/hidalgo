@@ -129,16 +129,52 @@ func (tx *Tx) Del(k flat.Key) error {
 	return err
 }
 
-func (tx *Tx) Scan(pref flat.Key) flat.Iterator {
-	it := tx.tx.NewIterator(badger.DefaultIteratorOptions)
-	return &Iterator{it: it, pref: pref, first: true}
+func (tx *Tx) Scan(opts ...flat.IteratorOption) flat.Iterator {
+	bit := tx.tx.NewIterator(badger.DefaultIteratorOptions)
+	var it flat.Iterator = &Iterator{it: bit, first: true}
+	it = flat.ApplyIteratorOptions(it, opts)
+	return it
 }
+
+var (
+	_ flat.Seeker         = &Iterator{}
+	_ flat.PrefixIterator = &Iterator{}
+)
 
 type Iterator struct {
 	it    *badger.Iterator
 	pref  flat.Key
 	first bool
+	valid bool
 	err   error
+}
+
+func (it *Iterator) Reset() {
+	it.first = true
+	it.valid = false
+	it.err = nil
+}
+
+func (it *Iterator) WithPrefix(pref flat.Key) flat.Iterator {
+	it.Reset()
+	it.pref = pref
+	return it
+}
+
+func (it *Iterator) next() bool {
+	if len(it.pref) != 0 {
+		it.valid = it.it.ValidForPrefix(it.pref)
+	} else {
+		it.valid = it.it.Valid()
+	}
+	return it.valid
+}
+
+func (it *Iterator) Seek(ctx context.Context, key flat.Key) bool {
+	it.Reset()
+	it.first = false
+	it.it.Seek(key)
+	return it.next()
 }
 
 func (it *Iterator) Next(ctx context.Context) bool {
@@ -148,10 +184,7 @@ func (it *Iterator) Next(ctx context.Context) bool {
 	} else {
 		it.it.Next()
 	}
-	if len(it.pref) != 0 {
-		return it.it.ValidForPrefix(it.pref)
-	}
-	return it.it.Valid()
+	return it.next()
 }
 
 func (it *Iterator) Err() error {
@@ -164,11 +197,25 @@ func (it *Iterator) Close() error {
 }
 
 func (it *Iterator) Key() flat.Key {
-	return it.it.Item().Key()
+	if !it.valid {
+		return nil
+	}
+	ent := it.it.Item()
+	if ent == nil {
+		return nil
+	}
+	return ent.Key()
 }
 
 func (it *Iterator) Val() flat.Value {
-	v, err := it.it.Item().ValueCopy(nil)
+	if !it.valid {
+		return nil
+	}
+	ent := it.it.Item()
+	if ent == nil {
+		return nil
+	}
+	v, err := ent.ValueCopy(nil)
 	if err != nil {
 		it.err = err
 	}
