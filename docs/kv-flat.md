@@ -27,7 +27,7 @@ By using a specific key separator these stores can implement [hierarchical key-v
 
 **Backend optimizations:**
 
-| Backend                         | Seek | Prefix | 
+| Backend                         | Seek | Prefix |
 |---------------------------------|------|--------|
 | B-Tree                          | X    | X      |
 | Badger                          | X    | X      |
@@ -38,10 +38,10 @@ By using a specific key separator these stores can implement [hierarchical key-v
 
 Notes:
 
-- Even though all backends expose `Tx` interface, some may behave incorrectly
+* Even though all backends expose `Tx` interface, some may behave incorrectly
   during concurrent writes to the same key. This is why transactions support
   may be marked unavailable for some backends. Contributions welcome :)
-- Support for any of the features in meta-backends like tuple store will depend
+* Support for any of the features in meta-backends like tuple store will depend
   on when the underlying backend support.
-- Some features may be marked as not implemented for meta backend in this table,
+* Some features may be marked as not implemented for meta backend in this table,
   which means that they will not yet work for any of the underlying backends.
