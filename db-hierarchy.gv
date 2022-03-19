@@ -1,14 +1,17 @@
+# Generate SVG using:
+# dot db-hierarchy.gv -T svg > db-hierarchy.svg
+
 digraph DBs {
     rankdir="BT"
 
     flat_kv [label="Flat KV" URL="./docs/kv-flat.md" color="#bbbbff" style=filled]
     flat_kv -> hie_kv
+    badger [label="Badger"]
+    badger -> flat_kv
     btree [label="B-Tree"]
     btree -> flat_kv
     leveldb [label="LevelDB"]
     leveldb -> flat_kv
-    badger [label="Badger"]
-    badger -> flat_kv
     pebble [label="Pebble"]
     pebble -> flat_kv
 
