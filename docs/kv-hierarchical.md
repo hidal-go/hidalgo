@@ -1,4 +1,4 @@
-## Hierarchical key-value store
+# Hierarchical key-value store
 
 [![Go Reference](https://pkg.go.dev/badge/github.com/hidal-go/hidalgo/kv.svg "GoDoc for hierarchical key-value store within HiDAL-Go")](https://pkg.go.dev/github.com/hidal-go/hidalgo/kv)
 
@@ -10,14 +10,13 @@ hence the key is composed of names of these buckets (a path).
 
 By storing a schema and using row serialization, these stores can implement [tuple store](tuple-strict.md).
 
-**Supported backends:**
+## Supported backends
 
 * [Bolt](https://github.com/boltdb/bolt)
 * [BBolt](https://github.com/coreos/bbolt)
-
 * Emulated over [Flat KV](kv-flat.md)
 
-**Backend features:**
+## Backend features
 
 | Backend               | Persistence | Concurrency | Transactions |
 |-----------------------|-------------|-------------|--------------|
@@ -25,7 +24,7 @@ By storing a schema and using row serialization, these stores can implement [tup
 | BBolt                 | X           | X           | X            |
 | [Flat KV](kv-flat.md) | X           | X           | X            |
 
-**Backend optimizations:**
+## Backend optimizations
 
 | Backend               | Seek | Prefix |
 |-----------------------|------|--------|
@@ -33,7 +32,7 @@ By storing a schema and using row serialization, these stores can implement [tup
 | BBolt                 | X    | X      |
 | [Flat KV](kv-flat.md) | X    | X      |
 
-Notes:
+## Notes
 
 * Even though all backends expose `Tx` interface, some may behave incorrectly
   during concurrent writes to the same key. This is why transactions support
