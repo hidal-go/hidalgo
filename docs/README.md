@@ -1,6 +1,7 @@
 # Documentation
 
-For Go documentation, see [GoDoc](https://godoc.org/github.com/hidal-go/hidalgo).
+For Go documentation, see
+[![Go Reference](https://pkg.go.dev/badge/github.com/hidal-go/hidalgo.svg "GoDoc")](https://pkg.go.dev/github.com/hidal-go/hidalgo)
 
 ## Abstractions
 

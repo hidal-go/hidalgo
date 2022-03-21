@@ -1,5 +1,7 @@
 ## Flat key-value store
 
+[![Go Reference](https://pkg.go.dev/badge/github.com/hidal-go/hidalgo/kv/flat.svg "GoDoc for flat key-value store within HiDAL-Go")](https://pkg.go.dev/github.com/hidal-go/hidalgo/kv/flat)
+
 Flat KV store is the most basic abstraction - a store that associates a single binary key with a single binary value.
 
 By using a specific key separator these stores can implement [hierarchical key-value store](./kv-hierarchical.md).
