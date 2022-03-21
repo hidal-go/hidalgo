@@ -5,7 +5,7 @@ import (
 	"errors"
 )
 
-// ErrWildGuess returned if the the size can only be randomly guessed by the backend without scanning the data,
+// ErrWildGuess returned if the the size can only be randomly guessed by the backend without scanning the data.
 var ErrWildGuess = errors.New("can only guess the size")
 
 // TableSize returns a number of records in a table matching the filter.
