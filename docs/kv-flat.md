@@ -4,7 +4,7 @@
 
 Flat KV store is the most basic abstraction - a store that associates a single binary key with a single binary value.
 
-By using a specific key separator these stores can implement [hierarchical key-value store](./kv-hierarchical.md).
+By using a specific key separator these stores can implement [hierarchical key-value store](kv-hierarchical.md).
 
 **Supported backends:**
 
@@ -13,30 +13,30 @@ By using a specific key separator these stores can implement [hierarchical key-v
 * [Pebble](https://github.com/cockroachdb/pebble) (experimental)
 * [LevelDB](https://github.com/syndtr/goleveldb)
 
-* Downgrade of [Hierarchical KV](./kv-hierarchical.md)
-* Downgrade of [Tuple store](./tuple-strict.md)
+* Downgrade of [Hierarchical KV](kv-hierarchical.md)
+* Downgrade of [Tuple store](tuple-strict.md)
 
 **Backend features:**
 
-| Backend                         | Persistence | Concurrency | Transactions |
-|---------------------------------|-------------|-------------|--------------|
-| B-Tree                          | -           | -           | -            |
-| Badger                          | X           | X           | X            |
-| Pebble                          | X           | X           | -            |
-| LevelDB                         | X           | X           | X            |
-| [Hie. KV](./kv-hierarchical.md) | X           | X           | X            |
-| [Tuple](./tuple-strict.md)      | X           | X           | -            |
+| Backend                       | Persistence | Concurrency | Transactions |
+|-------------------------------|-------------|-------------|--------------|
+| B-Tree                        | -           | -           | -            |
+| Badger                        | X           | X           | X            |
+| Pebble                        | X           | X           | -            |
+| LevelDB                       | X           | X           | X            |
+| [Hie. KV](kv-hierarchical.md) | X           | X           | X            |
+| [Tuple](tuple-strict.md)      | X           | X           | -            |
 
 **Backend optimizations:**
 
-| Backend                         | Seek | Prefix |
-|---------------------------------|------|--------|
-| B-Tree                          | X    | X      |
-| Badger                          | X    | X      |
-| Pebble                          | X    | X      |
-| LevelDB                         | X    | X      |
-| [Hie. KV](./kv-hierarchical.md) | X    | X      |
-| [Tuple](./tuple-strict.md)      | X    | X      |
+| Backend                       | Seek | Prefix |
+|-------------------------------|------|--------|
+| B-Tree                        | X    | X      |
+| Badger                        | X    | X      |
+| Pebble                        | X    | X      |
+| LevelDB                       | X    | X      |
+| [Hie. KV](kv-hierarchical.md) | X    | X      |
+| [Tuple](tuple-strict.md)      | X    | X      |
 
 Notes:
 

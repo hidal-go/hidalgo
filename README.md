@@ -18,4 +18,4 @@ It is also possible to go in the other direction: given a tuple store (e.g. SQL)
 it is possible to "downgrade" it to a KV store. The KV abstraction will be the same
 as if a regular KV store is used.
 
-See [docs](./docs/README.md) for more details on available implementations.
+See [docs](docs/README.md) for more details on available implementations.
