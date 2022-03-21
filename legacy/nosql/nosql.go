@@ -293,11 +293,6 @@ type IndexType int
 const (
 	IndexAny    = IndexType(iota)
 	StringExact // exact match for string values (usually a hash index)
-
-	//StringFulltext
-	//IntIndex
-	//FloatIndex
-	//TimeIndex
 )
 
 // Index is an index for a collection of documents.
