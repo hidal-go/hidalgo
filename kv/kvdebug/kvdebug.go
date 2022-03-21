@@ -69,7 +69,7 @@ func (d *KV) Close() error {
 	w := atomic.LoadInt64(&d.running.txRW)
 	s := atomic.LoadInt64(&d.running.iter)
 	if r+w+s != 0 {
-		panic(fmt.Errorf("resourse leak: iter: %d, ro: %d, rw: %d", s, r, w))
+		panic(fmt.Errorf("resources leak: iter: %d, ro: %d, rw: %d", s, r, w))
 	}
 	return err
 }
