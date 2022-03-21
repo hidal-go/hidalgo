@@ -1,5 +1,7 @@
 ## Hierarchical key-value store
 
+[![Go Reference](https://pkg.go.dev/badge/github.com/hidal-go/hidalgo/kv.svg "GoDoc for hierarchical key-value store within HiDAL-Go")](https://pkg.go.dev/github.com/hidal-go/hidalgo/kv)
+
 One of the most basic abstractions for a database index - a store that associates a composite
 binary key with a single binary value.
 

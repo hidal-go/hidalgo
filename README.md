@@ -1,6 +1,8 @@
-# High-level Database Abstraction Layer for Go
+# HiDAL-Go
 
-[![](https://godoc.org/github.com/hidal-go/hidalgo?status.svg)](https://godoc.org/github.com/hidal-go/hidalgo)
+[![Go Reference](https://pkg.go.dev/badge/github.com/hidal-go/hidalgo.svg)](https://pkg.go.dev/github.com/hidal-go/hidalgo)
+
+HiDAL-Go = **Hi**gh-level **D**atabase **A**bstraction **L**ayer for **Go**
 
 This library consists of multiple abstraction layers over existing databases,
 either embedded or not.

@@ -1,5 +1,7 @@
 ## Strict tuple store
 
+[![Go Reference](https://pkg.go.dev/badge/github.com/hidal-go/hidalgo/tuple.svg "GoDoc for strict tuple store within HiDAL-Go")](https://pkg.go.dev/github.com/hidal-go/hidalgo/tuple)
+
 This abstraction is based on tuple stores with a predefined schema. It should be able to isolate tuples of one type
 into separate tables, and support lookup and scans on primary key. No secondary keys are supported.
 
