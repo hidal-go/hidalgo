@@ -9,7 +9,7 @@ import (
 
 //go:generate protoc --proto_path=$GOPATH/src:. --gogo_out=. tuple.proto
 
-// Make sure that new fields will cause compilation error
+// Make sure that new fields will cause compilation error.
 var (
 	_ tuple.Header = struct {
 		Name string
