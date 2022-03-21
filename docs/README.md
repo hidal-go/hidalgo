@@ -5,6 +5,6 @@ For Go documentation, see
 
 ## Abstractions
 
-* [Flat KV](./kv-flat.md)
-* [Hierarchical KV](./kv-hierarchical.md)
-* [Tuple store](./tuple-strict.md)
+* [Flat KV](kv-flat.md)
+* [Hierarchical KV](kv-hierarchical.md)
+* [Tuple store](tuple-strict.md)
