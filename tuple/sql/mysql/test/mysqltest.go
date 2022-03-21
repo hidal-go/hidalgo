@@ -5,7 +5,7 @@ import (
 
 	"github.com/ory/dockertest"
 
-	"github.com/hidal-go/hidalgo/tuple/sql"
+	sqltuple "github.com/hidal-go/hidalgo/tuple/sql"
 	"github.com/hidal-go/hidalgo/tuple/sql/mysql"
 	"github.com/hidal-go/hidalgo/tuple/sql/sqltest"
 )

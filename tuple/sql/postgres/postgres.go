@@ -6,7 +6,7 @@ import (
 	_ "github.com/lib/pq"
 
 	"github.com/hidal-go/hidalgo/base"
-	"github.com/hidal-go/hidalgo/tuple/sql"
+	sqltuple "github.com/hidal-go/hidalgo/tuple/sql"
 	"github.com/lib/pq"
 )
 
