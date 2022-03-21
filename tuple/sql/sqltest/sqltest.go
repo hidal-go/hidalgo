@@ -9,7 +9,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/hidal-go/hidalgo/tuple"
-	"github.com/hidal-go/hidalgo/tuple/sql"
+	sqltuple "github.com/hidal-go/hidalgo/tuple/sql"
 	"github.com/hidal-go/hidalgo/tuple/tupletest"
 )
 

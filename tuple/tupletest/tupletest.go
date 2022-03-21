@@ -14,7 +14,7 @@ import (
 	"github.com/hidal-go/hidalgo/kv/flat"
 	"github.com/hidal-go/hidalgo/kv/kvtest"
 	"github.com/hidal-go/hidalgo/tuple"
-	"github.com/hidal-go/hidalgo/tuple/kv"
+	tuplekv "github.com/hidal-go/hidalgo/tuple/kv"
 	"github.com/hidal-go/hidalgo/values"
 )
 

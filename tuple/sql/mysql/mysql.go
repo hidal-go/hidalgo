@@ -7,7 +7,7 @@ import (
 
 	"github.com/go-sql-driver/mysql"
 	"github.com/hidal-go/hidalgo/base"
-	"github.com/hidal-go/hidalgo/tuple/sql"
+	sqltuple "github.com/hidal-go/hidalgo/tuple/sql"
 )
 
 const Name = "mysql"
