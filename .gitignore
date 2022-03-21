@@ -17,10 +17,11 @@ vendor/
 
 ### JetBrains template
 
-# User-specific stuff:
+# User-specific stuff
 .idea/
+.vscode/
 
-## File-based project format:
+# File-based project format
 *.iws
 
 # IntelliJ
