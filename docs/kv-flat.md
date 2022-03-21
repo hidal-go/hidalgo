@@ -1,4 +1,4 @@
-## Flat key-value store
+# Flat key-value store
 
 [![Go Reference](https://pkg.go.dev/badge/github.com/hidal-go/hidalgo/kv/flat.svg "GoDoc for flat key-value store within HiDAL-Go")](https://pkg.go.dev/github.com/hidal-go/hidalgo/kv/flat)
 
@@ -6,7 +6,7 @@ Flat KV store is the most basic abstraction - a store that associates a single b
 
 By using a specific key separator these stores can implement [hierarchical key-value store](kv-hierarchical.md).
 
-**Supported backends:**
+## Supported backends
 
 * In-memory [B-Tree](https://github.com/cznic/b)
 * [Badger](https://github.com/dgraph-io/badger)
@@ -16,7 +16,7 @@ By using a specific key separator these stores can implement [hierarchical key-v
 * Downgrade of [Hierarchical KV](kv-hierarchical.md)
 * Downgrade of [Tuple store](tuple-strict.md)
 
-**Backend features:**
+## Backend features
 
 | Backend                       | Persistence | Concurrency | Transactions |
 |-------------------------------|-------------|-------------|--------------|
@@ -27,7 +27,7 @@ By using a specific key separator these stores can implement [hierarchical key-v
 | [Hie. KV](kv-hierarchical.md) | X           | X           | X            |
 | [Tuple](tuple-strict.md)      | X           | X           | -            |
 
-**Backend optimizations:**
+## Backend optimizations
 
 | Backend                       | Seek | Prefix |
 |-------------------------------|------|--------|
@@ -38,7 +38,7 @@ By using a specific key separator these stores can implement [hierarchical key-v
 | [Hie. KV](kv-hierarchical.md) | X    | X      |
 | [Tuple](tuple-strict.md)      | X    | X      |
 
-Notes:
+## Notes
 
 * Even though all backends expose `Tx` interface, some may behave incorrectly
   during concurrent writes to the same key. This is why transactions support
