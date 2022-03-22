@@ -38,6 +38,7 @@ func init() {
 			if err != nil {
 				return nil, err
 			}
+
 			return db, nil
 		},
 	})
@@ -48,6 +49,7 @@ func dialElastic(addr string) (*elastic.Client, error) {
 	if err != nil {
 		return nil, err
 	}
+
 	return client, nil
 }
 
@@ -56,18 +58,22 @@ func Dial(addr, index string, opt nosql.Options) (*DB, error) {
 	if err != nil {
 		return nil, err
 	}
+
 	vers, err := client.ElasticsearchVersion(addr)
 	if err != nil {
 		return nil, err
 	}
+
 	major, err := strconv.Atoi(strings.SplitN(vers, ".", 2)[0])
 	if err != nil {
 		return nil, fmt.Errorf("cannot parse version: %v", err)
 	}
+
 	ind := opt.GetString("index", index)
 	if err != nil {
 		return nil, err
 	}
+
 	settings := `{
 			"number_of_shards":1,
 			"number_of_replicas":0
@@ -76,6 +82,7 @@ func Dial(addr, index string, opt nosql.Options) (*DB, error) {
 	case string:
 		settings = o
 	}
+
 	db := &DB{
 		cli:   client,
 		colls: make(map[string]collection),
@@ -83,6 +90,7 @@ func Dial(addr, index string, opt nosql.Options) (*DB, error) {
 	db.ind.one = major <= 5
 	db.ind.pref = ind
 	db.ind.settings = json.RawMessage(settings)
+
 	return db, nil
 }
 
@@ -108,9 +116,11 @@ func (db *DB) Close() error {
 		db.cli.CloseIndex(db.ind.pref)
 		return nil
 	}
+
 	for col := range db.colls {
 		db.cli.CloseIndex(db.indexName(col))
 	}
+
 	return nil
 }
 
@@ -128,6 +138,7 @@ func (db *DB) indexName(col string) string {
 	if db.ind.one {
 		return db.ind.pref
 	}
+
 	return db.ind.pref + "_" + col
 }
 
@@ -146,6 +157,7 @@ func (db *DB) EnsureIndex(ctx context.Context, typ string, primary nosql.Index, 
 	} else if err != nil {
 		return err
 	}
+
 	conf, _ = conf[index].(map[string]interface{})
 
 	mappings, _ := conf["mappings"].(map[string]interface{})
@@ -159,27 +171,32 @@ func (db *DB) EnsureIndex(ctx context.Context, typ string, primary nosql.Index, 
 			props[f] = property{Type: indKeyword}
 		}
 	}
+
 	for _, ind := range secondary {
 		for _, f := range ind.Fields {
 			if _, ok := props[f]; ok {
 				continue
 			}
+
 			var typ indType
 			switch ind.Type {
 			case nosql.StringExact:
 				typ = indKeyword
 			}
+
 			if typ != "" {
 				props[f] = property{Type: typ}
 			}
 		}
 	}
+
 	cur := map[string]interface{}{"properties": props}
 	mappings[typ] = cur
 
 	if conf == nil {
 		conf = make(map[string]interface{})
 	}
+
 	if _, ok := conf["settings"]; !ok {
 		conf["settings"] = db.ind.settings
 	}
@@ -193,12 +210,14 @@ func (db *DB) EnsureIndex(ctx context.Context, typ string, primary nosql.Index, 
 	if err != nil {
 		return err
 	}
+
 	db.colls[typ] = collection{
 		typ:       typ,
 		compPK:    compPK,
 		primary:   primary,
 		secondary: secondary,
 	}
+
 	return nil
 }
 
@@ -231,8 +250,10 @@ func fromElasticValue(v interface{}) nosql.Value {
 	switch v := v.(type) {
 	case nil:
 		return nil
+
 	case map[string]interface{}:
 		return fromElasticDoc(v)
+
 	case []interface{}:
 		arr := make(nosql.Strings, 0, len(v))
 		for _, s := range v {
@@ -243,27 +264,38 @@ func fromElasticValue(v interface{}) nosql.Value {
 			}
 			arr = append(arr, string(str))
 		}
+
 		return arr
+
 	case string:
 		return nosql.String(v)
+
 	case json.Number:
 		if vi, err := v.Int64(); err == nil {
 			return nosql.Int(vi)
 		}
 		vf, _ := v.Float64()
+
 		return nosql.Float(vf)
+
 	case int:
 		return nosql.Int(v)
+
 	case int64:
 		return nosql.Int(v)
+
 	case float64:
 		return nosql.Float(v)
+
 	case bool:
 		return nosql.Bool(v)
+
 	case time.Time:
 		return nosql.Time(v)
+
 	case []byte:
 		return nosql.Bytes(v)
+
 	default:
 		panic(fmt.Errorf("unsupported type: %T", v))
 	}
@@ -273,10 +305,12 @@ func toElasticDoc(d nosql.Document) map[string]interface{} {
 	if d == nil {
 		return nil
 	}
+
 	m := make(map[string]interface{}, len(d))
 	for k, v := range d {
 		m[k] = toElasticValue(v)
 	}
+
 	return m
 }
 
@@ -284,10 +318,12 @@ func fromElasticDoc(d map[string]interface{}) nosql.Document {
 	if d == nil {
 		return nil
 	}
+
 	m := make(nosql.Document, len(d))
 	for k, v := range d {
 		m[k] = fromElasticValue(v)
 	}
+
 	return m
 }
 
@@ -295,7 +331,9 @@ func (c *collection) getKey(h *elastic.SearchHit) nosql.Key {
 	if !c.compPK {
 		return nosql.Key{h.Id}
 	}
+
 	d := c.convDoc(h)
+
 	// key field computed from multiple source fields
 	// get source fields from document in correct order
 	key := make(nosql.Key, 0, len(c.primary.Fields))
@@ -303,6 +341,7 @@ func (c *collection) getKey(h *elastic.SearchHit) nosql.Key {
 		s, _ := d[f].(nosql.String)
 		key = append(key, string(s))
 	}
+
 	return key
 }
 
@@ -324,10 +363,12 @@ func (c *collection) convDoc(h *elastic.SearchHit) nosql.Document {
 	if err := dec.Decode(&m); err != nil {
 		panic(err)
 	}
+
 	if !c.compPK {
 		// key field renamed - set correct name
 		m[c.primary.Fields[0]] = string(h.Id)
 	}
+
 	return fromElasticDoc(m)
 }
 
@@ -335,6 +376,7 @@ func (c *collection) convIns(key nosql.Key, d nosql.Document) (string, map[strin
 	mid := compKey(key)
 	m := toElasticDoc(d)
 	c.setKey(m, key)
+
 	return mid, m
 }
 
@@ -342,6 +384,7 @@ func compKey(key nosql.Key) string {
 	if len(key) == 1 {
 		return key[0]
 	}
+
 	return strings.Join(key, "|")
 }
 
@@ -349,18 +392,23 @@ func (db *DB) Insert(ctx context.Context, col string, key nosql.Key, d nosql.Doc
 	if key == nil {
 		key = nosql.GenKey()
 	}
+
 	c, ok := db.colls[col]
 	if !ok {
 		return nil, fmt.Errorf("collection %q not found", col)
 	}
+
 	index := db.indexName(col)
 	mid, m := c.convIns(key, d)
+
 	if _, err := db.cli.Index().Index(index).Type(col).Id(mid).BodyJson(m).Do(ctx); err != nil {
 		return nil, err
 	}
+
 	if _, err := db.cli.Flush(index).Do(ctx); err != nil {
 		return nil, err
 	}
+
 	return key, nil
 }
 
@@ -369,17 +417,21 @@ func (db *DB) FindByKey(ctx context.Context, col string, key nosql.Key) (nosql.D
 	resp, err := db.cli.Search(db.indexName(col)).Type(col).Query(
 		elastic.NewIdsQuery(col).Ids(compKey(key)),
 	).Size(1).Do(ctx)
+
 	if err != nil {
 		return nil, err
 	} else if resp.TotalHits() == 0 {
 		return nil, nosql.ErrNotFound
 	}
+
 	h := resp.Hits.Hits[0]
+
 	return c.convDoc(h), nil
 }
 
 func (db *DB) indexRef(col string) indexRef {
 	c := db.colls[col]
+
 	return indexRef{cli: db.cli, ind: db.indexName(col), c: &c}
 }
 
@@ -400,16 +452,19 @@ func convRegexp(o interface{}) interface{} {
 	if !ok {
 		return o
 	}
+
 	if strings.HasPrefix(s, "^") {
 		s = s[1:]
 	} else {
 		s = ".*" + s
 	}
+
 	if strings.HasSuffix(s, "$") {
 		s = s[:len(s)-1]
 	} else {
 		s = s + ".*"
 	}
+
 	return s
 }
 
@@ -429,6 +484,7 @@ func (q elasticQuery) Source() (interface{}, error) {
 		LTE interface{} `json:"lte,omitempty"`
 		LT  interface{} `json:"lt,omitempty"`
 	}
+
 	term := func(name string, v interface{}) map[string]interface{} {
 		return map[string]interface{}{
 			"term": map[string]interface{}{
@@ -436,6 +492,7 @@ func (q elasticQuery) Source() (interface{}, error) {
 			},
 		}
 	}
+
 	var filters, must, not []map[string]interface{}
 	if len(q.Keys) != 0 {
 		var ids []string
@@ -448,6 +505,7 @@ func (q elasticQuery) Source() (interface{}, error) {
 			},
 		})
 	}
+
 	ranges := make(map[string]rng)
 	for _, f := range q.Filters {
 		name := strings.Join(f.Path, ".")
@@ -482,6 +540,7 @@ func (q elasticQuery) Source() (interface{}, error) {
 			return nil, fmt.Errorf("unsupported filter: %v", f.Filter)
 		}
 	}
+
 	if len(ranges) != 0 {
 		for name, r := range ranges {
 			must = append(must, map[string]interface{}{
@@ -491,16 +550,20 @@ func (q elasticQuery) Source() (interface{}, error) {
 			})
 		}
 	}
+
 	qbool := make(map[string]interface{}, 3)
 	if len(filters) != 0 {
 		qbool["filter"] = filters
 	}
+
 	if len(must) != 0 {
 		qbool["must"] = must
 	}
+
 	if len(not) != 0 {
 		qbool["must_not"] = not
 	}
+
 	return map[string]interface{}{
 		"bool": qbool,
 	}, nil
@@ -533,13 +596,16 @@ func (q *Query) Count(ctx context.Context) (int64, error) {
 	if !q.qu.IsAll() {
 		cnt = cnt.Query(q.qu)
 	}
+
 	n, err := cnt.Do(ctx)
 	if err != nil {
 		return 0, err
 	}
+
 	if q.limit > 0 && n > q.limit {
 		n = q.limit
 	}
+
 	return n, nil
 }
 
@@ -548,23 +614,28 @@ func (q *Query) One(ctx context.Context) (nosql.Document, error) {
 	if !q.qu.IsAll() {
 		qu = qu.Query(q.qu)
 	}
+
 	resp, err := qu.Do(ctx)
 	if err != nil {
 		return nil, err
 	} else if len(resp.Hits.Hits) == 0 {
 		return nil, nosql.ErrNotFound
 	}
+
 	return q.c.convDoc(resp.Hits.Hits[0]), nil
 }
 
 func (q *Query) Iterate() nosql.DocIterator {
 	qu := q.cli.Scroll(q.ind).Type(q.c.typ)
+
 	if q.limit > 0 {
 		qu = qu.Size(int(q.limit))
 	}
+
 	if !q.qu.IsAll() {
 		qu = qu.Query(q.qu)
 	}
+
 	return &Iterator{indexRef: q.indexRef, qu: qu}
 }
 
@@ -582,6 +653,7 @@ func (it *Iterator) Next(ctx context.Context) bool {
 	if it.done {
 		return false
 	}
+
 	if it.buf == nil {
 		it.buf, it.err = it.qu.Do(ctx)
 	} else if it.i+1 >= len(it.buf.Hits.Hits) {
@@ -590,14 +662,17 @@ func (it *Iterator) Next(ctx context.Context) bool {
 	} else {
 		it.i++
 	}
+
 	if it.err == io.EOF {
 		it.err = nil
 		it.done = true
 	}
+
 	if it.err != nil || it.done || it.i >= len(it.buf.Hits.Hits) {
 		it.done = true
 		return false
 	}
+
 	return true
 }
 
@@ -613,6 +688,7 @@ func (it *Iterator) hit() *elastic.SearchHit {
 	if it.buf == nil || it.i >= len(it.buf.Hits.Hits) {
 		return nil
 	}
+
 	return it.buf.Hits.Hits[it.i]
 }
 
@@ -621,6 +697,7 @@ func (it *Iterator) Key() nosql.Key {
 	if h == nil {
 		return nil
 	}
+
 	return it.c.getKey(h)
 }
 
@@ -629,6 +706,7 @@ func (it *Iterator) Doc() nosql.Document {
 	if h == nil {
 		return nil
 	}
+
 	return it.c.convDoc(h)
 }
 
@@ -646,7 +724,9 @@ func (d *Delete) Keys(keys ...nosql.Key) nosql.Delete {
 	if len(keys) == 0 {
 		return d
 	}
+
 	d.qu.Keys = append(d.qu.Keys, keys...)
+
 	return d
 }
 
@@ -655,7 +735,9 @@ func (d *Delete) Do(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
+
 	_, err = d.cli.Flush(d.ind).Do(ctx)
+
 	return err
 }
 
@@ -671,7 +753,9 @@ func (u *Update) Inc(field string, dn int) nosql.Update {
 	if u.inc == nil {
 		u.inc = make(map[string]int)
 	}
+
 	u.inc[field] = u.inc[field] + dn
+
 	return u
 }
 
@@ -680,7 +764,9 @@ func (u *Update) Upsert(d nosql.Document) nosql.Update {
 	if u.upsert == nil {
 		u.upsert = make(map[string]interface{})
 	}
+
 	u.c.setKey(u.upsert, u.key)
+
 	return u
 }
 
@@ -691,10 +777,12 @@ func (u *Update) Do(ctx context.Context) error {
 		if u.upsert == nil {
 			u.upsert = make(map[string]interface{})
 		}
+
 		for f, dn := range u.inc {
 			script = append(script, fmt.Sprintf("ctx._source.%s = (ctx._source.%s ?: 0) %+d", f, f, dn))
 			u.upsert[f] = dn
 		}
+
 		upd = upd.Script(elastic.NewScript(strings.Join(script, "\n")))
 	} else {
 		// either doc or script should be set, so we will set doc
@@ -702,14 +790,18 @@ func (u *Update) Do(ctx context.Context) error {
 		u.c.setKey(doc, u.key)
 		upd = upd.Doc(doc)
 	}
+
 	if len(u.upsert) != 0 {
 		upd = upd.Upsert(u.upsert)
 	}
+
 	_, err := upd.Do(ctx)
 	if err != nil {
 		return err
 	}
+
 	_, err = u.cli.Flush(u.ind).Do(ctx)
+
 	return err
 }
 
@@ -733,12 +825,15 @@ func (w *inserter) WriteDoc(ctx context.Context, key nosql.Key, d nosql.Document
 			return err
 		}
 	}
+
 	if key == nil {
 		key = nosql.GenKey()
 	}
+
 	mid, m := w.c.convIns(key, d)
 	w.buf = append(w.buf, elastic.NewBulkIndexRequest().Id(mid).Doc(m))
 	w.ikeys = append(w.ikeys, key)
+
 	return nil
 }
 
@@ -746,17 +841,21 @@ func (w *inserter) Flush(ctx context.Context) error {
 	if len(w.buf) == 0 {
 		return w.err
 	}
+
 	_, err := w.cli.Bulk().Index(w.ind).Type(w.c.typ).Add(w.buf...).Do(ctx)
 	if err == nil {
 		_, err = w.cli.Flush(w.ind).Do(ctx)
 	}
+
 	if err != nil {
 		w.err = err
 		return err
 	}
+
 	w.keys = append(w.keys, w.ikeys...)
 	w.ikeys = w.ikeys[:0]
 	w.buf = w.buf[:0]
+
 	return w.err
 }
 
@@ -767,5 +866,6 @@ func (w *inserter) Keys() []nosql.Key {
 func (w *inserter) Close() error {
 	w.ikeys = nil
 	w.buf = nil
+
 	return w.err
 }

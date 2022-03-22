@@ -23,10 +23,12 @@ func OpenSQL(name, addr, db string) (*sql.DB, error) {
 	if r == nil {
 		return nil, fmt.Errorf("not registered: %q", name)
 	}
+
 	dsn, err := r.DSN(addr, db)
 	if err != nil {
 		return nil, err
 	}
+
 	return sql.Open(r.Driver, dsn)
 }
 
@@ -35,11 +37,13 @@ func Open(name, addr, db string) (tuple.Store, error) {
 	if err != nil {
 		return nil, err
 	}
+
 	return New(conn, db, ByName(name).Dialect), nil
 }
 
 func New(db *sql.DB, dbname string, dia Dialect) tuple.Store {
 	dia.SetDefaults()
+
 	return &sqlStore{db: db, dbName: dbname, dia: dia}
 }
 
@@ -57,6 +61,7 @@ func (s *sqlStore) curSchema() string {
 	if s := s.dia.DefaultSchema; s != "" {
 		return s
 	}
+
 	return s.dbName
 }
 
@@ -64,10 +69,12 @@ func (s *sqlStore) convError(err error) error {
 	if s.dia.Errors != nil {
 		err = s.dia.Errors(err)
 	}
+
 	switch err {
 	case ErrTableNotFound:
 		return tuple.ErrTableNotFound
 	}
+
 	return err
 }
 
@@ -75,15 +82,18 @@ func (s *sqlStore) query(ctx context.Context, tx *sql.Tx, qu string, args ...int
 	if debug {
 		log.Println(append([]interface{}{qu}, args...)...)
 	}
+
 	rows, err := tx.QueryContext(ctx, qu, args...)
 	if err != nil {
 		err = s.convError(err)
 	}
+
 	return rows, err
 }
 
 func (s *sqlStore) queryb(ctx context.Context, tx *sql.Tx, b *Builder) (*sql.Rows, error) {
 	qu, args := b.String(), b.Args()
+
 	return s.query(ctx, tx, qu, args...)
 }
 
@@ -91,11 +101,13 @@ func (s *sqlStore) queryRow(ctx context.Context, tx *sql.Tx, qu string, args ...
 	if debug {
 		log.Println(append([]interface{}{qu}, args...)...)
 	}
+
 	return tx.QueryRowContext(ctx, qu, args...)
 }
 
 func (s *sqlStore) querybRow(ctx context.Context, tx *sql.Tx, b *Builder) *sql.Row {
 	qu, args := b.String(), b.Args()
+
 	return s.queryRow(ctx, tx, qu, args...)
 }
 
@@ -103,14 +115,17 @@ func (s *sqlStore) exec(ctx context.Context, tx *sql.Tx, qu string, args ...inte
 	if debug {
 		log.Println(append([]interface{}{qu}, args...)...)
 	}
+
 	// TODO: prepare automatically
 	res, err := tx.ExecContext(ctx, qu, args...)
 	err = s.convError(err)
+
 	return res, err
 }
 
 func (s *sqlStore) execb(ctx context.Context, tx *sql.Tx, b *Builder) (sql.Result, error) {
 	qu, args := b.String(), b.Args()
+
 	return s.exec(ctx, tx, qu, args...)
 }
 
@@ -119,6 +134,7 @@ func (s *sqlStore) Tx(rw bool) (tuple.Tx, error) {
 	if err != nil {
 		return nil, err
 	}
+
 	return &sqlTx{db: s, dia: &s.dia, tx: tx, rw: rw}, nil
 }
 
@@ -147,6 +163,7 @@ func (t *sqlTableInfo) Open(tx tuple.Tx) (tuple.Table, error) {
 	if !ok {
 		return nil, fmt.Errorf("sql: unexpected tx type: %T", tx)
 	}
+
 	return &sqlTable{tx: stx, h: t.h}, nil
 }
 
@@ -156,9 +173,11 @@ func (s *sqlStore) tableWith(ctx context.Context, tx *sql.Tx, name string) (tupl
 		s.curSchema(),
 		name,
 	)
+
 	if err != nil {
 		return nil, err
 	}
+
 	defer rows.Close()
 
 	type column struct {
@@ -180,21 +199,25 @@ func (s *sqlStore) tableWith(ctx context.Context, tx *sql.Tx, name string) (tupl
 		}
 		cols = append(cols, col)
 	}
+
 	if err := rows.Err(); err != nil {
 		return nil, err
 	} else if len(cols) == 0 {
 		return nil, ErrTableNotFound
 	}
+
 	for _, c := range cols {
 		typ, auto, err := s.nativeType(c.Type, c.Comment.String)
 		if err != nil {
 			return nil, err
 		}
+
 		if strings.HasPrefix(c.Key.String, "PRI") {
 			kt, ok := typ.(values.SortableType)
 			if !ok {
 				return nil, fmt.Errorf("non-sortable key type: %T", typ)
 			}
+
 			header.Key = append(header.Key, tuple.KeyField{
 				Name: c.Name,
 				Type: kt,
@@ -207,6 +230,7 @@ func (s *sqlStore) tableWith(ctx context.Context, tx *sql.Tx, name string) (tupl
 			})
 		}
 	}
+
 	return &sqlTableInfo{h: header}, nil
 }
 
@@ -215,6 +239,7 @@ func (s *sqlStore) Table(ctx context.Context, name string) (tuple.TableInfo, err
 	if err != nil {
 		return nil, err
 	}
+
 	defer tx.Rollback()
 
 	return s.tableWith(ctx, tx, name)
@@ -225,9 +250,11 @@ func (s *sqlStore) listTablesWith(ctx context.Context, tx *sql.Tx) ([]tuple.Tabl
 		`SELECT table_name FROM information_schema.tables WHERE table_schema = `+s.dia.Placeholder(0),
 		s.curSchema(),
 	)
+
 	if err != nil {
 		return nil, err
 	}
+
 	defer rows.Close()
 
 	var tables []tuple.TableInfo
@@ -252,6 +279,7 @@ func (s *sqlStore) ListTables(ctx context.Context) ([]tuple.TableInfo, error) {
 	if err != nil {
 		return nil, err
 	}
+
 	defer tx.Rollback()
 
 	return s.listTablesWith(ctx, tx)
@@ -277,6 +305,7 @@ func (tx *sqlTx) Table(ctx context.Context, name string) (tuple.Table, error) {
 	if err != nil {
 		return nil, err
 	}
+
 	return info.Open(tx)
 }
 
@@ -285,6 +314,7 @@ func (tx *sqlTx) ListTables(ctx context.Context) ([]tuple.Table, error) {
 	if err != nil {
 		return nil, err
 	}
+
 	out := make([]tuple.Table, 0, len(tables))
 	for _, t := range tables {
 		tbl, err := t.Open(tx)
@@ -293,6 +323,7 @@ func (tx *sqlTx) ListTables(ctx context.Context) ([]tuple.Table, error) {
 		}
 		out = append(out, tbl)
 	}
+
 	return out, nil
 }
 
@@ -302,11 +333,13 @@ func (tx *sqlTx) CreateTable(ctx context.Context, table tuple.Header) (tuple.Tab
 	} else if err := table.Validate(); err != nil {
 		return nil, err
 	}
+
 	tbl := &sqlTable{tx: tx, h: table}
 	b := tbl.sql()
 	b.Write("CREATE TABLE ")
 	b.Idents(tbl.h.Name)
 	b.Write(" (")
+
 	for i, f := range table.Key {
 		if i > 0 {
 			b.Write(",")
@@ -320,24 +353,29 @@ func (tx *sqlTx) CreateTable(ctx context.Context, table tuple.Header) (tuple.Tab
 			b.Write(tbl.sqlColumnDef(f.Type, true))
 		}
 	}
+
 	for _, f := range table.Data {
 		b.Write(",\n\t")
 		b.Idents(f.Name)
 		b.Write(" ")
 		b.Write(tbl.sqlColumnDef(f.Type, false))
 	}
+
 	if len(tbl.h.Key) != 0 {
 		b.Write(",\n\t")
 		b.Write("PRIMARY KEY (")
 		b.Idents(tbl.keyNames()...)
 		b.Write(")")
 	}
+
 	b.Write("\n);")
 	_, err := tx.db.execb(ctx, tx.tx, b)
 	if err != nil {
 		return nil, err
 	}
+
 	b.Reset()
+
 	if dia := tbl.tx.dia; dia.ColumnCommentInline == nil && dia.ColumnCommentSet != nil {
 		setComment := func(col string, t values.Type, auto bool) error {
 			var c string
@@ -354,17 +392,20 @@ func (tx *sqlTx) CreateTable(ctx context.Context, table tuple.Header) (tuple.Tab
 			_, err := tx.db.execb(ctx, tx.tx, b)
 			return err
 		}
+
 		for _, f := range table.Key {
 			if err := setComment(f.Name, f.Type, f.Auto); err != nil {
 				return nil, err
 			}
 		}
+
 		for _, f := range table.Data {
 			if err := setComment(f.Name, f.Type, false); err != nil {
 				return nil, err
 			}
 		}
 	}
+
 	return tbl, nil
 }
 
@@ -394,6 +435,7 @@ func (tbl *sqlTable) sqlColumnAuto() string {
 	if c == "" {
 		c = tbl.sqlType(values.UIntType{}, true) + " AUTO_INCREMENT"
 	}
+
 	return c + tbl.tx.dia.sqlColumnCommentAutoInline()
 }
 
@@ -401,10 +443,13 @@ func (tbl *sqlTable) Drop(ctx context.Context) error {
 	if !tbl.tx.rw {
 		return tuple.ErrReadOnly
 	}
+
 	b := tbl.sql()
 	b.Write(`DROP TABLE `)
 	b.Idents(tbl.h.Name)
+
 	_, err := tbl.tx.db.execb(ctx, tbl.tx.tx, b)
+
 	return err
 }
 
@@ -412,10 +457,13 @@ func (tbl *sqlTable) Clear(ctx context.Context) error {
 	if !tbl.tx.rw {
 		return tuple.ErrReadOnly
 	}
+
 	b := tbl.sql()
 	b.Write(`TRUNCATE TABLE `)
 	b.Idents(tbl.h.Name)
+
 	_, err := tbl.tx.db.execb(ctx, tbl.tx.tx, b)
+
 	return err
 }
 
@@ -423,6 +471,7 @@ func (tbl *sqlTable) convValue(v values.Value) interface{} {
 	if v == nil {
 		return nil
 	}
+
 	return v.Native()
 }
 
@@ -430,6 +479,7 @@ func (tbl *sqlTable) appendKey(dst []interface{}, key tuple.Key) []interface{} {
 	for _, k := range key {
 		dst = append(dst, tbl.convValue(k))
 	}
+
 	return dst
 }
 
@@ -437,12 +487,14 @@ func (tbl *sqlTable) appendData(dst []interface{}, data tuple.Data) []interface{
 	for _, d := range data {
 		dst = append(dst, tbl.convValue(d))
 	}
+
 	return dst
 }
 
 func (tbl *sqlTable) appendTuple(dst []interface{}, t tuple.Tuple) []interface{} {
 	dst = tbl.appendKey(dst, t.Key)
 	dst = tbl.appendData(dst, t.Data)
+
 	return dst
 }
 
@@ -451,9 +503,11 @@ func (tbl *sqlTable) names() []string {
 	for _, f := range tbl.h.Key {
 		names = append(names, f.Name)
 	}
+
 	for _, f := range tbl.h.Data {
 		names = append(names, f.Name)
 	}
+
 	return names
 }
 
@@ -462,6 +516,7 @@ func (tbl *sqlTable) keyNames() []string {
 	for _, f := range tbl.h.Key {
 		names = append(names, f.Name)
 	}
+
 	return names
 }
 
@@ -470,6 +525,7 @@ func (tbl *sqlTable) payloadNames() []string {
 	for _, f := range tbl.h.Data {
 		names = append(names, f.Name)
 	}
+
 	return names
 }
 
@@ -487,6 +543,7 @@ func (tbl *sqlTable) scanTuple(row scanner) (tuple.Tuple, error) {
 		key = append(key, v)
 		in = append(in, v.NativePtr())
 	}
+
 	for _, f := range tbl.h.Data {
 		v := f.Type.New()
 		data = append(data, v)
@@ -506,10 +563,12 @@ func (tbl *sqlTable) scanTuple(row scanner) (tuple.Tuple, error) {
 		v := k.Sortable()
 		t.Key = append(t.Key, v)
 	}
+
 	for _, d := range data {
 		v := d.Value()
 		t.Data = append(t.Data, v)
 	}
+
 	return t, nil
 }
 
@@ -532,6 +591,7 @@ func (tbl *sqlTable) scanKey(row scanner) (tuple.Key, error) {
 		v := d.Sortable()
 		key = append(key, v)
 	}
+
 	return key, nil
 }
 
@@ -554,6 +614,7 @@ func (tbl *sqlTable) scanPayload(row scanner) (tuple.Data, error) {
 		v := d.Value()
 		data = append(data, v)
 	}
+
 	return data, nil
 }
 
@@ -561,6 +622,7 @@ func (tbl *sqlTable) GetTuple(ctx context.Context, key tuple.Key) (tuple.Data, e
 	if err := tbl.h.ValidateKey(key, false); err != nil {
 		return nil, err
 	}
+
 	b := tbl.sql()
 	b.Write("SELECT ")
 	b.Idents(tbl.payloadNames()...)
@@ -569,19 +631,23 @@ func (tbl *sqlTable) GetTuple(ctx context.Context, key tuple.Key) (tuple.Data, e
 	b.Write(" WHERE ")
 	b.EqPlaceAnd(tbl.keyNames(), tbl.appendKey(nil, key))
 	b.Write(" LIMIT 1")
+
 	row := tbl.tx.db.queryRow(ctx, tbl.tx.tx, b.String(), b.Args()...)
 	data, err := tbl.scanPayload(row)
+
 	if err == sql.ErrNoRows {
 		return nil, tuple.ErrNotFound
 	} else if err != nil {
 		return nil, err
 	}
+
 	return data, nil
 }
 
 func (tbl *sqlTable) GetTupleBatch(ctx context.Context, keys []tuple.Key) ([]tuple.Data, error) {
 	out := make([]tuple.Data, 0, len(keys))
 	// TODO: batch select
+
 	for _, k := range keys {
 		d, err := tbl.GetTuple(ctx, k)
 		if err != nil {
@@ -589,6 +655,7 @@ func (tbl *sqlTable) GetTupleBatch(ctx context.Context, keys []tuple.Key) ([]tup
 		}
 		out = append(out, d)
 	}
+
 	return out, nil
 }
 
@@ -598,26 +665,33 @@ func (tbl *sqlTable) InsertTuple(ctx context.Context, t tuple.Tuple) (tuple.Key,
 	} else if err = tbl.h.ValidateData(t.Data); err != nil {
 		return nil, err
 	}
+
 	auto := false
 	if tbl.h.Key[0].Auto {
 		auto = true
 	}
+
 	b := tbl.sql()
 	b.Write("INSERT INTO ")
 	b.Idents(tbl.h.Name)
 	b.Write("(")
+
 	if auto {
 		b.Idents(tbl.payloadNames()...)
 	} else {
 		b.Idents(tbl.names()...)
 	}
+
 	b.Write(") VALUES (")
+
 	if auto {
 		b.Place(tbl.appendData(nil, t.Data)...)
 	} else {
 		b.Place(tbl.appendTuple(nil, t)...)
 	}
+
 	b.Write(")")
+
 	if auto && tbl.tx.dia.Returning {
 		b.Write(" RETURNING ")
 		b.Idents(tbl.h.Key[0].Name)
@@ -628,17 +702,21 @@ func (tbl *sqlTable) InsertTuple(ctx context.Context, t tuple.Tuple) (tuple.Key,
 		}
 		return tuple.Key{values.UInt(id)}, nil
 	}
+
 	res, err := tbl.tx.db.execb(ctx, tbl.tx.tx, b)
 	if err != nil {
 		return nil, err
 	}
+
 	if !auto {
 		return t.Key, nil
 	}
+
 	id, err := res.LastInsertId()
 	if err != nil {
 		return nil, err
 	}
+
 	return tuple.Key{values.UInt(id)}, nil
 }
 
@@ -652,9 +730,11 @@ func (tbl *sqlTable) UpdateTuple(ctx context.Context, t tuple.Tuple, opt *tuple.
 	} else if err = tbl.h.ValidateData(t.Data); err != nil {
 		return err
 	}
+
 	if opt == nil {
 		opt = &tuple.UpdateOpt{}
 	}
+
 	if !opt.Upsert {
 		b := tbl.sql()
 		b.Write(`UPDATE `)
@@ -666,7 +746,9 @@ func (tbl *sqlTable) UpdateTuple(ctx context.Context, t tuple.Tuple, opt *tuple.
 		_, err := tbl.tx.db.execb(ctx, tbl.tx.tx, b)
 		return err
 	}
+
 	dia := tbl.tx.dia
+
 	if dia.OnConflict {
 		b := tbl.sql()
 		b.Write(`INSERT INTO `)
@@ -682,6 +764,7 @@ func (tbl *sqlTable) UpdateTuple(ctx context.Context, t tuple.Tuple, opt *tuple.
 		_, err := tbl.tx.db.execb(ctx, tbl.tx.tx, b)
 		return err
 	}
+
 	if dia.ReplaceStmt {
 		b := tbl.sql()
 		b.Write("REPLACE INTO ")
@@ -694,6 +777,7 @@ func (tbl *sqlTable) UpdateTuple(ctx context.Context, t tuple.Tuple, opt *tuple.
 		_, err := tbl.tx.db.execb(ctx, tbl.tx.tx, b)
 		return err
 	}
+
 	return fmt.Errorf("upsert is not supported")
 }
 
@@ -709,11 +793,13 @@ func (tbl *sqlTable) DeleteTuples(ctx context.Context, f *tuple.Filter) error {
 		b := tbl.sql()
 		b.Write(`DELETE FROM `)
 		b.Idents(tbl.h.Name)
+
 		if where != nil {
 			b.Write(" WHERE ")
 			where(b)
 		}
 		_, err := tbl.tx.db.execb(ctx, tbl.tx.tx, b)
+
 		return err
 	}
 	// some filter were optimized, but some still remain
@@ -724,6 +810,7 @@ func (tbl *sqlTable) DeleteTuples(ctx context.Context, f *tuple.Filter) error {
 		Sort:     tuple.SortAny,
 		Filter:   f,
 	}, where)
+
 	defer it.Close()
 
 	var allKeys []tuple.Key
@@ -759,6 +846,7 @@ func (tbl *sqlTable) DeleteTuples(ctx context.Context, f *tuple.Filter) error {
 		}
 		return nil
 	}
+
 	for it.Next(ctx) {
 		key := it.Key()
 		err := deleteOne(key)
@@ -766,6 +854,7 @@ func (tbl *sqlTable) DeleteTuples(ctx context.Context, f *tuple.Filter) error {
 			return err
 		}
 	}
+
 	return it.Err()
 }
 
@@ -777,17 +866,21 @@ func (tbl *sqlTable) scanWhere(opt *tuple.ScanOptions, where func(*Builder)) tup
 	return tbl.scan(func(ctx context.Context) (*sql.Rows, error) {
 		b := tbl.sql()
 		b.Write(`SELECT `)
+
 		if opt.KeysOnly {
 			b.Idents(tbl.keyNames()...)
 		} else {
 			b.Idents(tbl.names()...)
 		}
+
 		b.Write(` FROM `)
 		b.Idents(tbl.h.Name)
+
 		if where != nil {
 			b.Write(" WHERE ")
 			where(b)
 		}
+
 		dir := ""
 		switch opt.Sort {
 		case tuple.SortAsc:
@@ -795,15 +888,18 @@ func (tbl *sqlTable) scanWhere(opt *tuple.ScanOptions, where func(*Builder)) tup
 		case tuple.SortDesc:
 			dir = "DESC"
 		}
+
 		if dir != "" {
 			b.Write(" ORDER BY ")
 			b.Idents(tbl.keyNames()...)
 			b.Write(" " + dir)
 		}
+
 		if opt.Limit > 0 {
 			b.Write(" LIMIT ")
 			b.Write(strconv.Itoa(opt.Limit))
 		}
+
 		return tbl.tx.db.queryb(ctx, tbl.tx.tx, b)
 	}, opt.KeysOnly, opt.Filter)
 }
@@ -812,8 +908,10 @@ func (tbl *sqlTable) Scan(opt *tuple.ScanOptions) tuple.Iterator {
 	if opt == nil {
 		opt = &tuple.ScanOptions{}
 	}
+
 	f, where := tbl.asWhere(opt.Filter)
 	opt.Filter = f
+
 	return tbl.scanWhere(opt, where)
 }
 
@@ -844,15 +942,19 @@ func (it *sqlIterator) Next(ctx context.Context) bool {
 	if it.err != nil {
 		return false
 	}
+
 	if it.rows == nil {
 		// TODO: this context might be captured by the iterator
 		rows, err := it.open(ctx)
 		if err != nil {
 			it.err = err
+
 			return false
 		}
+
 		it.rows = rows
 	}
+
 	return tuple.FilterIterator(it, it.f, func() bool {
 		it.t = nil
 		return it.rows.Next()
@@ -863,6 +965,7 @@ func (it *sqlIterator) Err() error {
 	if it.err != nil || it.rows == nil {
 		return it.err
 	}
+
 	return it.rows.Err()
 }
 
@@ -870,6 +973,7 @@ func (it *sqlIterator) Close() error {
 	if it.rows == nil {
 		return nil
 	}
+
 	return it.rows.Close()
 }
 
@@ -877,10 +981,12 @@ func (it *sqlIterator) scan() {
 	if it.t != nil || it.rows == nil {
 		return
 	}
+
 	var (
 		t   tuple.Tuple
 		err error
 	)
+
 	if it.keysOnly {
 		var key tuple.Key
 		key, err = it.tbl.scanKey(it.rows)
@@ -890,11 +996,13 @@ func (it *sqlIterator) scan() {
 	} else {
 		t, err = it.tbl.scanTuple(it.rows)
 	}
+
 	if err != nil {
 		// TODO: user might skip this error
 		it.err = err
 		return
 	}
+
 	it.t = &t
 }
 
@@ -903,6 +1011,7 @@ func (it *sqlIterator) Key() tuple.Key {
 	if it.t == nil {
 		return nil
 	}
+
 	return it.t.Key
 }
 
@@ -911,5 +1020,6 @@ func (it *sqlIterator) Data() tuple.Data {
 	if it.t == nil {
 		return nil
 	}
+
 	return it.t.Data
 }

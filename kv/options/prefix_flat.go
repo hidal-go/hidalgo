@@ -23,6 +23,7 @@ func (opt PrefixFlat) ApplyFlat(it flat.Iterator) flat.Iterator {
 	if it, ok := it.(flat.PrefixIterator); ok {
 		return it.WithPrefix(opt.Pref)
 	}
+
 	return &prefixIteratorFlat{base: it, pref: opt.Pref}
 }
 
@@ -31,6 +32,7 @@ func (opt PrefixFlat) ApplyKV(it kv.Iterator) kv.Iterator {
 	if it, ok := it.(kv.PrefixIterator); ok {
 		return it.WithPrefix(pref)
 	}
+
 	return &prefixIteratorKV{base: it, pref: pref}
 }
 
@@ -59,6 +61,7 @@ func (it *prefixIteratorFlat) WithPrefix(pref flat.Key) flat.Iterator {
 	}
 	it.pref = pref
 	it.reset()
+
 	return it
 }
 
@@ -66,23 +69,28 @@ func (it *prefixIteratorFlat) Next(ctx context.Context) bool {
 	if it.done {
 		return false
 	}
+
 	if !it.seek {
 		found := flat.Seek(ctx, it.base, it.pref)
 		it.seek = true
 		if !found {
 			it.done = true
+
 			return false
 		}
 	} else {
 		if !it.base.Next(ctx) {
 			it.done = true
+
 			return false
 		}
 	}
+
 	key := it.base.Key()
 	if bytes.HasPrefix(key, it.pref) {
 		return true
 	}
+
 	// keys are sorted, and we reached the end of the prefix
 	it.done = true
 	return false
