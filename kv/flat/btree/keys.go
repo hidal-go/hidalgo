@@ -385,7 +385,8 @@ func (t *Tree) Delete(k []byte) (ok bool) {
 
 func (t *Tree) extract(q *d, i int) { // (r []byte) {
 	t.ver++
-	//r = q.d[i].v // prepared for Extract
+	// TODO: r = q.d[i].v // prepared for Extract
+
 	q.c--
 	if i < q.c {
 		copy(q.d[i:], q.d[i+1:q.c+1])
