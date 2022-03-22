@@ -83,7 +83,7 @@ func (t Header) Clone() Header {
 func (t Header) Validate() error {
 	if t.Name == "" {
 		return fmt.Errorf("table name should be set")
-	} else if len(t.Key) < 0 {
+	} else if len(t.Key) == 0 {
 		return fmt.Errorf("at least one key field is required")
 	}
 	names := make(map[string]struct{})
