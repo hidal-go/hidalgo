@@ -272,10 +272,12 @@ func (f Not) FilterValue(v values.Value) bool {
 
 func Prefix(pref values.BinaryString) SortableFilter {
 	gt := GTE(pref)
+
 	end := pref.PrefixEnd()
 	if end == nil {
 		return *gt
 	}
+
 	return Range{
 		Start: gt,
 		End:   LT(end),
