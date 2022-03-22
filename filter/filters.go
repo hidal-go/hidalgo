@@ -206,6 +206,7 @@ func (f Range) Prefix() (values.BinaryString, bool) {
 		// TODO: calculate common prefix
 		return nil, false
 	}
+
 	p, ok := f.Start.Value.(values.BinaryString)
 
 	return p, ok

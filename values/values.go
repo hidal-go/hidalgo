@@ -214,6 +214,7 @@ func (v *Bytes) Value() Value {
 	if v == nil {
 		return nil
 	}
+
 	return *v
 }
 
@@ -221,6 +222,7 @@ func (v *Bytes) Sortable() Sortable {
 	if v == nil {
 		return nil
 	}
+
 	return *v
 }
 
@@ -228,6 +230,7 @@ func (v *Bytes) Primitive() Primitive {
 	if v == nil {
 		return nil
 	}
+
 	return *v
 }
 
@@ -235,9 +238,11 @@ func (v Bytes) Compare(b Sortable) int {
 	if b == nil {
 		return +1
 	}
+
 	// TODO: optimize
 	ab, _ := v.MarshalSortable()
 	bb, _ := b.MarshalSortable()
+
 	return bytes.Compare(ab, bb)
 }
 
@@ -245,9 +250,11 @@ func prefixEnd(key []byte) []byte {
 	for i := len(key) - 1; i >= 0; i-- {
 		if key[i] < 0xff {
 			key[i]++
+
 			return key[:i+1]
 		}
 	}
+
 	// next prefix does not exist (e.g., 0xffff)
 	return nil
 }
@@ -258,6 +265,7 @@ func (v Bytes) PrefixEnd() BinaryString {
 	if end == nil {
 		return nil
 	}
+
 	return Bytes(end)
 }
 
@@ -267,6 +275,7 @@ func (v Bytes) MarshalBinary() ([]byte, error) {
 
 func (v *Bytes) UnmarshalBinary(p []byte) error {
 	*v = Bytes(append([]byte{}, p...))
+
 	return nil
 }
 
@@ -276,6 +285,7 @@ func (v Bytes) MarshalSortable() ([]byte, error) {
 
 func (v *Bytes) UnmarshalSortable(p []byte) error {
 	*v = Bytes(append([]byte{}, p...))
+
 	return nil
 }
 
@@ -306,6 +316,7 @@ func (v *Int) Value() Value {
 	if v == nil {
 		return nil
 	}
+
 	return *v
 }
 
@@ -313,6 +324,7 @@ func (v *Int) Sortable() Sortable {
 	if v == nil {
 		return nil
 	}
+
 	return *v
 }
 
@@ -320,6 +332,7 @@ func (v *Int) Primitive() Primitive {
 	if v == nil {
 		return nil
 	}
+
 	return *v
 }
 
@@ -327,15 +340,18 @@ func (v Int) Compare(b Sortable) int {
 	if b == nil {
 		return +1
 	}
+
 	// TODO: optimize
 	ab, _ := v.MarshalSortable()
 	bb, _ := b.MarshalSortable()
+
 	return bytes.Compare(ab, bb)
 }
 
 func (v Int) MarshalBinary() ([]byte, error) {
 	buf := make([]byte, binary.MaxVarintLen64)
 	n := binary.PutVarint(buf, int64(v))
+
 	return buf[:n], nil
 }
 
@@ -348,7 +364,9 @@ func (v *Int) UnmarshalBinary(p []byte) error {
 	} else if n < len(p) {
 		return errors.New("unexpected data")
 	}
+
 	*v = Int(iv)
+
 	return nil
 }
 
@@ -358,7 +376,9 @@ func (v Int) asSortable() uint64 {
 	if v >= 0 {
 		return uint64(v) + uintShift
 	}
+
 	iv := uint64(-v)
+
 	return uintShift - iv
 }
 
@@ -374,6 +394,7 @@ func (v *Int) setSortable(uv uint64) {
 func (v Int) MarshalSortable() ([]byte, error) {
 	buf := make([]byte, 8)
 	sortableOrder.PutUint64(buf, v.asSortable())
+
 	return buf, nil
 }
 
@@ -381,7 +402,9 @@ func (v *Int) UnmarshalSortable(p []byte) error {
 	if len(p) != 8 {
 		return fmt.Errorf("unexpected value size: %d", len(p))
 	}
+
 	v.setSortable(sortableOrder.Uint64(p))
+
 	return nil
 }
 
@@ -412,6 +435,7 @@ func (v *UInt) Value() Value {
 	if v == nil {
 		return nil
 	}
+
 	return *v
 }
 
@@ -419,6 +443,7 @@ func (v *UInt) Sortable() Sortable {
 	if v == nil {
 		return nil
 	}
+
 	return *v
 }
 
@@ -426,6 +451,7 @@ func (v *UInt) Primitive() Primitive {
 	if v == nil {
 		return nil
 	}
+
 	return *v
 }
 
@@ -433,15 +459,18 @@ func (v UInt) Compare(b Sortable) int {
 	if b == nil {
 		return +1
 	}
+
 	// TODO: optimize
 	ab, _ := v.MarshalSortable()
 	bb, _ := b.MarshalSortable()
+
 	return bytes.Compare(ab, bb)
 }
 
 func (v UInt) MarshalBinary() ([]byte, error) {
 	buf := make([]byte, binary.MaxVarintLen64)
 	n := binary.PutUvarint(buf, uint64(v))
+
 	return buf[:n], nil
 }
 
@@ -454,13 +483,16 @@ func (v *UInt) UnmarshalBinary(p []byte) error {
 	} else if n < len(p) {
 		return errors.New("unexpected data")
 	}
+
 	*v = UInt(iv)
+
 	return nil
 }
 
 func (v UInt) MarshalSortable() ([]byte, error) {
 	buf := make([]byte, 8)
 	sortableOrder.PutUint64(buf, uint64(v))
+
 	return buf, nil
 }
 
@@ -468,7 +500,9 @@ func (v *UInt) UnmarshalSortable(p []byte) error {
 	if len(p) != 8 {
 		return fmt.Errorf("unexpected value size: %d", len(p))
 	}
+
 	*v = UInt(sortableOrder.Uint64(p))
+
 	return nil
 }
 
@@ -495,6 +529,7 @@ func (v *Float) Value() Value {
 	if v == nil {
 		return nil
 	}
+
 	return *v
 }
 
@@ -502,6 +537,7 @@ func (v *Float) Primitive() Primitive {
 	if v == nil {
 		return nil
 	}
+
 	return *v
 }
 
@@ -509,6 +545,7 @@ func (v Float) MarshalBinary() ([]byte, error) {
 	buf := make([]byte, 8)
 	iv := math.Float64bits(float64(v))
 	defaultOrder.PutUint64(buf, iv)
+
 	return buf, nil
 }
 
@@ -516,8 +553,10 @@ func (v *Float) UnmarshalBinary(p []byte) error {
 	if len(p) != 8 {
 		return fmt.Errorf("unexpected value size: %d", len(p))
 	}
+
 	iv := defaultOrder.Uint64(p)
 	*v = Float(math.Float64frombits(iv))
+
 	return nil
 }
 
@@ -548,6 +587,7 @@ func (v *Bool) Value() Value {
 	if v == nil {
 		return nil
 	}
+
 	return *v
 }
 
@@ -555,6 +595,7 @@ func (v *Bool) Sortable() Sortable {
 	if v == nil {
 		return nil
 	}
+
 	return *v
 }
 
@@ -562,6 +603,7 @@ func (v *Bool) Primitive() Primitive {
 	if v == nil {
 		return nil
 	}
+
 	return *v
 }
 
@@ -569,9 +611,11 @@ func (v Bool) Compare(b Sortable) int {
 	if b == nil {
 		return +1
 	}
+
 	// TODO: optimize
 	ab, _ := v.MarshalSortable()
 	bb, _ := b.MarshalSortable()
+
 	return bytes.Compare(ab, bb)
 }
 
@@ -579,6 +623,7 @@ func (v Bool) MarshalBinary() ([]byte, error) {
 	if v {
 		return []byte{1}, nil
 	}
+
 	return []byte{0}, nil
 }
 
@@ -586,7 +631,9 @@ func (v *Bool) UnmarshalBinary(p []byte) error {
 	if len(p) != 1 {
 		return fmt.Errorf("unexpected value size: %d", len(p))
 	}
+
 	*v = Bool(p[0] != 0)
+
 	return nil
 }
 
@@ -594,6 +641,7 @@ func (v Bool) MarshalSortable() ([]byte, error) {
 	if v {
 		return []byte{1}, nil
 	}
+
 	return []byte{0}, nil
 }
 
@@ -601,7 +649,9 @@ func (v *Bool) UnmarshalSortable(p []byte) error {
 	if len(p) != 1 {
 		return fmt.Errorf("unexpected value size: %d", len(p))
 	}
+
 	*v = Bool(p[0] != 0)
+
 	return nil
 }
 
@@ -635,6 +685,7 @@ func (v *Time) Value() Value {
 	if v == nil {
 		return nil
 	}
+
 	return Time(time.Time(*v).UTC())
 }
 
@@ -642,6 +693,7 @@ func (v *Time) Sortable() Sortable {
 	if v == nil {
 		return nil
 	}
+
 	return Time(time.Time(*v).UTC())
 }
 
@@ -649,9 +701,11 @@ func (v Time) Compare(b Sortable) int {
 	if b == nil {
 		return +1
 	}
+
 	// TODO: optimize
 	ab, _ := v.MarshalSortable()
 	bb, _ := b.MarshalSortable()
+
 	return bytes.Compare(ab, bb)
 }
 
@@ -664,12 +718,15 @@ func (v *Time) UnmarshalBinary(p []byte) error {
 	if err := t.UnmarshalBinary(p); err != nil {
 		return err
 	}
+
 	*v = AsTime(t)
+
 	return nil
 }
 
 func (v Time) MarshalSortable() ([]byte, error) {
 	iv := Int(time.Time(v).UnixNano())
+
 	return iv.MarshalSortable()
 }
 
@@ -678,6 +735,8 @@ func (v *Time) UnmarshalSortable(p []byte) error {
 	if err := iv.UnmarshalSortable(p); err != nil {
 		return err
 	}
+
 	*v = Time(time.Unix(0, int64(iv)).UTC())
+
 	return nil
 }

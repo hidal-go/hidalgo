@@ -46,18 +46,23 @@ func (d *Dialect) SetDefaults() {
 	if d.StringType == "" {
 		d.StringType = "TEXT"
 	}
+
 	if d.StringKeyType == "" {
 		d.StringKeyType = d.StringType
 	}
+
 	if d.BytesType == "" {
 		d.BytesType = "BLOB"
 	}
+
 	if d.BytesKeyType == "" {
 		d.BytesKeyType = d.BytesType
 	}
+
 	if d.TimeType == "" {
 		d.TimeType = "TIMESTAMP"
 	}
+
 	if d.Placeholder == nil {
 		d.Placeholder = func(_ int) string {
 			return "?"
@@ -69,6 +74,7 @@ func (d *Dialect) QuoteIdentifier(s string) string {
 	if q := d.QuoteIdentifierFunc; q != nil {
 		return q(s)
 	}
+
 	return "`" + strings.Replace(s, "`", "", -1) + "`"
 }
 
@@ -110,11 +116,13 @@ func (d *Dialect) sqlType(t values.Type, key bool) string {
 	default:
 		panic(fmt.Errorf("unsupported type: %T", t))
 	}
+
 	if key {
 		tp += " NOT NULL"
 	} else {
 		tp += " NULL"
 	}
+
 	return tp
 }
 
@@ -128,6 +136,7 @@ func (d *Dialect) sqlColumnComment(t values.Type) string {
 			c = "UInt"
 		}
 	}
+
 	return c
 }
 
@@ -139,10 +148,12 @@ func (d *Dialect) sqlColumnCommentInline(t values.Type) string {
 	if d.ColumnCommentInline == nil {
 		return ""
 	}
+
 	c := d.sqlColumnComment(t)
 	if c == "" {
 		return ""
 	}
+
 	return " " + d.ColumnCommentInline(d.QuoteString(c))
 }
 
@@ -150,7 +161,9 @@ func (d *Dialect) sqlColumnCommentAutoInline() string {
 	if d.ColumnCommentInline == nil {
 		return ""
 	}
+
 	c := d.sqlColumnCommentAuto()
+
 	return " " + d.ColumnCommentInline(d.QuoteString(c))
 }
 
@@ -165,31 +178,41 @@ func (d *Dialect) nativeType(typ, comment string) (values.Type, bool, error) {
 	if i := strings.Index(typ, "("); i > 0 {
 		typ, opt = typ[:i], typ[i:]
 	}
+
 	if i := strings.Index(typ, " "); i > 0 {
 		typ, opt = typ[:i], typ[i:]+opt
 	}
+
 	switch typ {
 	case "text", "varchar", "char":
 		return values.StringType{}, auto, nil
+
 	case "blob", "bytea", "varbinary", "binary":
 		return values.BytesType{}, auto, nil
+
 	case "double", "double precision":
 		return values.FloatType{}, auto, nil
+
 	case "boolean":
 		return values.BoolType{}, auto, nil
+
 	case "tinyint":
 		if opt == "(1)" && comment == "Bool" { // TODO: or rather if it's MySQL
 			return values.BoolType{}, auto, nil
 		}
 
 		fallthrough
+
 	case "bigint", "int", "integer", "mediumint", "smallint":
 		if strings.HasSuffix(opt, "unsigned") || comment == "UInt" {
 			return values.UIntType{}, auto, nil
 		}
+
 		return values.IntType{}, auto, nil
+
 	case "timestamp", "datetime", "date", "time":
 		return values.TimeType{}, auto, nil
 	}
+
 	return nil, false, fmt.Errorf("unsupported column type: %q", typ)
 }

@@ -22,6 +22,7 @@ type Database struct {
 func TestNoSQL(t *testing.T, gen Database) {
 	tr := gen.Traits
 	var db nosql.Database
+
 	recreate := false // conf.Recreate
 	if !recreate {
 		db = gen.Run(t)
@@ -33,9 +34,11 @@ func TestNoSQL(t *testing.T, gen Database) {
 				t.Run(c.name, func(t *testing.T) {
 					col := fmt.Sprintf("col_%x", rand.Int())
 					db := db
+
 					if recreate {
 						db = gen.Run(t)
 					}
+
 					c.t(t, tableConf{
 						ctx: context.TODO(),
 						db:  db, tr: tr,
@@ -77,6 +80,7 @@ func next() int {
 	lastKey++
 	v := lastKey
 	mu.Unlock()
+
 	return v
 }
 
@@ -161,17 +165,22 @@ func (c tableConf) expectAll(t testing.TB, docs []nosql.Document) {
 func (c tableConf) insertDocs(t testing.TB, n int, fnc func(i int) nosql.Document) ([]nosql.Key, []nosql.Document) {
 	var docs []nosql.Document
 	w := nosql.BatchInsert(c.db, c.col)
+
 	defer w.Close()
+
 	for i := 0; i < n; i++ {
 		doc := fnc(i)
+
 		var key nosql.Key
 		if len(c.kt.Fields) != 1 || i%2 == 0 {
 			key = c.kt.Gen()
 		}
+
 		err := w.WriteDoc(c.ctx, key, doc)
 		require.NoError(t, err)
 		docs = append(docs, doc)
 	}
+
 	err := w.Flush(c.ctx)
 	require.NoError(t, err)
 
@@ -181,6 +190,7 @@ func (c tableConf) insertDocs(t testing.TB, n int, fnc func(i int) nosql.Documen
 	}
 
 	c.expectAll(t, docs)
+
 	return keys, docs
 }
 
@@ -212,6 +222,7 @@ func newDoc(d nosql.Document) nosql.Document {
 	d["val_bool"] = nosql.Bool(true)
 	d["val_boolf"] = nosql.Bool(false)
 	d["val_sub"] = nosql.Document{"v": nosql.String("c")}
+
 	// TODO: time type
 	return d
 }
@@ -230,6 +241,7 @@ func fixDoc(conf *nosql.Traits, d nosql.Document) {
 			}
 		}
 	}
+
 	for _, v := range d {
 		if f, ok := v.(nosql.Document); ok {
 			fixDoc(conf, f)
@@ -251,6 +263,7 @@ func (s byFields) Less(d1, d2 nosql.Document) bool {
 			return true
 		}
 	}
+
 	return false
 }
 
@@ -277,15 +290,19 @@ func iterateExpect(t testing.TB, kt keyType, qu nosql.Query, exp []nosql.Documen
 	ctx := context.TODO()
 
 	it := qu.Iterate()
+
 	defer it.Close()
+
 	var (
 		got  = make([]nosql.Document, 0, len(exp))
 		keys []nosql.Key
 	)
+
 	for i := 0; i < len(exp)*2 && it.Next(ctx); i++ {
 		keys = append(keys, it.Key())
 		got = append(got, it.Doc())
 	}
+
 	require.NoError(t, it.Err())
 
 	sorter := byFields(kt.Fields)
@@ -293,6 +310,7 @@ func iterateExpect(t testing.TB, kt keyType, qu nosql.Query, exp []nosql.Documen
 	sort.Slice(exp, func(i, j int) bool {
 		return sorter.Less(exp[i], exp[j])
 	})
+
 	var expKeys []nosql.Key
 	for _, d := range exp {
 		expKeys = append(expKeys, sorter.Key(d))
@@ -332,11 +350,14 @@ func testInsert(t *testing.T, c tableConf) {
 	}
 
 	k1 := c.kt.Gen()
+
 	doc1 := make(nosql.Document)
 	for i, f := range c.kt.Fields {
 		doc1[f] = nosql.String(k1[i])
 	}
+
 	k2 := c.kt.Gen()
+
 	ins := []insert{
 		{ // set key in doc and in insert
 			Key: k1,
@@ -347,16 +368,20 @@ func testInsert(t *testing.T, c tableConf) {
 			Doc: newDoc(nosql.Document{}),
 		},
 	}
+
 	if len(c.kt.Fields) == 1 {
 		ins = append(ins, insert{
 			// auto-generate key
 			Doc: newDoc(nosql.Document{}),
 		})
 	}
+
 	for i := range ins {
 		in := &ins[i]
+
 		k, err := c.Insert(in.Key, in.Doc)
 		require.NoError(t, err)
+
 		if in.Key == nil {
 			require.NotNil(t, k)
 			in.Key = k
@@ -415,6 +440,7 @@ func testUpdate(t *testing.T, c tableConf) {
 			"n": nosql.Int(2),
 		},
 	}
+
 	var keys []nosql.Key
 	for range docs {
 		keys = append(keys, c.kt.Gen())
@@ -442,10 +468,12 @@ func testUpdate(t *testing.T, c tableConf) {
 			"n": nosql.Int(4),
 		},
 	}
+
 	for i, k := range keys {
 		c.kt.SetKey(exp[i], k)
 		fixDoc(&c.tr, exp[i])
 	}
+
 	c.expectAll(t, exp)
 
 	// remove one document, so next upsert will create document
@@ -466,6 +494,7 @@ func testUpdate(t *testing.T, c tableConf) {
 			// field should appear after upsert
 		},
 	}
+
 	keys = append(keys, c.kt.Gen())
 
 	for i, k := range keys {
@@ -487,10 +516,12 @@ func testUpdate(t *testing.T, c tableConf) {
 			"n": nosql.Int(-1),
 		},
 	}
+
 	for i, k := range keys {
 		c.kt.SetKey(exp[i], k)
 		fixDoc(&c.tr, exp[i])
 	}
+
 	c.expectAll(t, exp)
 }
 
@@ -506,6 +537,7 @@ func testDeleteQuery(t *testing.T, c tableConf) {
 			},
 		}
 	})
+
 	for _, d := range docs {
 		fixDoc(&c.tr, d)
 	}
@@ -516,12 +548,14 @@ func testDeleteQuery(t *testing.T, c tableConf) {
 		if keys != nil {
 			del = del.Keys(keys...)
 		}
+
 		err := del.WithFields(nosql.FieldFilter{
 			Path:   field,
 			Filter: nosql.LT,
 			Value:  nosql.Int(lt),
 		}).Do(ctx)
 		require.NoError(t, err)
+
 		c.expectAll(t, docs)
 	}
 
@@ -535,12 +569,14 @@ func testDeleteQuery(t *testing.T, c tableConf) {
 		k := keys[0]
 		docs = docs[1:]
 		lt++
+
 		err := c.Delete().WithFields(nosql.FieldFilter{
 			Path:   []string{c.kt.Fields[0]},
 			Filter: nosql.Equal,
 			Value:  nosql.String(k[0]),
 		}).Do(ctx)
 		require.NoError(t, err)
+
 		c.expectAll(t, docs)
 	}
 

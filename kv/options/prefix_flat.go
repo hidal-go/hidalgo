@@ -29,6 +29,7 @@ func (opt PrefixFlat) ApplyFlat(it flat.Iterator) flat.Iterator {
 
 func (opt PrefixFlat) ApplyKV(it kv.Iterator) kv.Iterator {
 	pref := flat.KeyUnescape(opt.Pref)
+
 	if it, ok := it.(kv.PrefixIterator); ok {
 		return it.WithPrefix(pref)
 	}
@@ -59,6 +60,7 @@ func (it *prefixIteratorFlat) WithPrefix(pref flat.Key) flat.Iterator {
 	if len(pref) == 0 {
 		return it.base
 	}
+
 	it.pref = pref
 	it.reset()
 

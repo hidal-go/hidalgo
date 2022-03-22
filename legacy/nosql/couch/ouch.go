@@ -34,9 +34,11 @@ func DialDriver(ctx context.Context, driver, addr, dbName string) (*kivik.Client
 	} else if dbName == "" {
 		return nil, "", errors.New("unable to decypher database name from: " + addr)
 	}
+
 	dsn := strings.TrimSuffix(addr, dbName)
 
 	cli, err := kivik.New(driver, dsn)
+
 	return cli, dbName, err
 }
 
@@ -126,6 +128,7 @@ func compKey(key nosql.Key) string {
 
 func (db *DB) Insert(ctx context.Context, col string, key nosql.Key, d nosql.Document) (nosql.Key, error) {
 	k, _, e := db.insert(ctx, col, key, d)
+
 	return k, e
 }
 
@@ -170,17 +173,20 @@ func (db *DB) insert(ctx context.Context, col string, key nosql.Key, d nosql.Doc
 
 func (db *DB) FindByKey(ctx context.Context, col string, key nosql.Key) (nosql.Document, error) {
 	decoded, _, _, err := db.findByKey(ctx, col, key)
+
 	return decoded, err
 }
 
 func (db *DB) findByKey(ctx context.Context, col string, key nosql.Key) (nosql.Document, string, string, error) {
 	cK := compKey(key)
+
 	return db.findByOuchKey(ctx, cK)
 }
 
 func (db *DB) findByOuchKey(ctx context.Context, cK string) (nosql.Document, string, string, error) {
 	row := db.db.Get(ctx, cK)
 	rowDoc := make(map[string]interface{})
+
 	err := row.ScanDoc(&rowDoc)
 	if err != nil {
 		if kivik.StatusCode(err) == http.StatusNotFound {
@@ -188,6 +194,7 @@ func (db *DB) findByOuchKey(ctx context.Context, cK string) (nosql.Document, str
 		}
 		return nil, "", "", err
 	}
+
 	decoded := fromOuchDoc(rowDoc)
 
 	return decoded, rowDoc[idField].(string), rowDoc[revField].(string), nil
@@ -202,9 +209,11 @@ func (db *DB) Query(col string) nosql.Query {
 			"selector": make(map[string]interface{}),
 		},
 	}
+
 	if col != "" {
 		qry.qu.putSelector(collectionField, col)
 	}
+
 	return qry
 }
 
@@ -222,7 +231,9 @@ func (q ouchQuery) clone() ouchQuery {
 	if q == nil {
 		return nil
 	}
+
 	out := make(ouchQuery, len(q))
+
 	for k, v := range q {
 		if m, ok := v.(map[string]interface{}); ok {
 			v = map[string]interface{}(ouchQuery(m).clone())
@@ -231,6 +242,7 @@ func (q ouchQuery) clone() ouchQuery {
 		}
 		out[k] = v
 	}
+
 	return out
 }
 
@@ -241,17 +253,20 @@ func (q ouchQuery) putSelector(field string, v interface{}) {
 		sel[field] = v
 		return
 	}
+
 	fsel, ok := fs.(map[string]interface{})
 	if !ok {
 		// exact match in first filter - ignore second one
 		return
 	}
+
 	fsel2, ok := v.(map[string]interface{})
 	if !ok {
 		// exact match - override filter
 		sel[field] = v
 		return
 	}
+
 	for k, v := range fsel2 {
 		fsel[k] = v
 	}
@@ -269,6 +284,7 @@ func (q *Query) WithFields(filters ...nosql.FieldFilter) nosql.Query {
 		path := strings.Join(filter.Path, keySeparator)
 		q.pathFilters[path] = append(q.pathFilters[path], filter)
 	}
+
 	return q
 }
 
@@ -278,6 +294,7 @@ func (q *Query) buildFilters() {
 		for _, filter := range filterList {
 			testValue := toOuchValue(filter.Value)
 			test := ""
+
 			switch filter.Filter {
 			case nosql.Equal:
 				test = "$eq"
@@ -306,8 +323,10 @@ func (q *Query) buildFilters() {
 			default:
 				panic(fmt.Errorf("unknown nosqlFilter %v", filter.Filter))
 			}
+
 			term[test] = testValue
 		}
+
 		q.qu.putSelector(jp, term)
 	}
 
@@ -319,11 +338,13 @@ func (q *Query) buildFilters() {
 		if haveCol {
 			for si, sv := range c.secondary {
 				useSecondary := true
+
 				for _, fieldName := range sv.Fields {
 					if _, found := q.pathFilters[fieldName]; !found {
 						useSecondary = false
 					}
 				}
+
 				if useSecondary {
 					q.qu["use_index"] = fmt.Sprintf(secondaryIndexFmt, q.col, si)
 
@@ -336,6 +357,7 @@ func (q *Query) buildFilters() {
 
 func (q *Query) Limit(n int) nosql.Query {
 	q.qu["limit"] = n
+
 	return q
 }
 
@@ -349,24 +371,30 @@ func (q *Query) Count(ctx context.Context) (int64, error) {
 	if !it.open(ctx) {
 		return 0, it.Err()
 	}
+
 	defer it.Close()
 
 	var count int64
 	for it.rows.Next() { // for speed, use the native Next
 		count++
 	}
+
 	return count, it.Err()
 }
 
 func (q *Query) One(ctx context.Context) (nosql.Document, error) {
 	it := q.Iterate()
+
 	defer it.Close()
+
 	if err := it.Err(); err != nil {
 		return nil, err
 	}
+
 	if it.Next(ctx) {
 		return it.Doc(), it.Err()
 	}
+
 	return nil, nosql.ErrNotFound
 }
 
@@ -396,19 +424,23 @@ type Iterator struct {
 
 func (it *Iterator) open(ctx context.Context) bool {
 	it.rows, it.err = it.db.db.Find(ctx, it.qu)
+
 	return it.err == nil
 }
 
 func (it *Iterator) next(ctx context.Context) bool {
 	it.doc = nil
 	haveNext := it.rows.Next()
+
 	it.err = it.rows.Err()
 	if it.err != nil {
 		return false
 	} else if !haveNext {
 		return false
 	}
+
 	it.scanDoc()
+
 	return it.err == nil
 }
 
@@ -416,13 +448,16 @@ func (it *Iterator) Next(ctx context.Context) bool {
 	if it.err != nil || it.closed {
 		return false
 	}
+
 	if it.rows == nil && !it.open(ctx) {
 		return false
 	}
+
 	next := it.next(ctx)
 	if next {
 		return true
 	}
+
 	if id := it.prevID; id != nil {
 		it.qu = it.qu.clone()
 		it.qu.putSelector(idField, map[string]interface{}{"$gt": id})
@@ -430,10 +465,13 @@ func (it *Iterator) Next(ctx context.Context) bool {
 			next = it.next(ctx)
 		}
 	}
+
 	if next {
 		return true
 	}
+
 	it.closed = true // auto-closed at end of iteration by API
+
 	return false
 }
 
@@ -443,13 +481,17 @@ func (it *Iterator) Err() error {
 
 func (it *Iterator) Close() error {
 	it.closed = true
+
 	if it.rows == nil {
 		return it.err
 	}
+
 	if err := it.rows.Close(); err != nil && it.err == nil {
 		it.err = err
 	}
+
 	it.rows = nil
+
 	return it.err
 }
 
@@ -459,10 +501,12 @@ func (it *Iterator) Key() nosql.Key {
 	} else if len(it.doc) == 0 {
 		return nil
 	}
+
 	var k nosql.Key
 	for _, f := range it.db.colls[it.col].primary.Fields {
 		k = append(k, string(fromOuchValue(it.doc[f]).(nosql.String)))
 	}
+
 	return k
 }
 
@@ -470,6 +514,7 @@ func (it *Iterator) Doc() nosql.Document {
 	if it.err != nil || it.closed {
 		return nil
 	}
+
 	return fromOuchDoc(it.doc)
 }
 
@@ -490,6 +535,7 @@ type Delete struct {
 
 func (d *Delete) WithFields(filters ...nosql.FieldFilter) nosql.Delete {
 	d.q.WithFields(filters...)
+
 	return d
 }
 
@@ -497,6 +543,7 @@ func (d *Delete) Keys(keys ...nosql.Key) nosql.Delete {
 	for _, k := range keys {
 		d.keys = append(d.keys, compKey(k))
 	}
+
 	return d
 }
 
@@ -567,15 +614,19 @@ func (u *Update) Inc(field string, dn int) nosql.Update {
 	if u.inc == nil {
 		u.inc = make(map[string]int)
 	}
+
 	u.inc[field] += dn
+
 	return u
 }
 
 func (u *Update) Upsert(d nosql.Document) nosql.Update {
 	u.upsert = true
+
 	for k, v := range d {
 		u.update[k] = v
 	}
+
 	return u
 }
 
@@ -585,17 +636,20 @@ func (u *Update) Do(ctx context.Context) error {
 		if !u.upsert {
 			return err
 		}
+
 		var idKey nosql.Key
 		orig = u.update
 		idKey, rev, err = u.db.insert(ctx, u.col, u.key, orig)
 		if err != nil {
 			return err
 		}
+
 		id = compKey(idKey)
 	} else {
 		if err != nil {
 			return err
 		}
+
 		for k, v := range u.update { // alter any changed fields
 			orig[k] = v
 		}
@@ -615,9 +669,11 @@ func (u *Update) Do(ctx context.Context) error {
 		} else {
 			val = nosql.Int(v)
 		}
+
 		orig[k] = val
 	}
 
 	_, err = u.db.db.Put(ctx, compKey(u.key), toOuchDoc(u.col, id, rev, orig))
+
 	return err
 }

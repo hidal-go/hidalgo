@@ -25,6 +25,7 @@ func UpgradeOpenPath(open OpenPathFunc) kv.OpenPathFunc {
 		if err != nil {
 			return nil, err
 		}
+
 		return Upgrade(flat), nil
 	}
 }
@@ -40,6 +41,7 @@ func KeyEscape(k kv.Key) Key {
 		if i != 0 {
 			k2 = append(k2, sep)
 		}
+
 		for _, p := range s {
 			if p == esc || p == sep {
 				k2 = append(k2, esc)
@@ -47,6 +49,7 @@ func KeyEscape(k kv.Key) Key {
 			k2 = append(k2, p)
 		}
 	}
+
 	return k2
 }
 
@@ -56,6 +59,7 @@ func KeyUnescape(k Key) kv.Key {
 		k2  kv.Key
 		cur Key
 	)
+
 	for i := 0; i < len(k); i++ {
 		p := k[i]
 		if p == esc {
@@ -71,9 +75,11 @@ func KeyUnescape(k Key) kv.Key {
 		}
 		cur = append(cur, p)
 	}
+
 	if cur != nil {
 		k2 = append(k2, cur)
 	}
+
 	return k2
 }
 
@@ -86,6 +92,7 @@ func (hkv *hieKV) Tx(rw bool) (kv.Tx, error) {
 	if err != nil {
 		return nil, err
 	}
+
 	return &flatTx{kv: hkv, tx: tx, rw: rw}, nil
 }
 
@@ -107,6 +114,7 @@ func (tx *flatTx) key(key kv.Key) Key {
 	if len(key) == 0 {
 		return nil
 	}
+
 	return KeyEscape(key)
 }
 
@@ -119,6 +127,7 @@ func (tx *flatTx) GetBatch(ctx context.Context, keys []kv.Key) ([]kv.Value, erro
 	for i, k := range keys {
 		ks[i] = tx.key(k)
 	}
+
 	return tx.tx.GetBatch(ctx, ks)
 }
 
@@ -134,6 +143,7 @@ func (tx *flatTx) Put(k kv.Key, v kv.Value) error {
 	if !tx.rw {
 		return kv.ErrReadOnly
 	}
+
 	return tx.tx.Put(tx.key(k), v)
 }
 
@@ -141,6 +151,7 @@ func (tx *flatTx) Del(k kv.Key) error {
 	if !tx.rw {
 		return kv.ErrReadOnly
 	}
+
 	return tx.tx.Del(tx.key(k))
 }
 
@@ -149,6 +160,7 @@ func (tx *flatTx) Scan(opts ...kv.IteratorOption) kv.Iterator {
 		native   []IteratorOption
 		fallback []kv.IteratorOption
 	)
+
 	for _, opt := range opts {
 		if v, ok := opt.(IteratorOption); ok {
 			native = append(native, v)
@@ -156,7 +168,9 @@ func (tx *flatTx) Scan(opts ...kv.IteratorOption) kv.Iterator {
 			fallback = append(fallback, opt)
 		}
 	}
+
 	it := &prefIter{kv: tx.kv, Iterator: tx.tx.Scan(native...)}
+
 	return kv.ApplyIteratorOptions(it, fallback)
 }
 
