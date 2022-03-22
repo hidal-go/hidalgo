@@ -22,6 +22,7 @@ func (t Test) Get(key kv.Key) (kv.Value, error) {
 	tx, err := t.db.Tx(false)
 	require.NoError(t.t, err)
 	defer tx.Close()
+
 	return tx.Get(context.TODO(), key)
 }
 
@@ -73,6 +74,7 @@ func (t Test) ExpectIt(it kv.Iterator, exp []kv.Pair) {
 	if len(exp) == 0 {
 		exp = nil
 	}
+
 	ctx := context.TODO()
 	var got []kv.Pair
 	for it.Next(ctx) {
@@ -81,6 +83,7 @@ func (t Test) ExpectIt(it kv.Iterator, exp []kv.Pair) {
 			Val: it.Val().Clone(),
 		})
 	}
+
 	require.NoError(t.t, it.Err())
 	require.Equal(t.t, exp, got)
 }
