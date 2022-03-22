@@ -93,6 +93,7 @@ func (it *prefixIteratorFlat) Next(ctx context.Context) bool {
 
 	// keys are sorted, and we reached the end of the prefix
 	it.done = true
+
 	return false
 }
 

@@ -173,7 +173,6 @@ func (s *sqlStore) tableWith(ctx context.Context, tx *sql.Tx, name string) (tupl
 		s.curSchema(),
 		name,
 	)
-
 	if err != nil {
 		return nil, err
 	}
@@ -250,7 +249,6 @@ func (s *sqlStore) listTablesWith(ctx context.Context, tx *sql.Tx) ([]tuple.Tabl
 		`SELECT table_name FROM information_schema.tables WHERE table_schema = `+s.dia.Placeholder(0),
 		s.curSchema(),
 	)
-
 	if err != nil {
 		return nil, err
 	}

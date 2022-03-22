@@ -22,6 +22,7 @@ func (opt PrefixKV) ApplyKV(it kv.Iterator) kv.Iterator {
 	if it, ok := it.(kv.PrefixIterator); ok {
 		return it.WithPrefix(opt.Pref)
 	}
+
 	return &prefixIteratorKV{base: it, pref: opt.Pref}
 }
 
@@ -30,6 +31,7 @@ func (opt PrefixKV) ApplyFlat(it flat.Iterator) flat.Iterator {
 	if it, ok := it.(flat.PrefixIterator); ok {
 		return it.WithPrefix(pref)
 	}
+
 	return &prefixIteratorFlat{base: it, pref: pref}
 }
 
@@ -56,8 +58,10 @@ func (it *prefixIteratorKV) WithPrefix(pref kv.Key) kv.Iterator {
 	if len(pref) == 0 {
 		return it.base
 	}
+
 	it.pref = pref
 	it.reset()
+
 	return it
 }
 
@@ -65,25 +69,31 @@ func (it *prefixIteratorKV) Next(ctx context.Context) bool {
 	if it.done {
 		return false
 	}
+
 	if !it.seek {
 		found := kv.Seek(ctx, it.base, it.pref)
 		it.seek = true
 		if !found {
 			it.done = true
+
 			return false
 		}
 	} else {
 		if !it.base.Next(ctx) {
 			it.done = true
+
 			return false
 		}
 	}
+
 	key := it.base.Key()
 	if key.HasPrefix(it.pref) {
 		return true
 	}
+
 	// keys are sorted, and we reached the end of the prefix
 	it.done = true
+
 	return false
 }
 
