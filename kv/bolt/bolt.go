@@ -128,8 +128,8 @@ func (tx *Tx) Get(ctx context.Context, key kv.Key) (kv.Value, error) {
 
 func (tx *Tx) GetBatch(ctx context.Context, keys []kv.Key) ([]kv.Value, error) {
 	vals := make([]kv.Value, len(keys))
-	for i, k := range keys {
-		if b, k := tx.bucket(k); b != nil && len(k) == 1 {
+	for i, key := range keys {
+		if b, k := tx.bucket(key); b != nil && len(k) == 1 {
 			vals[i] = b.Get(k[0])
 		}
 	}
