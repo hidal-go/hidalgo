@@ -9,13 +9,11 @@ import (
 	"github.com/pborman/uuid"
 )
 
-var (
-	ErrNotFound = errors.New("not found")
-)
+var ErrNotFound = errors.New("not found")
 
 type Options map[string]interface{}
 
-func (o Options) GetString(key string, def string) string {
+func (o Options) GetString(key, def string) string {
 	v, ok := o[key].(string)
 	if !ok {
 		return def

@@ -7,7 +7,7 @@ import (
 )
 
 // DSNFunc is a function for building a Data Source Name for SQL driver, given a address and the database name.
-type DSNFunc func(addr string, ns string) (string, error)
+type DSNFunc func(addr, ns string) (string, error)
 
 // Registration is an information about the database driver.
 type Registration struct {

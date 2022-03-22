@@ -18,9 +18,7 @@ import (
 
 const Name = "elastic"
 
-var (
-	_ nosql.BatchInserter = (*DB)(nil)
-)
+var _ nosql.BatchInserter = (*DB)(nil)
 
 func Traits() nosql.Traits {
 	return nosql.Traits{
@@ -35,7 +33,7 @@ func init() {
 			Local: false, Volatile: false,
 		},
 		Traits: Traits(),
-		Open: func(addr string, ns string, opt nosql.Options) (nosql.Database, error) {
+		Open: func(addr, ns string, opt nosql.Options) (nosql.Database, error) {
 			db, err := Dial(addr, ns, opt)
 			if err != nil {
 				return nil, err
@@ -53,7 +51,7 @@ func dialElastic(addr string) (*elastic.Client, error) {
 	return client, nil
 }
 
-func Dial(addr string, index string, opt nosql.Options) (*DB, error) {
+func Dial(addr, index string, opt nosql.Options) (*DB, error) {
 	client, err := dialElastic(addr)
 	if err != nil {
 		return nil, err

@@ -16,9 +16,7 @@ const (
 	debug = false
 )
 
-var (
-	ErrTableNotFound = tuple.ErrTableNotFound
-)
+var ErrTableNotFound = tuple.ErrTableNotFound
 
 func OpenSQL(name, addr, db string) (*sql.DB, error) {
 	r := ByName(name)

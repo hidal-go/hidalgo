@@ -20,9 +20,7 @@ import (
 
 const Name = "mongo"
 
-var (
-	_ nosql.BatchInserter = (*DB)(nil)
-)
+var _ nosql.BatchInserter = (*DB)(nil)
 
 func Traits() nosql.Traits {
 	return nosql.Traits{
@@ -37,7 +35,7 @@ func init() {
 			Local: false, Volatile: false,
 		},
 		Traits: Traits(),
-		Open: func(addr string, ns string, opt nosql.Options) (nosql.Database, error) {
+		Open: func(addr, ns string, opt nosql.Options) (nosql.Database, error) {
 			db, err := Dial(addr, ns, opt)
 			if err != nil {
 				return nil, err
@@ -47,7 +45,7 @@ func init() {
 	})
 }
 
-func dialMongo(addr string, dbName string, noSqloptions nosql.Options) (*mongo.Client, error) {
+func dialMongo(addr, dbName string, noSqloptions nosql.Options) (*mongo.Client, error) {
 	if connVal, ok := noSqloptions["session"]; ok {
 		if conn, ok := connVal.(*mongo.Client); ok {
 			return conn, nil
@@ -67,7 +65,7 @@ func dialMongo(addr string, dbName string, noSqloptions nosql.Options) (*mongo.C
 
 		return client, err
 	}
-	var connString = "mongodb://"
+	connString := "mongodb://"
 
 	if user := noSqloptions.GetString("username", ""); user != "" {
 		connString = fmt.Sprintf("%s%s:%s", connString, url.QueryEscape(user), url.QueryEscape(noSqloptions.GetString("password", "")))
@@ -87,8 +85,8 @@ func New(sess *mongo.Client, dbName string) (*DB, error) {
 	}, nil
 }
 
-func Dial(addr string, dbName string, opt nosql.Options) (*DB, error) {
-	//the dbName parameter is actually the defaultDatabase name, check if we had an override via the options
+func Dial(addr, dbName string, opt nosql.Options) (*DB, error) {
+	// the dbName parameter is actually the defaultDatabase name, check if we had an override via the options
 	dbOverride := opt.GetString("database_name", dbName)
 
 	sess, err := dialMongo(addr, dbOverride, opt)
@@ -365,9 +363,8 @@ func (db *DB) FindByKey(ctx context.Context, col string, key nosql.Key) (nosql.D
 
 	res := c.c.FindOne(ctx, primitive.M{"_id": compKey(key)})
 	var m primitive.M
-	err := res.Decode(&m)
 
-	if err == mongo.ErrNoDocuments {
+	if err := res.Decode(&m); err == mongo.ErrNoDocuments {
 		return nil, nosql.ErrNotFound
 	} else if err != nil {
 		return nil, err
@@ -498,7 +495,7 @@ func (q *Query) Count(ctx context.Context) (int64, error) {
 }
 
 func (q *Query) One(ctx context.Context) (nosql.Document, error) {
-	var m = &primitive.M{}
+	m := &primitive.M{}
 	cursor, err := q.build()
 	if err != nil {
 		return nil, err

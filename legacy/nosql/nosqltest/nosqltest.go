@@ -159,9 +159,7 @@ func (c tableConf) expectAll(t testing.TB, docs []nosql.Document) {
 }
 
 func (c tableConf) insertDocs(t testing.TB, n int, fnc func(i int) nosql.Document) ([]nosql.Key, []nosql.Document) {
-	var (
-		docs []nosql.Document
-	)
+	var docs []nosql.Document
 	w := nosql.BatchInsert(c.db, c.col)
 	defer w.Close()
 	for i := 0; i < n; i++ {

@@ -19,7 +19,7 @@ func init() {
 			Local: false, Volatile: false,
 		},
 		Driver: "mysql",
-		DSN: func(addr string, ns string) (string, error) {
+		DSN: func(addr, ns string) (string, error) {
 			return addr + "/" + ns + "?parseTime=true", nil
 		},
 		Dialect: sqltuple.Dialect{

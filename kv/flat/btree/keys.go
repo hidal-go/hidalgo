@@ -63,8 +63,8 @@ import (
 )
 
 const (
-	kx = 32 //TODO benchmark tune this number if using custom key/value type(s).
-	kd = 32 //TODO benchmark tune this number if using custom key/value type(s).
+	kx = 32 // TODO benchmark tune this number if using custom key/value type(s).
+	kd = 32 // TODO benchmark tune this number if using custom key/value type(s).
 )
 
 func init() {
@@ -435,7 +435,7 @@ func (t *Tree) find(q interface{}, k []byte) (i int, ok bool) {
 
 // First returns the first item of the tree in the key collating order, or
 // (zero-value, zero-value) if the tree is empty.
-func (t *Tree) First() (k []byte, v []byte) {
+func (t *Tree) First() (k, v []byte) {
 	if q := t.first; q != nil {
 		q := &q.d[0]
 		k, v = q.k, q.v
@@ -474,7 +474,7 @@ func (t *Tree) Get(k []byte) (v []byte, ok bool) {
 	}
 }
 
-func (t *Tree) insert(q *d, i int, k []byte, v []byte) *d {
+func (t *Tree) insert(q *d, i int, k, v []byte) *d {
 	t.ver++
 	c := q.c
 	if i < c {
@@ -489,7 +489,7 @@ func (t *Tree) insert(q *d, i int, k []byte, v []byte) *d {
 
 // Last returns the last item of the tree in the key collating order, or
 // (zero-value, zero-value) if the tree is empty.
-func (t *Tree) Last() (k []byte, v []byte) {
+func (t *Tree) Last() (k, v []byte) {
 	if q := t.last; q != nil {
 		q := &q.d[q.c-1]
 		k, v = q.k, q.v
@@ -502,7 +502,7 @@ func (t *Tree) Len() int {
 	return t.c
 }
 
-func (t *Tree) overflow(p *x, q *d, pi, i int, k []byte, v []byte) {
+func (t *Tree) overflow(p *x, q *d, pi, i int, k, v []byte) {
 	t.ver++
 	l, r := p.siblings(pi)
 
@@ -584,11 +584,11 @@ func (t *Tree) SeekLast() (e *Enumerator, err error) {
 }
 
 // Set sets the value associated with k.
-func (t *Tree) Set(k []byte, v []byte) {
-	//dbg("--- PRE Set(%v, %v)\n%s", k, v, t.dump())
-	//defer func() {
+func (t *Tree) Set(k, v []byte) {
+	// dbg("--- PRE Set(%v, %v)\n%s", k, v, t.dump())
+	// defer func() {
 	//	dbg("--- POST\n%s\n====\n", t.dump())
-	//}()
+	// }()
 
 	pi := -1
 	var p *x
@@ -718,7 +718,7 @@ func (t *Tree) Put(k []byte, upd func(oldV []byte, exists bool) (newV []byte, wr
 	}
 }
 
-func (t *Tree) split(p *x, q *d, pi, i int, k []byte, v []byte) {
+func (t *Tree) split(p *x, q *d, pi, i int, k, v []byte) {
 	t.ver++
 	r := btDPool.Get().(*d)
 	if q.n != nil {
@@ -753,7 +753,7 @@ func (t *Tree) split(p *x, q *d, pi, i int, k []byte, v []byte) {
 	t.insert(q, i, k, v)
 }
 
-func (t *Tree) splitX(p *x, q *x, pi int, i int) (*x, int) {
+func (t *Tree) splitX(p, q *x, pi, i int) (*x, int) {
 	t.ver++
 	r := btXPool.Get().(*x)
 	copy(r.x[:], q.x[kx+1:])
@@ -811,7 +811,7 @@ func (t *Tree) underflow(p *x, q *d, pi int) {
 	}
 }
 
-func (t *Tree) underflowX(p *x, q *x, pi int, i int) (*x, int) {
+func (t *Tree) underflowX(p, q *x, pi, i int) (*x, int) {
 	t.ver++
 	var l, r *x
 
@@ -873,7 +873,7 @@ func (e *Enumerator) Close() {
 // Next returns the currently enumerated item, if it exists and moves to the
 // next item in the key collation order. If there is no item to return, err ==
 // io.EOF is returned.
-func (e *Enumerator) Next() (k []byte, v []byte, err error) {
+func (e *Enumerator) Next() (k, v []byte, err error) {
 	if err = e.err; err != nil {
 		return
 	}
@@ -927,7 +927,7 @@ func (e *Enumerator) next() error {
 // Prev returns the currently enumerated item, if it exists and moves to the
 // previous item in the key collation order. If there is no item to return, err
 // == io.EOF is returned.
-func (e *Enumerator) Prev() (k []byte, v []byte, err error) {
+func (e *Enumerator) Prev() (k, v []byte, err error) {
 	if err = e.err; err != nil {
 		return
 	}
