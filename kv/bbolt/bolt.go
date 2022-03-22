@@ -46,7 +46,7 @@ func New(d *bolt.DB) *DB {
 }
 
 func Open(path string, opt *bolt.Options) (*DB, error) {
-	db, err := bolt.Open(path, 0644, opt)
+	db, err := bolt.Open(path, 0o644, opt)
 	if err != nil {
 		return nil, err
 	}
