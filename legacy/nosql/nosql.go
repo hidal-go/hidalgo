@@ -120,11 +120,12 @@ type FieldFilter struct {
 	Value  Value    // value that will be compared with field of the document
 }
 
-func (f FieldFilter) Matches(d Document) bool {
+func (f FieldFilter) Matches(doc Document) bool {
+	path := f.Path
+	var val Value = doc
+
 	if f.Filter == NotEqual {
-		// not equal is special - it allows parent fields to not exist
-		path := f.Path
-		var val Value = d
+		// NotEqual is special - it allows parent fields to not exist
 		for len(path) > 0 {
 			d, ok := val.(Document)
 			if !ok {
@@ -138,8 +139,7 @@ func (f FieldFilter) Matches(d Document) bool {
 		}
 		return !ValuesEqual(val, f.Value)
 	}
-	path := f.Path
-	var val Value = d
+
 	for len(path) > 0 {
 		d, ok := val.(Document)
 		if !ok {
