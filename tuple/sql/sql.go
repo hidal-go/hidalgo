@@ -765,7 +765,7 @@ func (tbl *sqlTable) DeleteTuples(ctx context.Context, f *tuple.Filter) error {
 	return it.Err()
 }
 
-func (tbl *sqlTable) scan(open rowsFunc, keysOnly bool, f *tuple.Filter) tuple.Iterator {
+func (tbl *sqlTable) scan(open rowsFunc, keysOnly bool, f *tuple.Filter) *sqlIterator {
 	return &sqlIterator{tbl: tbl, open: open, f: f, keysOnly: keysOnly}
 }
 

@@ -10,7 +10,7 @@ import (
 
 // WithPrefixFlat returns IteratorOption that limits scanned key to a given binary prefix.
 // Store implementations can optimize this by implementing flat.PrefixIterator.
-func WithPrefixFlat(pref flat.Key) IteratorOption {
+func WithPrefixFlat(pref flat.Key) PrefixFlat {
 	return PrefixFlat{Pref: pref}
 }
 
