@@ -353,7 +353,9 @@ func (t *Tree) Delete(k []byte) (ok bool) {
 				p = x
 				q = x.x[pi].ch
 				ok = false
+
 				continue
+
 			case *d:
 				t.extract(x, i)
 				if x.c >= kd {
@@ -365,6 +367,7 @@ func (t *Tree) Delete(k []byte) (ok bool) {
 				} else if t.c == 0 {
 					t.Clear()
 				}
+
 				return true
 			}
 		}
@@ -454,11 +457,14 @@ func (t *Tree) Get(k []byte) (v []byte, ok bool) {
 			switch x := q.(type) {
 			case *x:
 				q = x.x[i+1].ch
+
 				continue
+
 			case *d:
 				return x.d[i].v, true
 			}
 		}
+
 		switch x := q.(type) {
 		case *x:
 			q = x.x[i].ch
@@ -538,7 +544,9 @@ func (t *Tree) Seek(k []byte) (e *Enumerator, ok bool) {
 			switch x := q.(type) {
 			case *x:
 				q = x.x[i+1].ch
+
 				continue
+
 			case *d:
 				return btEPool.get(nil, ok, i, k, x, t, t.ver), true
 			}
@@ -602,7 +610,9 @@ func (t *Tree) Set(k []byte, v []byte) {
 				pi = i + 1
 				p = x
 				q = x.x[i+1].ch
+
 				continue
+
 			case *d:
 				x.d[i].v = v
 			}
@@ -948,6 +958,7 @@ func (e *Enumerator) Prev() (k []byte, v []byte, err error) {
 	k, v = i.k, i.v
 	e.k, e.hit = k, false
 	e.prev()
+
 	return
 }
 
@@ -963,6 +974,7 @@ func (e *Enumerator) prev() error {
 	default:
 		if e.q = e.q.p; e.q == nil {
 			e.err = io.EOF
+
 			break
 		}
 

@@ -74,6 +74,7 @@ func (d *KV) Close() error {
 	if r+w+s != 0 {
 		panic(fmt.Errorf("resources leak: iter: %d, ro: %d, rw: %d", s, r, w))
 	}
+
 	return err
 }
 
@@ -93,6 +94,7 @@ func (d *KV) Tx(rw bool) (kv.Tx, error) {
 		atomic.AddInt64(&d.stats.Tx.RO, 1)
 		atomic.AddInt64(&d.running.txRO, 1)
 	}
+
 	return &kvTX{kv: d, tx: tx, rw: rw}, nil
 }
 
