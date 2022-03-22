@@ -382,7 +382,7 @@ func testDeleteByKey(t *testing.T, c tableConf) {
 	})
 
 	del := keys[:5]
-	keys = keys[len(del):]
+	keys = keys[len(del):] // this does nothing, just to show that both slices must be adjusted.
 	docs = docs[len(del):]
 
 	err := c.DeleteKeys(del[0])

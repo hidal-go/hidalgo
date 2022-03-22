@@ -116,17 +116,6 @@ func (s *sqlStore) execb(ctx context.Context, tx *sql.Tx, b *Builder) (sql.Resul
 	return s.exec(ctx, tx, qu, args...)
 }
 
-func (s *sqlStore) execStmt(ctx context.Context, st *sql.Stmt, args ...interface{}) error {
-	if debug {
-		log.Println(append([]interface{}{"STMT"}, args...)...)
-	}
-	_, err := st.ExecContext(ctx, args...)
-	if err != nil {
-		err = s.convError(err)
-	}
-	return err
-}
-
 func (s *sqlStore) Tx(rw bool) (tuple.Tx, error) {
 	tx, err := s.db.Begin()
 	if err != nil {
