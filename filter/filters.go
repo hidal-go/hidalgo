@@ -35,7 +35,7 @@ func (Any) ValuesRange() *Range {
 }
 
 // EQ is a shorthand for Equal.
-func EQ(v values.Value) SortableFilter {
+func EQ(v values.Value) Equal {
 	return Equal{Value: v}
 }
 
