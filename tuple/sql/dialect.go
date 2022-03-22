@@ -76,15 +76,6 @@ func (d *Dialect) QuoteString(s string) string {
 	return "'" + strings.Replace(s, "'", "''", -1) + "'"
 }
 
-func needQuotes(s string) bool {
-	for i, r := range s {
-		if (r < 'a' || r > 'z') && r != '_' && (i == 0 || r < '0' || r > '9') {
-			return true
-		}
-	}
-	return false
-}
-
 func (d *Dialect) sqlType(t values.Type, key bool) string {
 	var tp string
 	switch t.(type) {
@@ -194,11 +185,4 @@ func (d *Dialect) nativeType(typ, comment string) (values.Type, bool, error) {
 		return values.TimeType{}, auto, nil
 	}
 	return nil, false, fmt.Errorf("unsupported column type: %q", typ)
-}
-
-func escapeNullByte(s string) string {
-	return strings.Replace(s, "\u0000", `\x00`, -1)
-}
-func unescapeNullByte(s string) string {
-	return strings.Replace(s, `\x00`, "\u0000", -1)
 }

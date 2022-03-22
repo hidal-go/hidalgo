@@ -382,7 +382,6 @@ func testDeleteByKey(t *testing.T, c tableConf) {
 	})
 
 	del := keys[:5]
-	keys = keys[len(del):]
 	docs = docs[len(del):]
 
 	err := c.DeleteKeys(del[0])
