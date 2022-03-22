@@ -83,7 +83,6 @@ const (
 )
 
 func (db *DB) EnsureIndex(ctx context.Context, col string, primary nosql.Index, secondary []nosql.Index) error {
-
 	if primary.Type != nosql.StringExact {
 		return fmt.Errorf("unsupported type of primary index: %v", primary.Type)
 	}
@@ -129,8 +128,8 @@ func (db *DB) Insert(ctx context.Context, col string, key nosql.Key, d nosql.Doc
 	k, _, e := db.insert(ctx, col, key, d)
 	return k, e
 }
-func (db *DB) insert(ctx context.Context, col string, key nosql.Key, d nosql.Document) (nosql.Key, string, error) {
 
+func (db *DB) insert(ctx context.Context, col string, key nosql.Key, d nosql.Document) (nosql.Key, string, error) {
 	if d == nil {
 		return nil, "", errors.New("no document to insert")
 	}
@@ -208,9 +207,11 @@ func (db *DB) Query(col string) nosql.Query {
 	}
 	return qry
 }
+
 func (db *DB) Update(col string, key nosql.Key) nosql.Update {
 	return &Update{db: db, col: col, key: key, update: nosql.Document{}}
 }
+
 func (db *DB) Delete(col string) nosql.Delete {
 	return &Delete{db: db, col: col, q: db.Query(col).(*Query)}
 }
@@ -325,6 +326,7 @@ func (q *Query) buildFilters() {
 				}
 				if useSecondary {
 					q.qu["use_index"] = fmt.Sprintf(secondaryIndexFmt, q.col, si)
+
 					break
 				}
 			}
@@ -396,6 +398,7 @@ func (it *Iterator) open(ctx context.Context) bool {
 	it.rows, it.err = it.db.db.Find(ctx, it.qu)
 	return it.err == nil
 }
+
 func (it *Iterator) next(ctx context.Context) bool {
 	it.doc = nil
 	haveNext := it.rows.Next()
@@ -408,6 +411,7 @@ func (it *Iterator) next(ctx context.Context) bool {
 	it.scanDoc()
 	return it.err == nil
 }
+
 func (it *Iterator) Next(ctx context.Context) bool {
 	if it.err != nil || it.closed {
 		return false
@@ -488,14 +492,15 @@ func (d *Delete) WithFields(filters ...nosql.FieldFilter) nosql.Delete {
 	d.q.WithFields(filters...)
 	return d
 }
+
 func (d *Delete) Keys(keys ...nosql.Key) nosql.Delete {
 	for _, k := range keys {
 		d.keys = append(d.keys, compKey(k))
 	}
 	return d
 }
-func (d *Delete) Do(ctx context.Context) error {
 
+func (d *Delete) Do(ctx context.Context) error {
 	deleteSet := make(map[string]string) // [_id]_rev
 
 	switch len(d.keys) {
@@ -521,7 +526,6 @@ func (d *Delete) Do(ctx context.Context) error {
 	// NOTE even when using idField in a Mango query, it still has to base its query on an index
 
 	if len(deleteSet) == 0 { // did not hit the special case, so must do a mango query
-
 		// only pull back the _id & _rev fields in the query
 		d.q.qu["fields"] = []interface{}{idField, revField}
 
@@ -574,6 +578,7 @@ func (u *Update) Upsert(d nosql.Document) nosql.Update {
 	}
 	return u
 }
+
 func (u *Update) Do(ctx context.Context) error {
 	orig, id, rev, err := u.db.findByKey(ctx, u.col, u.key)
 	if err == nosql.ErrNotFound {

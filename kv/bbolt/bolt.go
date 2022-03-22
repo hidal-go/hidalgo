@@ -272,6 +272,7 @@ func (it *Iterator) next(pref kv.Key) bool {
 					if b := cb.Bucket(it.k); b != nil {
 						it.stack.b = append(it.stack.b, b)
 						it.stack.k = append(it.stack.k, it.k)
+
 						continue
 					}
 					// or maybe it's a key after all

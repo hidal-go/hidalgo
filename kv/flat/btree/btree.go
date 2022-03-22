@@ -57,6 +57,7 @@ type DB struct {
 func (db *DB) Close() error {
 	return nil
 }
+
 func (db *DB) Tx(rw bool) (flat.Tx, error) {
 	return &Tx{t: db.t, rw: rw}, nil
 }
@@ -81,6 +82,7 @@ func (tx *Tx) Get(ctx context.Context, key flat.Key) (flat.Value, error) {
 	}
 	return flat.Value(v).Clone(), nil
 }
+
 func (tx *Tx) GetBatch(ctx context.Context, keys []flat.Key) ([]flat.Value, error) {
 	vals := make([]flat.Value, len(keys))
 	for i, k := range keys {
@@ -94,9 +96,11 @@ func (tx *Tx) GetBatch(ctx context.Context, keys []flat.Key) ([]flat.Value, erro
 func (tx *Tx) Commit(ctx context.Context) error {
 	return nil
 }
+
 func (tx *Tx) Close() error {
 	return nil
 }
+
 func (tx *Tx) Put(k flat.Key, v flat.Value) error {
 	if !tx.rw {
 		return flat.ErrReadOnly
@@ -104,6 +108,7 @@ func (tx *Tx) Put(k flat.Key, v flat.Value) error {
 	tx.t.Set(k.Clone(), v.Clone())
 	return nil
 }
+
 func (tx *Tx) Del(k flat.Key) error {
 	if !tx.rw {
 		return flat.ErrReadOnly
@@ -179,6 +184,7 @@ func (it *Iterator) Val() flat.Value { return it.v }
 func (it *Iterator) Err() error {
 	return nil
 }
+
 func (it *Iterator) Close() error {
 	if it.e != nil {
 		it.e.Close()

@@ -61,10 +61,12 @@ func KeyUnescape(k Key) kv.Key {
 		if p == esc {
 			cur = append(cur, k[i+1])
 			i++
+
 			continue
 		} else if p == sep {
 			k2 = append(k2, cur)
 			cur = nil
+
 			continue
 		}
 		cur = append(cur, p)
@@ -78,6 +80,7 @@ func KeyUnescape(k Key) kv.Key {
 func (hkv *hieKV) Close() error {
 	return hkv.flat.Close()
 }
+
 func (hkv *hieKV) Tx(rw bool) (kv.Tx, error) {
 	tx, err := hkv.flat.Tx(rw)
 	if err != nil {
@@ -122,15 +125,18 @@ func (tx *flatTx) GetBatch(ctx context.Context, keys []kv.Key) ([]kv.Value, erro
 func (tx *flatTx) Commit(ctx context.Context) error {
 	return tx.tx.Commit(ctx)
 }
+
 func (tx *flatTx) Close() error {
 	return tx.tx.Close()
 }
+
 func (tx *flatTx) Put(k kv.Key, v kv.Value) error {
 	if !tx.rw {
 		return kv.ErrReadOnly
 	}
 	return tx.tx.Put(tx.key(k), v)
 }
+
 func (tx *flatTx) Del(k kv.Key) error {
 	if !tx.rw {
 		return kv.ErrReadOnly

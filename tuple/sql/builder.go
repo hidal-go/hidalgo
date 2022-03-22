@@ -21,15 +21,18 @@ func (b *Builder) Reset() {
 	b.buf.Reset()
 	b.args = b.args[0:]
 }
+
 func (b *Builder) Write(s string) {
 	b.buf.WriteString(s)
 }
+
 func (b *Builder) place(v interface{}) string {
 	p := b.pi
 	b.pi++
 	b.args = append(b.args, v)
 	return b.d.Placeholder(p)
 }
+
 func (b *Builder) Place(args ...interface{}) {
 	if len(args) == 1 {
 		if _, ok := args[0].([]interface{}); ok {
@@ -42,6 +45,7 @@ func (b *Builder) Place(args ...interface{}) {
 	}
 	b.Write(strings.Join(arr, ", "))
 }
+
 func (b *Builder) Idents(names ...string) {
 	arr := make([]string, 0, len(names))
 	for _, s := range names {
@@ -49,9 +53,11 @@ func (b *Builder) Idents(names ...string) {
 	}
 	b.Write(strings.Join(arr, ", "))
 }
+
 func (b *Builder) Literal(s string) {
 	b.Write(b.d.QuoteString(s))
 }
+
 func (b *Builder) opPlace(names []string, op string, args []interface{}, sep string) {
 	arr := make([]string, 0, len(names))
 	for i, name := range names {
@@ -59,25 +65,31 @@ func (b *Builder) opPlace(names []string, op string, args []interface{}, sep str
 	}
 	b.Write(strings.Join(arr, sep))
 }
+
 func (b *Builder) EqPlace(names []string, args []interface{}) {
 	b.opPlace(names, "=", args, ", ")
 }
+
 func (b *Builder) EqPlaceAnd(names []string, args []interface{}) {
 	b.Write("(")
 	b.opPlace(names, "=", args, ") AND (")
 	b.Write(")")
 }
+
 func (b *Builder) OpPlace(names []string, op string, args []interface{}) {
 	b.opPlace(names, op, args, ", ")
 }
+
 func (b *Builder) OpPlaceAnd(names []string, op string, args []interface{}) {
 	b.Write("(")
 	b.opPlace(names, op, args, ") AND (")
 	b.Write(")")
 }
+
 func (b *Builder) String() string {
 	return b.buf.String()
 }
+
 func (b *Builder) Args() []interface{} {
 	return b.args
 }

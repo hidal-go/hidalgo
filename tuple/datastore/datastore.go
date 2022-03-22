@@ -37,6 +37,7 @@ func (s *TupleStore) Close() error {
 func (s *TupleStore) metaRoot() *datastore.Key {
 	return datastore.NameKey(kindHidalgo, idHidalgo, nil)
 }
+
 func (s *TupleStore) tableKey(name string) *datastore.Key {
 	hi := s.metaRoot()
 	return datastore.NameKey(kindTable, name, hi)
@@ -250,6 +251,7 @@ func (tbl *Table) key(key tuple.Key, auto bool) *datastore.Key {
 	}
 	return k
 }
+
 func (tbl *Table) parseKey(key *datastore.Key) (tuple.Key, error) {
 	k := make(tuple.Key, len(tbl.h.Key))
 	for i := len(k) - 1; i >= 0; i-- {
@@ -325,6 +327,7 @@ func (p *payload) Load(props []datastore.Property) error {
 					v = d.Sortable()
 				}
 				p.t.Key[i] = v
+
 				continue
 			}
 		}

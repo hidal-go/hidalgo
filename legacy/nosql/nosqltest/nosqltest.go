@@ -140,19 +140,24 @@ func (c tableConf) ensurePK(t testing.TB, secondary ...nosql.Index) {
 	}, secondary)
 	require.NoError(t, err)
 }
+
 func (c tableConf) FindByKey(key nosql.Key) (nosql.Document, error) {
 	return c.db.FindByKey(c.ctx, c.col, key)
 }
+
 func (c tableConf) Insert(key nosql.Key, d nosql.Document) (nosql.Key, error) {
 	return c.db.Insert(c.ctx, c.col, key, d)
 }
+
 func (c tableConf) fixDoc(k nosql.Key, d nosql.Document) {
 	c.kt.SetKey(d, k)
 	fixDoc(&c.tr, d)
 }
+
 func (c tableConf) expectAll(t testing.TB, docs []nosql.Document) {
 	iterateExpect(t, c.kt, c.db.Query(c.col), docs)
 }
+
 func (c tableConf) insertDocs(t testing.TB, n int, fnc func(i int) nosql.Document) ([]nosql.Key, []nosql.Document) {
 	var (
 		docs []nosql.Document
@@ -180,15 +185,19 @@ func (c tableConf) insertDocs(t testing.TB, n int, fnc func(i int) nosql.Documen
 	c.expectAll(t, docs)
 	return keys, docs
 }
+
 func (c tableConf) Delete() nosql.Delete {
 	return c.db.Delete(c.col)
 }
+
 func (c tableConf) DeleteKeys(keys ...nosql.Key) error {
 	return c.db.Delete(c.col).Keys(keys...).Do(c.ctx)
 }
+
 func (c tableConf) Update(key nosql.Key) nosql.Update {
 	return c.db.Update(c.col, key)
 }
+
 func (c tableConf) Query() nosql.Query {
 	return c.db.Query(c.col)
 }
@@ -235,6 +244,7 @@ type byFields []string
 func (s byFields) Key(d nosql.Document) nosql.Key {
 	return nosql.KeyFrom(s, d)
 }
+
 func (s byFields) Less(d1, d2 nosql.Document) bool {
 	k1, k2 := s.Key(d1), s.Key(d2)
 	for i := range k1 {

@@ -86,6 +86,7 @@ func (t Header) Validate() error {
 	} else if len(t.Key) < 0 {
 		return fmt.Errorf("at least one key field is required")
 	}
+
 	names := make(map[string]struct{})
 	for _, f := range t.Key {
 		if f.Name == "" {
@@ -151,6 +152,7 @@ func (t Header) ValidatePref(k Key) error {
 		}
 		// TODO: type check
 	}
+
 	return nil
 }
 
@@ -159,12 +161,14 @@ func (t Header) ValidateData(d Data) error {
 	if len(t.Data) != len(d) {
 		return fmt.Errorf("wrong payload size")
 	}
+
 	for i, f := range t.Data {
 		v := d[i]
 		if v != nil && v.Type() != f.Type {
 			return fmt.Errorf("payload %q: expected %T, got %T", f.Name, f.Type, v.Type())
 		}
 	}
+
 	return nil
 }
 
@@ -328,24 +332,29 @@ type Filter struct {
 func (f *Filter) IsAny() bool {
 	return f == nil || (f.KeyFilter == nil && f.DataFilter == nil)
 }
+
 func (f *Filter) IsAnyKey() bool {
 	return f == nil || f.KeyFilter == nil
 }
+
 func (f *Filter) IsAnyData() bool {
 	return f == nil || f.DataFilter == nil
 }
+
 func (f *Filter) FilterKey(k Key) bool {
 	if f.IsAnyKey() {
 		return true
 	}
 	return f.KeyFilter.FilterKey(k)
 }
+
 func (f *Filter) FilterData(d Data) bool {
 	if f.IsAnyData() {
 		return true
 	}
 	return f.DataFilter.FilterData(d)
 }
+
 func (f *Filter) FilterTuple(t Tuple) bool {
 	if f == nil {
 		return true

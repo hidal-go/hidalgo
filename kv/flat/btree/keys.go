@@ -669,6 +669,7 @@ func (t *Tree) Put(k []byte, upd func(oldV []byte, exists bool) (newV []byte, wr
 				pi = i + 1
 				p = x
 				q = x.x[i+1].ch
+
 				continue
 			case *d:
 				oldV = x.d[i].v

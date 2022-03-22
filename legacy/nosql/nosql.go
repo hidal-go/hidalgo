@@ -81,6 +81,7 @@ type FilterOp int
 
 func (op FilterOp) String() string {
 	name := ""
+
 	switch op {
 	case Equal:
 		name = "Equal"
@@ -97,8 +98,10 @@ func (op FilterOp) String() string {
 	default:
 		return fmt.Sprintf("FilterOp(%d)", int(op))
 	}
+
 	return name
 }
+
 func (op FilterOp) GoString() string {
 	return "nosql." + op.String()
 }
@@ -151,6 +154,7 @@ func (f FieldFilter) Matches(doc Document) bool {
 		}
 		val, path = v, path[1:]
 	}
+
 	switch f.Filter {
 	case Equal:
 		return ValuesEqual(val, f.Value)

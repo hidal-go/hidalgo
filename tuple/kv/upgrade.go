@@ -297,6 +297,7 @@ func (tbl *tupleTable) decodeKey(key kv.Key) (tuple.Key, error) {
 	}
 	return row, nil
 }
+
 func (tbl *tupleTable) encodeTuple(data tuple.Data) (kv.Value, error) {
 	fields := make([][]byte, len(data))
 	sz := 0
@@ -318,6 +319,7 @@ func (tbl *tupleTable) encodeTuple(data tuple.Data) (kv.Value, error) {
 	buf = buf[:i]
 	return buf, nil
 }
+
 func (tbl *tupleTable) decodeTuple(data kv.Value) (tuple.Data, error) {
 	row := make(tuple.Data, len(tbl.h.Data))
 	for i, f := range tbl.h.Data {
@@ -520,6 +522,7 @@ func (tbl *tupleTable) scan(f *tuple.Filter) *tupleIterator {
 						removeWildcard()
 						pref = pref.Append(toKvKey(tuple.Key{p}))
 					}
+
 					break loop
 				}
 			}
@@ -587,6 +590,7 @@ func (it *tupleIterator) key() kv.Key {
 	}
 	return it.it.Key()
 }
+
 func (it *tupleIterator) Key() tuple.Key {
 	if it.it == nil {
 		return nil

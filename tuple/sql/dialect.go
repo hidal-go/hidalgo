@@ -71,6 +71,7 @@ func (d *Dialect) QuoteIdentifier(s string) string {
 	}
 	return "`" + strings.Replace(s, "`", "", -1) + "`"
 }
+
 func (d *Dialect) QuoteString(s string) string {
 	// only used when setting comments, so it's pretty naive
 	return "'" + strings.Replace(s, "'", "''", -1) + "'"
@@ -116,6 +117,7 @@ func (d *Dialect) sqlType(t values.Type, key bool) string {
 	}
 	return tp
 }
+
 func (d *Dialect) sqlColumnComment(t values.Type) string {
 	var c string
 	switch t.(type) {
@@ -128,9 +130,11 @@ func (d *Dialect) sqlColumnComment(t values.Type) string {
 	}
 	return c
 }
+
 func (d *Dialect) sqlColumnCommentAuto() string {
 	return d.sqlColumnComment(values.UIntType{}) + " Auto"
 }
+
 func (d *Dialect) sqlColumnCommentInline(t values.Type) string {
 	if d.ColumnCommentInline == nil {
 		return ""
@@ -141,6 +145,7 @@ func (d *Dialect) sqlColumnCommentInline(t values.Type) string {
 	}
 	return " " + d.ColumnCommentInline(d.QuoteString(c))
 }
+
 func (d *Dialect) sqlColumnCommentAutoInline() string {
 	if d.ColumnCommentInline == nil {
 		return ""
@@ -155,6 +160,7 @@ func (d *Dialect) nativeType(typ, comment string) (values.Type, bool, error) {
 	if auto {
 		comment = comment[:len(comment)-5]
 	}
+
 	var opt string
 	if i := strings.Index(typ, "("); i > 0 {
 		typ, opt = typ[:i], typ[i:]
@@ -175,6 +181,7 @@ func (d *Dialect) nativeType(typ, comment string) (values.Type, bool, error) {
 		if opt == "(1)" && comment == "Bool" { // TODO: or rather if it's MySQL
 			return values.BoolType{}, auto, nil
 		}
+
 		fallthrough
 	case "bigint", "int", "integer", "mediumint", "smallint":
 		if strings.HasSuffix(opt, "unsigned") || comment == "UInt" {

@@ -56,7 +56,6 @@ func dialMongo(addr string, dbName string, noSqloptions nosql.Options) (*mongo.C
 	if strings.HasPrefix(addr, "mongodb://") || strings.ContainsAny(addr, `@/\`) {
 		// full mongodb url
 		client, err := mongo.NewClient(options.Client().ApplyURI(addr))
-
 		if err != nil {
 			return nil, err
 		}
@@ -116,6 +115,7 @@ func (db *DB) Close() error {
 	db.sess.Disconnect(context.TODO())
 	return nil
 }
+
 func (db *DB) EnsureIndex(ctx context.Context, col string, primary nosql.Index, secondary []nosql.Index) error {
 	if primary.Type != nosql.StringExact {
 		return fmt.Errorf("unsupported type of primary index: %v", primary.Type)
@@ -136,7 +136,6 @@ func (db *DB) EnsureIndex(ctx context.Context, col string, primary nosql.Index, 
 		}
 
 		_, err := indexView.CreateOne(ctx, index)
-
 		if err != nil {
 			return err
 		}
@@ -155,11 +154,9 @@ func (db *DB) EnsureIndex(ctx context.Context, col string, primary nosql.Index, 
 		}
 
 		_, err := indexView.CreateOne(ctx, index)
-
 		if err != nil {
 			return err
 		}
-
 	}
 	db.colls[col] = collection{
 		c:         c,
@@ -169,6 +166,7 @@ func (db *DB) EnsureIndex(ctx context.Context, col string, primary nosql.Index, 
 	}
 	return nil
 }
+
 func toBsonValue(v nosql.Value) interface{} {
 	switch v := v.(type) {
 	case nil:
@@ -193,6 +191,7 @@ func toBsonValue(v nosql.Value) interface{} {
 		panic(fmt.Errorf("unsupported type: %T", v))
 	}
 }
+
 func fromBsonValue(v interface{}) nosql.Value {
 	switch v := v.(type) {
 	case nil:
@@ -246,6 +245,7 @@ func fromBsonValue(v interface{}) nosql.Value {
 		panic(fmt.Errorf("unsupported type: %T", v))
 	}
 }
+
 func toBsonDoc(d nosql.Document) primitive.M {
 	if d == nil {
 		return nil
@@ -256,6 +256,7 @@ func toBsonDoc(d nosql.Document) primitive.M {
 	}
 	return m
 }
+
 func fromBsonDoc(d primitive.M) nosql.Document {
 	if d == nil {
 		return nil
@@ -358,6 +359,7 @@ func (db *DB) Insert(ctx context.Context, col string, key nosql.Key, d nosql.Doc
 	}
 	return key, nil
 }
+
 func (db *DB) FindByKey(ctx context.Context, col string, key nosql.Key) (nosql.Document, error) {
 	c := db.colls[col]
 
@@ -372,14 +374,17 @@ func (db *DB) FindByKey(ctx context.Context, col string, key nosql.Key) (nosql.D
 	}
 	return c.convDoc(m), nil
 }
+
 func (db *DB) Query(col string) nosql.Query {
 	c := db.colls[col]
 	return &Query{c: &c}
 }
+
 func (db *DB) Update(col string, key nosql.Key) nosql.Update {
 	c := db.colls[col]
 	return &Update{col: &c, key: key, update: make(primitive.M)}
 }
+
 func (db *DB) Delete(col string) nosql.Delete {
 	c := db.colls[col]
 	return &Delete{col: &c}
@@ -392,6 +397,7 @@ func buildFilters(filters []nosql.FieldFilter) primitive.M {
 		v := toBsonValue(f.Value)
 		if f.Filter == nosql.Equal {
 			m[name] = v
+
 			continue
 		}
 		var mf primitive.M
@@ -451,10 +457,12 @@ func (q *Query) WithFields(filters ...nosql.FieldFilter) nosql.Query {
 	}
 	return q
 }
+
 func (q *Query) Limit(n int) nosql.Query {
 	q.limit = n
 	return q
 }
+
 func (q *Query) build() (*mongo.Cursor, error) {
 	var m interface{} = bson.D{}
 	if q.query != nil {
@@ -469,8 +477,8 @@ func (q *Query) build() (*mongo.Cursor, error) {
 
 	return qu, err
 }
-func (q *Query) Count(ctx context.Context) (int64, error) {
 
+func (q *Query) Count(ctx context.Context) (int64, error) {
 	var m interface{} = bson.D{}
 	if q.query != nil {
 		m = q.query
@@ -482,17 +490,16 @@ func (q *Query) Count(ctx context.Context) (int64, error) {
 	}
 
 	count, err := q.c.c.CountDocuments(ctx, m, countOptions)
-
 	if err != nil {
 		return 0, err
 	}
 
 	return count, nil
 }
+
 func (q *Query) One(ctx context.Context) (nosql.Document, error) {
 	var m = &primitive.M{}
 	cursor, err := q.build()
-
 	if err != nil {
 		return nil, err
 	}
@@ -505,11 +512,10 @@ func (q *Query) One(ctx context.Context) (nosql.Document, error) {
 		return nil, err
 	}
 	return q.c.convDoc(*m), nil
-
 }
+
 func (q *Query) Iterate() nosql.DocIterator {
 	it, err := q.build()
-
 	if err != nil {
 		return &Iterator{it: it, err: err, c: q.c}
 	}
@@ -539,8 +545,8 @@ func (it *Iterator) Next(ctx context.Context) bool {
 	}
 
 	return true
-
 }
+
 func (it *Iterator) Err() error {
 	if it.err != nil {
 		return it.err
@@ -549,17 +555,19 @@ func (it *Iterator) Err() error {
 		return it.it.Err()
 	}
 	return nil
-
 }
+
 func (it *Iterator) Close() error {
 	if it.it != nil {
 		return it.it.Close(context.TODO())
 	}
 	return nil
 }
+
 func (it *Iterator) Key() nosql.Key {
 	return it.c.getKey(it.res)
 }
+
 func (it *Iterator) Doc() nosql.Document {
 	return it.c.convDoc(it.res)
 }
@@ -578,6 +586,7 @@ func (d *Delete) WithFields(filters ...nosql.FieldFilter) nosql.Delete {
 	}
 	return d
 }
+
 func (d *Delete) Keys(keys ...nosql.Key) nosql.Delete {
 	if len(keys) == 0 {
 		return d
@@ -599,6 +608,7 @@ func (d *Delete) Keys(keys ...nosql.Key) nosql.Delete {
 	}
 	return d
 }
+
 func (d *Delete) Do(ctx context.Context) error {
 	var qu interface{}
 	if d.query != nil {
@@ -627,6 +637,7 @@ func (u *Update) Inc(field string, dn int) nosql.Update {
 	u.update["$inc"] = inc
 	return u
 }
+
 func (u *Update) Push(field string, v nosql.Value) nosql.Update {
 	push, _ := u.update["$push"].(primitive.M)
 	if push == nil {
@@ -636,6 +647,7 @@ func (u *Update) Push(field string, v nosql.Value) nosql.Update {
 	u.update["$push"] = push
 	return u
 }
+
 func (u *Update) Upsert(d nosql.Document) nosql.Update {
 	u.upsert = toBsonDoc(d)
 	if u.upsert == nil {
@@ -644,6 +656,7 @@ func (u *Update) Upsert(d nosql.Document) nosql.Update {
 	u.col.setKey(u.upsert, u.key)
 	return u
 }
+
 func (u *Update) Do(ctx context.Context) error {
 	idFilter := primitive.M{idField: compKey(u.key)}
 

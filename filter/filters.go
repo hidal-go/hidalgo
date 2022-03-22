@@ -52,8 +52,10 @@ func (f Equal) FilterValue(a values.Value) bool {
 		if !ok {
 			return false
 		}
+
 		return bytes.Equal(a, b)
 	}
+
 	return f.Value == a
 }
 
@@ -62,14 +64,17 @@ func (f Equal) FilterSortable(a values.Sortable) bool {
 	if !ok {
 		return a == nil && f.Value == nil
 	}
+
 	switch a := a.(type) {
 	case values.Bytes:
 		b, ok := b.(values.Bytes)
 		if !ok {
 			return false
 		}
+
 		return bytes.Equal(a, b)
 	}
+
 	return f.Value == a
 }
 
@@ -78,6 +83,7 @@ func (f Equal) ValuesRange() *Range {
 	if !ok {
 		return nil
 	}
+
 	return &Range{
 		Start: GTE(b),
 		End:   LTE(b),
@@ -106,6 +112,7 @@ func (f Less) FilterValue(v values.Value) bool {
 	if !ok && v != nil {
 		return false
 	}
+
 	return f.FilterSortable(a)
 }
 
@@ -114,6 +121,7 @@ func (f Less) FilterSortable(v values.Sortable) bool {
 		return true
 	}
 	c := values.Compare(v, f.Value)
+
 	return c == -1 || (f.Equal && c == 0)
 }
 
@@ -143,6 +151,7 @@ func (f Greater) FilterValue(v values.Value) bool {
 	if !ok && v != nil {
 		return false
 	}
+
 	return f.FilterSortable(a)
 }
 
@@ -151,6 +160,7 @@ func (f Greater) FilterSortable(v values.Sortable) bool {
 		return true
 	}
 	c := values.Compare(v, f.Value)
+
 	return c == +1 || (f.Equal && c == 0)
 }
 
@@ -172,17 +182,21 @@ func (f Range) isPrefix() bool {
 	if f.Start == nil || !f.Start.Equal {
 		return false
 	}
+
 	s, ok := f.Start.Value.(values.BinaryString)
 	if !ok {
 		return false
 	}
+
 	end := s.PrefixEnd()
 	if end == nil {
 		return f.End == nil
 	}
+
 	if f.End == nil || f.End.Equal {
 		return false
 	}
+
 	return values.Compare(end, f.End.Value) == 0
 }
 
@@ -193,6 +207,7 @@ func (f Range) Prefix() (values.BinaryString, bool) {
 		return nil, false
 	}
 	p, ok := f.Start.Value.(values.BinaryString)
+
 	return p, ok
 }
 
@@ -201,6 +216,7 @@ func (f Range) FilterValue(v values.Value) bool {
 	if !ok && v != nil {
 		return false
 	}
+
 	return f.FilterSortable(a)
 }
 
@@ -214,6 +230,7 @@ func (f Range) FilterSortable(v values.Sortable) bool {
 	if f.End != nil && !f.End.FilterSortable(v) {
 		return false
 	}
+
 	return true
 }
 
@@ -229,6 +246,7 @@ func (arr And) FilterValue(v values.Value) bool {
 			return false
 		}
 	}
+
 	return true
 }
 
@@ -240,6 +258,7 @@ func (arr Or) FilterValue(v values.Value) bool {
 			return true
 		}
 	}
+
 	return false
 }
 

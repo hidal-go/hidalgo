@@ -181,7 +181,9 @@ func (s *sqlStore) tableWith(ctx context.Context, tx *sql.Tx, name string) (tupl
 		Key     sql.NullString // PRI*
 		Comment sql.NullString
 	}
+
 	var cols []column
+
 	for rows.Next() {
 		var col column
 		if err := rows.Scan(
@@ -247,12 +249,14 @@ func (s *sqlStore) listTablesWith(ctx context.Context, tx *sql.Tx) ([]tuple.Tabl
 		if err := rows.Scan(&name); err != nil {
 			return tables, err
 		}
+
 		tbl, err := s.tableWith(ctx, tx, name)
 		if err != nil {
 			return tables, err
 		}
 		tables = append(tables, tbl)
 	}
+
 	return tables, nil
 }
 
@@ -393,6 +397,7 @@ func (tbl *sqlTable) Open(tx tuple.Tx) (tuple.Table, error) {
 func (tbl *sqlTable) sqlType(t values.Type, key bool) string {
 	return tbl.tx.dia.sqlType(t, key)
 }
+
 func (tbl *sqlTable) sqlColumnDef(t values.Type, key bool) string {
 	return tbl.sqlType(t, key) + tbl.tx.dia.sqlColumnCommentInline(t)
 }
@@ -426,29 +431,34 @@ func (tbl *sqlTable) Clear(ctx context.Context) error {
 	_, err := tbl.tx.db.execb(ctx, tbl.tx.tx, b)
 	return err
 }
+
 func (tbl *sqlTable) convValue(v values.Value) interface{} {
 	if v == nil {
 		return nil
 	}
 	return v.Native()
 }
+
 func (tbl *sqlTable) appendKey(dst []interface{}, key tuple.Key) []interface{} {
 	for _, k := range key {
 		dst = append(dst, tbl.convValue(k))
 	}
 	return dst
 }
+
 func (tbl *sqlTable) appendData(dst []interface{}, data tuple.Data) []interface{} {
 	for _, d := range data {
 		dst = append(dst, tbl.convValue(d))
 	}
 	return dst
 }
+
 func (tbl *sqlTable) appendTuple(dst []interface{}, t tuple.Tuple) []interface{} {
 	dst = tbl.appendKey(dst, t.Key)
 	dst = tbl.appendData(dst, t.Data)
 	return dst
 }
+
 func (tbl *sqlTable) names() []string {
 	names := make([]string, 0, len(tbl.h.Key)+len(tbl.h.Data))
 	for _, f := range tbl.h.Key {
@@ -459,6 +469,7 @@ func (tbl *sqlTable) names() []string {
 	}
 	return names
 }
+
 func (tbl *sqlTable) keyNames() []string {
 	names := make([]string, 0, len(tbl.h.Key))
 	for _, f := range tbl.h.Key {
@@ -466,6 +477,7 @@ func (tbl *sqlTable) keyNames() []string {
 	}
 	return names
 }
+
 func (tbl *sqlTable) payloadNames() []string {
 	names := make([]string, 0, len(tbl.h.Data))
 	for _, f := range tbl.h.Data {
@@ -513,6 +525,7 @@ func (tbl *sqlTable) scanTuple(row scanner) (tuple.Tuple, error) {
 	}
 	return t, nil
 }
+
 func (tbl *sqlTable) scanKey(row scanner) (tuple.Key, error) {
 	dest := make([]values.SortableDest, 0, len(tbl.h.Key))
 	in := make([]interface{}, 0, cap(dest))
@@ -534,6 +547,7 @@ func (tbl *sqlTable) scanKey(row scanner) (tuple.Key, error) {
 	}
 	return key, nil
 }
+
 func (tbl *sqlTable) scanPayload(row scanner) (tuple.Data, error) {
 	dest := make([]values.ValueDest, 0, len(tbl.h.Data))
 	in := make([]interface{}, 0, cap(dest))
@@ -555,6 +569,7 @@ func (tbl *sqlTable) scanPayload(row scanner) (tuple.Data, error) {
 	}
 	return data, nil
 }
+
 func (tbl *sqlTable) GetTuple(ctx context.Context, key tuple.Key) (tuple.Data, error) {
 	if err := tbl.h.ValidateKey(key, false); err != nil {
 		return nil, err
@@ -643,6 +658,7 @@ func (tbl *sqlTable) InsertTuple(ctx context.Context, t tuple.Tuple) (tuple.Key,
 func (tbl *sqlTable) sql() *Builder {
 	return tbl.tx.dia.NewBuilder()
 }
+
 func (tbl *sqlTable) UpdateTuple(ctx context.Context, t tuple.Tuple, opt *tuple.UpdateOpt) error {
 	if err := tbl.h.ValidateKey(t.Key, false); err != nil {
 		return err
@@ -698,6 +714,7 @@ func (tbl *sqlTable) asWhere(f *tuple.Filter) (*tuple.Filter, func(*Builder)) {
 	// FIXME: optimize filters
 	return f, nil
 }
+
 func (tbl *sqlTable) DeleteTuples(ctx context.Context, f *tuple.Filter) error {
 	f, where := tbl.asWhere(f)
 	if f.IsAny() {
@@ -893,6 +910,7 @@ func (it *sqlIterator) scan() {
 	}
 	it.t = &t
 }
+
 func (it *sqlIterator) Key() tuple.Key {
 	it.scan()
 	if it.t == nil {
