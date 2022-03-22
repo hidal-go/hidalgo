@@ -25,10 +25,10 @@ func init() {
 	})
 }
 
-func CreateCouch(addr string, ns string, opt nosql.Options) (nosql.Database, error) {
+func CreateCouch(addr, ns string, opt nosql.Options) (nosql.Database, error) {
 	return Dial(true, DriverCouch, addr, ns, opt)
 }
 
-func OpenCouch(addr string, ns string, opt nosql.Options) (nosql.Database, error) {
+func OpenCouch(addr, ns string, opt nosql.Options) (nosql.Database, error) {
 	return Dial(false, DriverCouch, addr, ns, opt)
 }

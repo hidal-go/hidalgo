@@ -104,9 +104,9 @@ func RunBenchmark(b *testing.B, bench func(b *testing.B, run Database), names ..
 			panic("not registered: " + name)
 		}
 	}
-	run := func(t *testing.B, name string) {
+	run := func(_ *testing.B, name string) {
 		for _, v := range ByName(name).Versions {
-			b.Run(v.Name, func(t *testing.B) {
+			b.Run(v.Name, func(_ *testing.B) {
 				bench(b, v.Factory)
 			})
 		}
@@ -120,7 +120,7 @@ func RunBenchmark(b *testing.B, bench func(b *testing.B, run Database), names ..
 	}
 	for _, name := range names {
 		name := name
-		b.Run(name, func(t *testing.B) {
+		b.Run(name, func(_ *testing.B) {
 			run(b, name)
 		})
 	}

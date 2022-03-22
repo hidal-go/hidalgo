@@ -142,7 +142,7 @@ func TestCompare(t *testing.T) {
 }
 
 func TestIntSortable(t *testing.T) {
-	var cases = []struct {
+	cases := []struct {
 		name string
 		v    int64
 		exp  uint64

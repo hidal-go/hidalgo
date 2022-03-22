@@ -2,10 +2,8 @@ package base
 
 import "fmt"
 
-var (
-	// ErrVolatile is returned when trying to pass a path for opening an in-memory database.
-	ErrVolatile = fmt.Errorf("database is in-memory")
-)
+// ErrVolatile is returned when trying to pass a path for opening an in-memory database.
+var ErrVolatile = fmt.Errorf("database is in-memory")
 
 var _ error = ErrRegistered{}
 
