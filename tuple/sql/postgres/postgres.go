@@ -19,7 +19,7 @@ func init() {
 			Local: false, Volatile: false,
 		},
 		Driver: "postgres",
-		DSN: func(addr string, ns string) (string, error) {
+		DSN: func(addr, ns string) (string, error) {
 			return addr + "/" + ns + "?sslmode=disable", nil
 		},
 		Dialect: sqltuple.Dialect{

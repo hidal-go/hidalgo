@@ -19,9 +19,7 @@ type Database struct {
 }
 
 func TestSQL(t *testing.T, name string, gen Database) {
-	var (
-		addr string
-	)
+	var addr string
 	recreate := gen.Recreate
 	if !recreate {
 		addr = gen.Run(t)
