@@ -3,9 +3,9 @@ package mysql
 import (
 	"strings"
 
-	_ "github.com/go-sql-driver/mysql"
+	"github.com/go-sql-driver/mysql"   // This import will be dropped if mysql.MySQLError is removed.
+	_ "github.com/go-sql-driver/mysql" // This side-effect import must be kept.
 
-	"github.com/go-sql-driver/mysql"
 	"github.com/hidal-go/hidalgo/base"
 	sqltuple "github.com/hidal-go/hidalgo/tuple/sql"
 )

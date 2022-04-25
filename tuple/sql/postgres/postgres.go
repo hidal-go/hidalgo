@@ -3,11 +3,11 @@ package postgres
 import (
 	"strconv"
 
-	_ "github.com/lib/pq"
+	"github.com/lib/pq"   // This import will be dropped if pq.QuoteIdentifier is removed.
+	_ "github.com/lib/pq" // This side-effect import must be kept.
 
 	"github.com/hidal-go/hidalgo/base"
 	sqltuple "github.com/hidal-go/hidalgo/tuple/sql"
-	"github.com/lib/pq"
 )
 
 const Name = "postgres"

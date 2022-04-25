@@ -3,9 +3,10 @@ package tuplepb
 import (
 	"testing"
 
+	"github.com/stretchr/testify/require"
+
 	"github.com/hidal-go/hidalgo/tuple"
 	"github.com/hidal-go/hidalgo/values"
-	"github.com/stretchr/testify/require"
 )
 
 func TestTableEncoding(t *testing.T) {

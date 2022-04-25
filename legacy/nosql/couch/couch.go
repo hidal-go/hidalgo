@@ -5,6 +5,7 @@ package couch
 
 import (
 	_ "github.com/go-kivik/couchdb" // The CouchDB driver
+
 	"github.com/hidal-go/hidalgo/base"
 	"github.com/hidal-go/hidalgo/legacy/nosql"
 )
