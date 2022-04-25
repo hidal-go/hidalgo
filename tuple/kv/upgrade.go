@@ -321,7 +321,6 @@ func (tbl *tupleTable) encodeTuple(data tuple.Data) (kv.Value, error) {
 func (tbl *tupleTable) decodeTuple(data kv.Value) (tuple.Data, error) {
 	row := make(tuple.Data, len(tbl.h.Data))
 	for i, f := range tbl.h.Data {
-		v := f.Type.New()
 		sz, n := binary.Uvarint(data)
 		data = data[n:]
 		if n == 0 {
@@ -329,8 +328,12 @@ func (tbl *tupleTable) decodeTuple(data kv.Value) (tuple.Data, error) {
 		} else if sz > uint64(len(data)) {
 			return nil, fmt.Errorf("invalid tuple field size: %d vs %d", sz, len(data))
 		}
-		err := v.UnmarshalBinary(data[:sz])
-		data = data[sz:]
+
+		head := data[:sz]
+		data = data[sz:] // keep the rest for the next loop
+
+		v := f.Type.New()
+		err := v.UnmarshalBinary(head)
 		if err != nil {
 			return nil, fmt.Errorf("cannot decode tuple field: %v", err)
 		}
