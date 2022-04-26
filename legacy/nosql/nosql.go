@@ -78,24 +78,24 @@ type Database interface {
 type FilterOp int
 
 func (op FilterOp) String() string {
-	name := ""
 	switch op {
 	case Equal:
-		name = "Equal"
+		return "Equal"
 	case NotEqual:
-		name = "NotEqual"
+		return "NotEqual"
 	case GT:
-		name = "GT"
+		return "GT"
 	case GTE:
-		name = "GTE"
+		return "GTE"
 	case LT:
-		name = "LT"
+		return "LT"
 	case LTE:
-		name = "LTE"
+		return "LTE"
+	case Regexp:
+		return "Regexp"
 	default:
 		return fmt.Sprintf("FilterOp(%d)", int(op))
 	}
-	return name
 }
 
 func (op FilterOp) GoString() string {
