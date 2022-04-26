@@ -204,7 +204,7 @@ func fromBsonValue(v interface{}) nosql.Value {
 		}
 		return arr
 	case primitive.ObjectID:
-		return nosql.String(objidString(v))
+		return nosql.String(objIDString(v))
 	case primitive.M:
 		return fromBsonDoc(v)
 	case primitive.A:
@@ -313,7 +313,7 @@ func getOrGenID(key nosql.Key) (nosql.Key, string) {
 	var mid string
 	if key == nil {
 		// TODO: maybe allow to pass custom key types as nosql.Key
-		oid := objidString(primitive.NewObjectID())
+		oid := objIDString(primitive.NewObjectID())
 		mid = oid
 		key = nosql.Key{oid}
 	} else {
@@ -333,7 +333,7 @@ func (c *collection) convIns(key nosql.Key, d nosql.Document) (nosql.Key, primit
 	return key, m
 }
 
-func objidString(id primitive.ObjectID) string {
+func objIDString(id primitive.ObjectID) string {
 	return base64.StdEncoding.EncodeToString(id[:])
 }
 
