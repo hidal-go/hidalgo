@@ -24,14 +24,14 @@ func init() {
 func Pouch() nosqltest.Database {
 	return nosqltest.Database{
 		Traits: couch.Traits(),
-		Run: func(t testing.TB) nosql.Database {
+		Run: func(tb testing.TB) nosql.Database {
 			dir, err := ioutil.TempDir("", "pouch-")
 			if err != nil {
-				t.Fatal("failed to make temp dir:", err)
+				tb.Fatal("failed to make temp dir:", err)
 			}
 			t.Cleanup(func() {
 				if err := os.RemoveAll(dir); err != nil { // remove the test data
-					t.Fatal(err)
+					tb.Fatal(err)
 				}
 			})
 
@@ -40,9 +40,9 @@ func Pouch() nosqltest.Database {
 			qs, err := couch.Dial(false, couch.DriverPouch, dir+"/"+name, name, nil)
 			if err != nil {
 				os.RemoveAll(dir)
-				t.Fatal(err)
+				tb.Fatal(err)
 			}
-			t.Cleanup(func() {
+			tb.Cleanup(func() {
 				qs.Close()
 				ctx := context.TODO()
 				if c, err := kivik.New(ctx, couch.DriverPouch, dir); err == nil {

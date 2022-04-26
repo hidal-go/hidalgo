@@ -133,12 +133,12 @@ type tableConf struct {
 	tr  nosql.Traits
 }
 
-func (c tableConf) ensurePK(t testing.TB, secondary ...nosql.Index) {
+func (c tableConf) ensurePK(tb testing.TB, secondary ...nosql.Index) {
 	err := c.db.EnsureIndex(c.ctx, c.col, nosql.Index{
 		Fields: c.kt.Fields,
 		Type:   nosql.StringExact,
 	}, secondary)
-	require.NoError(t, err)
+	require.NoError(tb, err)
 }
 
 func (c tableConf) FindByKey(key nosql.Key) (nosql.Document, error) {
@@ -154,11 +154,11 @@ func (c tableConf) fixDoc(k nosql.Key, d nosql.Document) {
 	fixDoc(&c.tr, d)
 }
 
-func (c tableConf) expectAll(t testing.TB, docs []nosql.Document) {
-	iterateExpect(t, c.kt, c.db.Query(c.col), docs)
+func (c tableConf) expectAll(tb testing.TB, docs []nosql.Document) {
+	iterateExpect(tb, c.kt, c.db.Query(c.col), docs)
 }
 
-func (c tableConf) insertDocs(t testing.TB, n int, fnc func(i int) nosql.Document) ([]nosql.Key, []nosql.Document) {
+func (c tableConf) insertDocs(tb testing.TB, n int, fnc func(i int) nosql.Document) ([]nosql.Key, []nosql.Document) {
 	var docs []nosql.Document
 	w := nosql.BatchInsert(c.db, c.col)
 	defer w.Close()
@@ -169,18 +169,18 @@ func (c tableConf) insertDocs(t testing.TB, n int, fnc func(i int) nosql.Documen
 			key = c.kt.Gen()
 		}
 		err := w.WriteDoc(c.ctx, key, doc)
-		require.NoError(t, err)
+		require.NoError(tb, err)
 		docs = append(docs, doc)
 	}
 	err := w.Flush(c.ctx)
-	require.NoError(t, err)
+	require.NoError(tb, err)
 
 	keys := w.Keys()
 	for i := range docs {
 		c.fixDoc(keys[i], docs[i])
 	}
 
-	c.expectAll(t, docs)
+	c.expectAll(tb, docs)
 	return keys, docs
 }
 
@@ -273,7 +273,7 @@ func (s docsAndKeys) Swap(i, j int) {
 	s.Keys[i], s.Keys[j] = s.Keys[j], s.Keys[i]
 }
 
-func iterateExpect(t testing.TB, kt keyType, qu nosql.Query, exp []nosql.Document) {
+func iterateExpect(tb testing.TB, kt keyType, qu nosql.Query, exp []nosql.Document) {
 	ctx := context.TODO()
 
 	it := qu.Iterate()
@@ -286,7 +286,8 @@ func iterateExpect(t testing.TB, kt keyType, qu nosql.Query, exp []nosql.Documen
 		keys = append(keys, it.Key())
 		got = append(got, it.Doc())
 	}
-	require.NoError(t, it.Err())
+
+	require.NoError(tb, it.Err())
 
 	sorter := byFields(kt.Fields)
 	exp = append([]nosql.Document{}, exp...)
@@ -302,12 +303,12 @@ func iterateExpect(t testing.TB, kt keyType, qu nosql.Query, exp []nosql.Documen
 		LessFunc: sorter.Less,
 		Docs:     got, Keys: keys,
 	})
-	require.Equal(t, exp, got)
-	require.Equal(t, expKeys, keys)
+	require.Equal(tb, exp, got)
+	require.Equal(tb, expKeys, keys)
 
 	n, err := qu.Count(ctx)
-	require.NoError(t, err)
-	require.Equal(t, int64(len(exp)), int64(n))
+	require.NoError(tb, err)
+	require.Equal(tb, int64(len(exp)), int64(n))
 }
 
 func testEnsure(t *testing.T, c tableConf) {

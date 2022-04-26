@@ -28,19 +28,19 @@ func MySQLVersion(vers string) sqltest.Database {
 	const image = "mysql"
 	return sqltest.Database{
 		Recreate: false,
-		Run: func(t testing.TB) string {
+		Run: func(tb testing.TB) string {
 			pool, err := dockertest.NewPool("")
 			if err != nil {
-				t.Fatal(err)
+				tb.Fatal(err)
 			}
 
 			cont, err := pool.Run(image, vers, []string{
 				"MYSQL_ROOT_PASSWORD=root",
 			})
 			if err != nil {
-				t.Fatal(err)
+				tb.Fatal(err)
 			}
-			t.Cleanup(func() {
+			tb.Cleanup(func() {
 				_ = cont.Close()
 			})
 
@@ -56,7 +56,7 @@ func MySQLVersion(vers string) sqltest.Database {
 				return cli.Ping()
 			})
 			if err != nil {
-				t.Fatal(err)
+				tb.Fatal(err)
 			}
 			return addr
 		},

@@ -25,17 +25,17 @@ func init() {
 func MongoVersion(vers string) nosqltest.Database {
 	return nosqltest.Database{
 		Traits: mongo.Traits(),
-		Run: func(t testing.TB) nosql.Database {
+		Run: func(tb testing.TB) nosql.Database {
 			pool, err := dockertest.NewPool("")
 			if err != nil {
-				t.Fatal(err)
+				tb.Fatal(err)
 			}
 
 			cont, err := pool.Run("mongo", vers, nil)
 			if err != nil {
-				t.Fatal(err)
+				tb.Fatal(err)
 			}
-			t.Cleanup(func() {
+			tb.Cleanup(func() {
 				_ = cont.Close()
 			})
 
@@ -55,13 +55,13 @@ func MongoVersion(vers string) nosqltest.Database {
 				return nil
 			})
 			if err != nil {
-				t.Fatal(err)
+				tb.Fatal(err)
 			}
 			qs, err := mongo.Dial(addr, "test", nil)
 			if err != nil {
-				t.Fatal(err)
+				tb.Fatal(err)
 			}
-			t.Cleanup(func() {
+			tb.Cleanup(func() {
 				_ = qs.Close()
 			})
 			return qs

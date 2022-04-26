@@ -29,19 +29,19 @@ func init() {
 func ElasticVersion(vers string) nosqltest.Database {
 	return nosqltest.Database{
 		Traits: elastic.Traits(),
-		Run: func(t testing.TB) nosql.Database {
+		Run: func(tb testing.TB) nosql.Database {
 			name := "docker.elastic.co/elasticsearch/elasticsearch"
 
 			pool, err := dockertest.NewPool("")
 			if err != nil {
-				t.Fatal(err)
+				tb.Fatal(err)
 			}
 
 			cont, err := pool.Run(name, vers, nil)
 			if err != nil {
-				t.Fatal(err)
+				tb.Fatal(err)
 			}
-			t.Cleanup(func() {
+			tb.Cleanup(func() {
 				_ = cont.Close()
 			})
 
@@ -61,14 +61,14 @@ func ElasticVersion(vers string) nosqltest.Database {
 				return err
 			})
 			if err != nil {
-				t.Fatal(err)
+				tb.Fatal(err)
 			}
 
 			db, err := elastic.Dial(addr, "test", nil)
 			if err != nil {
-				t.Fatal(addr, err)
+				tb.Fatal(addr, err)
 			}
-			t.Cleanup(func() {
+			tb.Cleanup(func() {
 				_ = db.Close()
 			})
 			return db
