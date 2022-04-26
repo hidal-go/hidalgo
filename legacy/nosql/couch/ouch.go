@@ -45,7 +45,7 @@ func Dial(create bool, driver, addr, ns string, _ nosql.Options) (*DB, error) {
 
 	client, dbName, err := DialDriver(ctx, driver, addr, ns)
 	if err != nil {
-		return nil, fmt.Errorf("cannot open driver: %v", err)
+		return nil, fmt.Errorf("cannot open driver: %w", err)
 	}
 
 	var db *kivik.DB

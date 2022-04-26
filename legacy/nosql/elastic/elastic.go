@@ -63,7 +63,7 @@ func Dial(addr, index string, opt nosql.Options) (*DB, error) {
 	}
 	major, err := strconv.Atoi(strings.SplitN(vers, ".", 2)[0])
 	if err != nil {
-		return nil, fmt.Errorf("cannot parse version: %v", err)
+		return nil, fmt.Errorf("cannot parse version: %w", err)
 	}
 	ind := opt.GetString("index", index)
 	if err != nil {

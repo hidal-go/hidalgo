@@ -293,7 +293,7 @@ func (tbl *tupleTable) decodeKey(key kv.Key) (tuple.Key, error) {
 		v := f.Type.NewSortable()
 		err := v.UnmarshalSortable(key[i])
 		if err != nil {
-			return nil, fmt.Errorf("cannot decode tuple key: %v", err)
+			return nil, fmt.Errorf("cannot decode tuple key: %w", err)
 		}
 		row[i] = v.Sortable()
 	}
@@ -328,7 +328,7 @@ func (tbl *tupleTable) decodeTuple(data kv.Value) (tuple.Data, error) {
 		sz, n := binary.Uvarint(data)
 		data = data[n:]
 		if n == 0 {
-			return nil, fmt.Errorf("cannot decode tuple data: %v", io.ErrUnexpectedEOF)
+			return nil, fmt.Errorf("cannot decode tuple data: %w", io.ErrUnexpectedEOF)
 		} else if sz > uint64(len(data)) {
 			return nil, fmt.Errorf("invalid tuple field size: %d vs %d", sz, len(data))
 		}
@@ -339,7 +339,7 @@ func (tbl *tupleTable) decodeTuple(data kv.Value) (tuple.Data, error) {
 		v := f.Type.New()
 		err := v.UnmarshalBinary(head)
 		if err != nil {
-			return nil, fmt.Errorf("cannot decode tuple field: %v", err)
+			return nil, fmt.Errorf("cannot decode tuple field: %w", err)
 		}
 		row[i] = v.Value()
 	}
