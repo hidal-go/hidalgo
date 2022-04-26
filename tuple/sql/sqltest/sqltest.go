@@ -46,7 +46,7 @@ func TestSQL(t *testing.T, name string, gen Database) {
 		tb.Cleanup(func() {
 			conn.Close()
 			if !recreate {
-				conn, err := sqltuple.OpenSQL(name, addr, "")
+				conn, err = sqltuple.OpenSQL(name, addr, "")
 				if err == nil {
 					_, err = conn.Exec(`DROP DATABASE ` + db)
 					conn.Close()
