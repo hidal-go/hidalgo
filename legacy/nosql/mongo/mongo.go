@@ -533,9 +533,8 @@ func (it *Iterator) Next(ctx context.Context) bool {
 	if !it.it.Next(ctx) {
 		return false
 	}
-	err := it.it.Decode(&elem)
 
-	if err == nil {
+	if err := it.it.Decode(&elem); err == nil {
 		it.res = elem
 	}
 

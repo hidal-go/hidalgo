@@ -72,11 +72,9 @@ func (it *prefixIteratorKV) Next(ctx context.Context) bool {
 			it.done = true
 			return false
 		}
-	} else {
-		if !it.base.Next(ctx) {
-			it.done = true
-			return false
-		}
+	} else if !it.base.Next(ctx) {
+		it.done = true
+		return false
 	}
 	key := it.base.Key()
 	if key.HasPrefix(it.pref) {

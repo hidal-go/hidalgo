@@ -73,14 +73,11 @@ func (it *prefixIteratorFlat) Next(ctx context.Context) bool {
 			it.done = true
 			return false
 		}
-	} else {
-		if !it.base.Next(ctx) {
-			it.done = true
-			return false
-		}
+	} else if !it.base.Next(ctx) {
+		it.done = true
+		return false
 	}
-	key := it.base.Key()
-	if bytes.HasPrefix(key, it.pref) {
+	if key := it.base.Key(); bytes.HasPrefix(key, it.pref) {
 		return true
 	}
 	// keys are sorted, and we reached the end of the prefix
