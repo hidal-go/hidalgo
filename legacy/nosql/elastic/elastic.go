@@ -66,9 +66,7 @@ func Dial(addr, index string, opt nosql.Options) (*DB, error) {
 		return nil, fmt.Errorf("cannot parse version: %w", err)
 	}
 	ind := opt.GetString("index", index)
-	if err != nil {
-		return nil, err
-	}
+	// TODO FIXME: Check returned value from opt.GetString().
 	settings := `{
 			"number_of_shards":1,
 			"number_of_replicas":0
