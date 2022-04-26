@@ -70,31 +70,29 @@ func allNames() []string {
 	return names
 }
 
+func runT(t *testing.T, test func(t *testing.T, name string, run Database), name string) {
+	for _, v := range ByName(name).Versions {
+		t.Run(v.Name, func(tt *testing.T) { test(tt, name, v.Factory) })
+	}
+}
+
+func runB(b *testing.B, bench func(b *testing.B, run Database), name string) {
+	for _, v := range ByName(name).Versions {
+		b.Run(v.Name, func(bb *testing.B) { bench(bb, v.Factory) })
+	}
+}
+
 func RunTest(t *testing.T, test func(t *testing.T, name string, run Database), names ...string) {
 	for _, name := range names {
 		if _, ok := registry[name]; !ok {
 			panic("not registered: " + name)
 		}
 	}
-	run := func(t *testing.T, name string) {
-		for _, v := range ByName(name).Versions {
-			t.Run(v.Name, func(t *testing.T) {
-				test(t, name, v.Factory)
-			})
-		}
-	}
-	if len(names) == 1 {
-		run(t, names[0])
-		return
-	}
 	if len(names) == 0 {
 		names = allNames()
 	}
 	for _, name := range names {
-		name := name
-		t.Run(name, func(t *testing.T) {
-			run(t, name)
-		})
+		t.Run(name, func(tt *testing.T) { runT(tt, test, name) })
 	}
 }
 
@@ -104,25 +102,11 @@ func RunBenchmark(b *testing.B, bench func(b *testing.B, run Database), names ..
 			panic("not registered: " + name)
 		}
 	}
-	run := func(t *testing.B, name string) {
-		for _, v := range ByName(name).Versions {
-			b.Run(v.Name, func(t *testing.B) {
-				bench(b, v.Factory)
-			})
-		}
-	}
-	if len(names) == 1 {
-		run(b, names[0])
-		return
-	}
 	if len(names) == 0 {
 		names = allNames()
 	}
 	for _, name := range names {
-		name := name
-		b.Run(name, func(t *testing.B) {
-			run(b, name)
-		})
+		b.Run(name, func(bb *testing.B) { runB(bb, bench, name) })
 	}
 }
 
