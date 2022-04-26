@@ -359,8 +359,8 @@ func testInsert(t *testing.T, c tableConf) {
 	}
 	for i := range ins {
 		in := &ins[i]
-		k, err := c.Insert(in.Key, in.Doc)
-		require.NoError(t, err)
+		k, er := c.Insert(in.Key, in.Doc)
+		require.NoError(t, er)
 		if in.Key == nil {
 			require.NotNil(t, k)
 			in.Key = k
@@ -371,8 +371,8 @@ func testInsert(t *testing.T, c tableConf) {
 
 	docs := make([]nosql.Document, 0, len(ins))
 	for _, in := range ins {
-		doc, err := c.FindByKey(in.Key)
-		require.NoError(t, err, "find %#v", in.Key)
+		doc, er := c.FindByKey(in.Key)
+		require.NoError(t, er, "find %#v", in.Key)
 		c.fixDoc(in.Key, in.Doc)
 		require.Equal(t, in.Doc, doc, "got: %#v", doc)
 		docs = append(docs, in.Doc)

@@ -53,12 +53,12 @@ func ElasticVersion(vers string) nosqltest.Database {
 			ctx := context.Background()
 
 			err = pool.Retry(func() error {
-				cli, err := edriver.NewClient(edriver.SetURL(addr))
-				if err != nil {
-					return err
+				cli, er := edriver.NewClient(edriver.SetURL(addr))
+				if er != nil {
+					return er
 				}
-				_, _, err = cli.Ping(addr).Do(ctx)
-				return err
+				_, _, er = cli.Ping(addr).Do(ctx)
+				return er
 			})
 			if err != nil {
 				tb.Fatal(err)

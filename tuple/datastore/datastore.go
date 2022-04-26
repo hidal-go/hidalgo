@@ -164,10 +164,11 @@ func (tx *Tx) CreateTable(ctx context.Context, table tuple.Header) (tuple.Table,
 	k := tx.s.tableKey(table.Name)
 	_, err = tx.s.c.RunInTransaction(ctx, func(tx *datastore.Transaction) error {
 		var t tableObject
-		err := tx.Get(k, &t)
-		if err == nil {
+		er := tx.Get(k, &tableObject{})
+		if er == nil {
 			return tuple.ErrTableExists
-		} else if !errors.Is(err, datastore.ErrNoSuchEntity) {
+		} else if !errors.Is(er, datastore.ErrNoSuchEntity) {
+			return er
 		}
 		t = tableObject{Data: data}
 		_, err = tx.Put(k, &t)
@@ -482,7 +483,8 @@ func (tbl *Table) InsertTuple(ctx context.Context, t tuple.Tuple) (tuple.Key, er
 		return nil, err
 	}
 	k := tbl.key(t.Key, true)
-	if err := tx.Get(k, &payload{h: &tbl.h}); err == nil {
+
+	if er := tx.Get(k, &payload{h: &tbl.h}); er == nil {
 		_ = tx.Rollback()
 		return nil, tuple.ErrExists
 	}
@@ -522,7 +524,9 @@ func (tbl *Table) UpdateTuple(ctx context.Context, t tuple.Tuple, opt *tuple.Upd
 		return err
 	}
 	k := tbl.key(t.Key, false)
-	if err := tx.Get(k, &payload{h: &tbl.h}); err == datastore.ErrNoSuchEntity {
+
+	err = tx.Get(k, &payload{h: &tbl.h})
+	if errors.Is(err, datastore.ErrNoSuchEntity) {
 		return tuple.ErrNotFound
 	}
 	_, err = tx.Put(k, &payload{h: &tbl.h, t: t})
