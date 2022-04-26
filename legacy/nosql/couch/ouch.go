@@ -277,7 +277,7 @@ func (q *Query) buildFilters() {
 		term := map[string]interface{}{}
 		for _, filter := range filterList {
 			testValue := toOuchValue(filter.Value)
-			test := ""
+			var test string
 			switch filter.Filter {
 			case nosql.Equal:
 				test = "$eq"
