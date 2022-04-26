@@ -15,7 +15,7 @@ var versions = []string{
 }
 
 func init() {
-	var vers []sqltest.Version
+	vers := make([]sqltest.Version, 0, len(versions))
 	for _, v := range versions {
 		vers = append(vers, sqltest.Version{
 			Name: v, Factory: MySQLVersion(v),

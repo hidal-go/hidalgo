@@ -295,8 +295,11 @@ func iterateExpect(tb testing.TB, kt keyType, qu nosql.Query, exp []nosql.Docume
 		return sorter.Less(exp[i], exp[j])
 	})
 	var expKeys []nosql.Key
-	for _, d := range exp {
-		expKeys = append(expKeys, sorter.Key(d))
+	if len(exp) > 0 {
+		expKeys = make([]nosql.Key, 0, len(exp))
+		for _, d := range exp {
+			expKeys = append(expKeys, sorter.Key(d))
+		}
 	}
 
 	sort.Sort(docsAndKeys{
@@ -366,7 +369,7 @@ func testInsert(t *testing.T, c tableConf) {
 		}
 	}
 
-	var docs []nosql.Document
+	docs := make([]nosql.Document, 0, len(ins))
 	for _, in := range ins {
 		doc, err := c.FindByKey(in.Key)
 		require.NoError(t, err, "find %#v", in.Key)
@@ -417,7 +420,7 @@ func testUpdate(t *testing.T, c tableConf) {
 			"n": nosql.Int(2),
 		},
 	}
-	var keys []nosql.Key
+	keys := make([]nosql.Key, 0, len(docs))
 	for range docs {
 		keys = append(keys, c.kt.Gen())
 	}

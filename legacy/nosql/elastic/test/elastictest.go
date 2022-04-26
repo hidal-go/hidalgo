@@ -17,7 +17,7 @@ var versions = []string{
 }
 
 func init() {
-	var vers []nosqltest.Version
+	vers := make([]nosqltest.Version, 0, len(versions))
 	for _, v := range versions {
 		vers = append(vers, nosqltest.Version{
 			Name: v, Factory: ElasticVersion(v),

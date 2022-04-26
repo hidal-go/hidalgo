@@ -95,12 +95,12 @@ func basic(tb testing.TB, db kv.KV) {
 		td.NotExists(k)
 	}
 
-	var all []kv.Pair
+	all := make([]kv.Pair, len(keys))
 	for i, k := range keys {
 		v := kv.Value(strconv.Itoa(i))
 		td.Put(k, v)
 		td.Expect(k, v)
-		all = append(all, kv.Pair{Key: k, Val: v})
+		all[i] = kv.Pair{Key: k, Val: v}
 	}
 
 	td.ScanReset(all)
@@ -157,11 +157,11 @@ func seek(tb testing.TB, db kv.KV) {
 		{[]byte("c")},
 	}
 
-	var all []kv.Pair
+	all := make([]kv.Pair, len(keys))
 	for i, k := range keys {
 		v := kv.Value(strconv.Itoa(i))
 		td.Put(k, v)
-		all = append(all, kv.Pair{Key: k, Val: v})
+		all[i] = kv.Pair{Key: k, Val: v}
 	}
 
 	tx, err := db.Tx(false)

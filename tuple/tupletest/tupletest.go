@@ -125,6 +125,7 @@ func typed(t *testing.T, db tuple.Store) {
 		// FIXME: test nanoseconds on backends that support it
 		values.AsTime(time.Unix(123, 456789000)),
 	}
+
 	var payloads []values.Value
 	for _, tp := range sortable {
 		payloads = append(payloads, tp)
