@@ -408,7 +408,7 @@ func convRegexp(o interface{}) interface{} {
 	if strings.HasSuffix(s, "$") {
 		s = s[:len(s)-1]
 	} else {
-		s = s + ".*"
+		s += ".*"
 	}
 	return s
 }
@@ -670,7 +670,7 @@ func (u *Update) Inc(field string, dn int) nosql.Update {
 	if u.inc == nil {
 		u.inc = make(map[string]int)
 	}
-	u.inc[field] = u.inc[field] + dn
+	u.inc[field] += dn
 	return u
 }
 
