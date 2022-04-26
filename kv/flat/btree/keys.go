@@ -862,37 +862,37 @@ func (e *Enumerator) Close() {
 // next item in the key collation order. If there is no item to return, err ==
 // io.EOF is returned.
 func (e *Enumerator) Next() (k, v []byte, err error) {
-	if err = e.err; err != nil {
-		return
+	if e.err != nil {
+		return nil, nil, e.err
 	}
 
 	if e.ver != e.t.ver {
 		f, hit := e.t.Seek(e.k)
 		if !e.hit && hit {
 			if err = f.next(); err != nil {
-				return
+				return nil, nil, err
 			}
 		}
 
 		*e = *f
 		f.Close()
 	}
+
 	if e.q == nil {
-		e.err, err = io.EOF, io.EOF
-		return
+		e.err = io.EOF
+		return nil, nil, io.EOF
 	}
 
 	if e.i >= e.q.c {
 		if err = e.next(); err != nil {
-			return
+			return nil, nil, err
 		}
 	}
 
 	i := e.q.d[e.i]
-	k, v = i.k, i.v
-	e.k, e.hit = k, false
-	e.next()
-	return
+	e.k, e.hit = i.k, false
+	_ = e.next()
+	return i.k, i.v, err
 }
 
 func (e *Enumerator) next() error {
@@ -909,6 +909,7 @@ func (e *Enumerator) next() error {
 			e.err = io.EOF
 		}
 	}
+
 	return e.err
 }
 
@@ -916,37 +917,37 @@ func (e *Enumerator) next() error {
 // previous item in the key collation order. If there is no item to return, err
 // == io.EOF is returned.
 func (e *Enumerator) Prev() (k, v []byte, err error) {
-	if err = e.err; err != nil {
-		return
+	if e.err != nil {
+		return nil, nil, e.err
 	}
 
 	if e.ver != e.t.ver {
 		f, hit := e.t.Seek(e.k)
 		if !e.hit && hit {
 			if err = f.prev(); err != nil {
-				return
+				return nil, nil, err
 			}
 		}
 
 		*e = *f
 		f.Close()
 	}
+
 	if e.q == nil {
-		e.err, err = io.EOF, io.EOF
-		return
+		e.err = io.EOF
+		return nil, nil, io.EOF
 	}
 
 	if e.i >= e.q.c {
 		if err = e.next(); err != nil {
-			return
+			return nil, nil, err
 		}
 	}
 
 	i := e.q.d[e.i]
-	k, v = i.k, i.v
-	e.k, e.hit = k, false
-	e.prev()
-	return
+	e.k, e.hit = i.k, false
+	_ = e.prev()
+	return i.k, i.v, err
 }
 
 func (e *Enumerator) prev() error {
@@ -966,5 +967,6 @@ func (e *Enumerator) prev() error {
 
 		e.i = e.q.c - 1
 	}
+
 	return e.err
 }
