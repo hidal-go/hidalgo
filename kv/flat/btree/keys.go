@@ -332,7 +332,7 @@ func (t *Tree) catX(p, q, r *x, pi int) {
 
 // Delete removes the k's KV pair, if it exists, in which case Delete returns
 // true.
-func (t *Tree) Delete(k []byte) (ok bool) {
+func (t *Tree) Delete(k []byte) bool {
 	pi := -1
 	var p *x
 	q := t.r
@@ -341,8 +341,7 @@ func (t *Tree) Delete(k []byte) (ok bool) {
 	}
 
 	for {
-		var i int
-		i, ok = t.find(q, k)
+		i, ok := t.find(q, k)
 		if ok {
 			switch x := q.(type) {
 			case *x:
@@ -352,7 +351,6 @@ func (t *Tree) Delete(k []byte) (ok bool) {
 				pi = i + 1
 				p = x
 				q = x.x[pi].ch
-				ok = false
 				continue
 			case *d:
 				t.extract(x, i)
