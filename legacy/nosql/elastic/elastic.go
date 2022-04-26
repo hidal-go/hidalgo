@@ -163,13 +163,8 @@ func (db *DB) EnsureIndex(ctx context.Context, typ string, primary nosql.Index, 
 			if _, ok := props[f]; ok {
 				continue
 			}
-			var typ indType
-			switch ind.Type {
-			case nosql.StringExact:
-				typ = indKeyword
-			}
-			if typ != "" {
-				props[f] = property{Type: typ}
+			if ind.Type == nosql.StringExact {
+				props[f] = property{Type: indKeyword}
 			}
 		}
 	}
