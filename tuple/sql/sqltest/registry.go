@@ -13,8 +13,8 @@ type Registration struct {
 }
 
 type Version struct {
-	Name    string
 	Factory Database
+	Name    string
 }
 
 var registry = make(map[string][]Version)

@@ -58,8 +58,8 @@ func RunTest(t *testing.T, fnc Func, opts *Options) {
 }
 
 var testList = []struct {
-	name string
 	test func(t *testing.T, db tuple.Store)
+	name string
 }{
 	{name: "basic", test: basic},
 	{name: "typed", test: typed},

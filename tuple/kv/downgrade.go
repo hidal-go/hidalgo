@@ -159,10 +159,10 @@ var (
 )
 
 type flatIterator struct {
-	tx   *flatTx
-	pref flat.Key
 	it   tuple.Iterator
 	err  error
+	tx   *flatTx
+	pref flat.Key
 }
 
 func (it *flatIterator) Reset() {

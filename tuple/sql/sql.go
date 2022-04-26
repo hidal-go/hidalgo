@@ -816,15 +816,13 @@ func (tbl *sqlTable) Scan(opt *tuple.ScanOptions) tuple.Iterator {
 type rowsFunc func(ctx context.Context) (*sql.Rows, error)
 
 type sqlIterator struct {
-	tbl *sqlTable
-
+	err      error
 	rows     *sql.Rows
 	open     rowsFunc
-	keysOnly bool
 	f        *tuple.Filter
-
-	t   *tuple.Tuple
-	err error
+	t        *tuple.Tuple
+	tbl      *sqlTable
+	keysOnly bool
 }
 
 func (it *sqlIterator) Reset() {

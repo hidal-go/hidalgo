@@ -10,6 +10,10 @@ import (
 type ErrorFunc func(err error) error
 
 type Dialect struct {
+	QuoteIdentifierFunc func(s string) string
+	Placeholder         func(i int) string
+	ColumnCommentInline func(s string) string
+	ColumnCommentSet    func(b *Builder, tbl, col, s string)
 	Errors              ErrorFunc
 	BytesType           string
 	StringType          string
@@ -18,8 +22,6 @@ type Dialect struct {
 	TimeType            string
 	StringTypeCollation string
 	AutoType            string
-	QuoteIdentifierFunc func(s string) string
-	Placeholder         func(i int) string
 	// DefaultSchema will be used to query table metadata.
 	// If not set, defaults to the database name.
 	DefaultSchema string
@@ -37,9 +39,7 @@ type Dialect struct {
 	OnConflict bool
 	// Returning indicates that INSERT queries needs an RETURNING keyword to return last
 	// inserted id.
-	Returning           bool
-	ColumnCommentInline func(s string) string
-	ColumnCommentSet    func(b *Builder, tbl, col, s string)
+	Returning bool
 }
 
 func (d *Dialect) SetDefaults() {

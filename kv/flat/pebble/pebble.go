@@ -136,10 +136,10 @@ var (
 )
 
 type Iterator struct {
+	err   error
 	it    *pebble.Iterator
 	pref  flat.Key
 	first bool
-	err   error
 }
 
 func (it *Iterator) Reset() {

@@ -15,8 +15,8 @@ import (
 )
 
 type Database struct {
+	Run    func(tb testing.TB) nosql.Database
 	Traits nosql.Traits
-	Run    func(t testing.TB) nosql.Database
 }
 
 func TestNoSQL(t *testing.T, gen Database) {
@@ -56,9 +56,9 @@ func init() {
 }
 
 type keyType struct {
+	Gen    func() nosql.Key
 	Name   string
 	Fields []string
-	Gen    func() nosql.Key
 }
 
 func (kt keyType) SetKey(d nosql.Document, k nosql.Key) {
@@ -115,8 +115,8 @@ var keyTypes = []keyType{
 }
 
 var testsNoSQLKey = []struct {
-	name string
 	t    func(t *testing.T, c tableConf)
+	name string
 }{
 	{name: "ensure", t: testEnsure},
 	{name: "insert", t: testInsert},
@@ -129,8 +129,8 @@ type tableConf struct {
 	ctx context.Context
 	db  nosql.Database
 	col string
-	tr  nosql.Traits
 	kt  keyType
+	tr  nosql.Traits
 }
 
 func (c tableConf) ensurePK(t testing.TB, secondary ...nosql.Index) {
@@ -327,8 +327,8 @@ func testInsert(t *testing.T, c tableConf) {
 	c.expectAll(t, nil)
 
 	type insert struct {
-		Key nosql.Key
 		Doc nosql.Document
+		Key nosql.Key
 	}
 
 	k1 := c.kt.Gen()

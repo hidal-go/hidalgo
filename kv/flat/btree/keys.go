@@ -110,10 +110,10 @@ type (
 	Cmp func(a, b []byte) int
 
 	d struct { // data page
-		c int
-		d [2*kd + 1]de
 		n *d
 		p *d
+		d [2*kd + 1]de
+		c int
 	}
 
 	de struct { // d element
@@ -131,21 +131,21 @@ type (
 	// other words, io.EOF from an Enumaretor is "sticky" (idempotent).
 	Enumerator struct {
 		err error
-		hit bool
-		i   int
-		k   []byte
 		q   *d
 		t   *Tree
+		k   []byte
+		i   int
 		ver int64
+		hit bool
 	}
 
 	// Tree is a B+tree.
 	Tree struct {
-		c     int
+		r     interface{}
 		cmp   Cmp
 		first *d
 		last  *d
-		r     interface{}
+		c     int
 		ver   int64
 	}
 
@@ -155,8 +155,8 @@ type (
 	}
 
 	x struct { // index page
-		c int
 		x [2*kx + 2]xe
+		c int
 	}
 )
 

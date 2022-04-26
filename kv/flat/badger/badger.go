@@ -142,11 +142,11 @@ var (
 )
 
 type Iterator struct {
+	err   error
 	it    *badger.Iterator
 	pref  flat.Key
 	first bool
 	valid bool
-	err   error
 }
 
 func (it *Iterator) Reset() {

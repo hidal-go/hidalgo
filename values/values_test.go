@@ -100,8 +100,8 @@ func TestMarshalBinary(t *testing.T) {
 }
 
 var casesCompare = []struct {
-	name string
 	a, b Sortable
+	name string
 	exp  int
 }{
 	{name: "nil == nil", a: nil, b: nil, exp: 0},

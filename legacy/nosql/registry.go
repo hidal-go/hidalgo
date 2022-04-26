@@ -11,9 +11,9 @@ type OpenFunc func(addr, ns string, opt Options) (Database, error)
 
 // Registration is an information about the database driver.
 type Registration struct {
-	base.Registration
 	New, Open OpenFunc
-	Traits    Traits
+	base.Registration
+	Traits Traits
 }
 
 var registry = make(map[string]Registration)

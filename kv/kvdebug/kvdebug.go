@@ -40,6 +40,8 @@ type Stats struct {
 }
 
 type KV struct {
+	KV kv.KV
+
 	stats   Stats
 	running struct {
 		txRO int64
@@ -47,8 +49,6 @@ type KV struct {
 		iter int64
 	}
 	log bool
-
-	KV kv.KV
 }
 
 func (d *KV) logging() bool {

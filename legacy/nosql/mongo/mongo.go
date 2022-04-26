@@ -97,9 +97,9 @@ func Dial(addr, dbName string, opt nosql.Options) (*DB, error) {
 
 type collection struct {
 	c         *mongo.Collection
-	compPK    bool // compose PK from existing keys; if false, use _id instead of target field
-	primary   nosql.Index
 	secondary []nosql.Index
+	primary   nosql.Index
+	compPK    bool // compose PK from existing keys; if false, use _id instead of target field
 }
 
 type DB struct {
@@ -439,8 +439,8 @@ func mergeFilters(dst, src primitive.M) {
 
 type Query struct {
 	c     *collection
-	limit int
 	query primitive.M
+	limit int
 }
 
 func (q *Query) WithFields(filters ...nosql.FieldFilter) nosql.Query {
@@ -618,9 +618,9 @@ func (d *Delete) Do(ctx context.Context) error {
 
 type Update struct {
 	col    *collection
-	key    nosql.Key
 	upsert primitive.M
 	update primitive.M
+	key    nosql.Key
 }
 
 func (u *Update) Inc(field string, dn int) nosql.Update {
@@ -673,11 +673,11 @@ func (db *DB) BatchInsert(col string) nosql.DocWriter {
 const batchSize = 100
 
 type inserter struct {
+	err   error
 	col   *collection
 	buf   []interface{}
 	ikeys []nosql.Key
 	keys  []nosql.Key
-	err   error
 }
 
 func (w *inserter) WriteDoc(ctx context.Context, key nosql.Key, d nosql.Document) error {

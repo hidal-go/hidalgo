@@ -8,8 +8,8 @@ import (
 )
 
 type Registration struct {
-	nosql.Registration
 	Versions []Version
+	nosql.Registration
 }
 
 type Version struct {

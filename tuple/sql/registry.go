@@ -11,10 +11,10 @@ type DSNFunc func(addr, ns string) (string, error)
 
 // Registration is an information about the database driver.
 type Registration struct {
-	base.Registration
-	Driver  string
-	DSN     DSNFunc
 	Dialect Dialect
+	DSN     DSNFunc
+	Driver  string
+	base.Registration
 }
 
 var registry = make(map[string]Registration)

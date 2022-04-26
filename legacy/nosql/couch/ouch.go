@@ -63,8 +63,8 @@ func Dial(create bool, driver, addr, ns string, opt nosql.Options) (*DB, error) 
 }
 
 type collection struct {
-	primary   nosql.Index
 	secondary []nosql.Index
+	primary   nosql.Index
 }
 
 type DB struct {
@@ -259,9 +259,9 @@ func (q ouchQuery) putSelector(field string, v interface{}) {
 
 type Query struct {
 	db          *DB
-	col         string
 	qu          ouchQuery
 	pathFilters map[string][]nosql.FieldFilter
+	col         string
 }
 
 func (q *Query) WithFields(filters ...nosql.FieldFilter) nosql.Query {
@@ -383,13 +383,13 @@ func (q *Query) Iterate() nosql.DocIterator {
 }
 
 type Iterator struct {
-	db     *DB
-	col    string
-	qu     ouchQuery
+	prevID interface{}
 	err    error
+	qu     ouchQuery
 	rows   *kivik.Rows
 	doc    map[string]interface{}
-	prevID interface{}
+	db     *DB
+	col    string
 	closed bool
 }
 
@@ -555,11 +555,11 @@ func (d *Delete) Do(ctx context.Context) error {
 
 type Update struct {
 	db     *DB
+	update nosql.Document
+	inc    map[string]int // increment the named numeric field by the int
 	col    string
 	key    nosql.Key
-	update nosql.Document
 	upsert bool
-	inc    map[string]int // increment the named numeric field by the int
 }
 
 func (u *Update) Inc(field string, dn int) nosql.Update {

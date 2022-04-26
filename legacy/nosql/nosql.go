@@ -114,9 +114,9 @@ const (
 
 // FieldFilter represents a single field comparison operation.
 type FieldFilter struct {
+	Value  Value    // value that will be compared with field of the document
 	Path   []string // path is a path to specific field in the document
 	Filter FilterOp // comparison operation
-	Value  Value    // value that will be compared with field of the document
 }
 
 func (f FieldFilter) Matches(doc Document) bool {
@@ -241,9 +241,9 @@ func BatchInsert(db Database, col string) DocWriter {
 
 type seqInsert struct {
 	db   Database
+	err  error
 	col  string
 	keys []Key
-	err  error
 }
 
 func (w *seqInsert) WriteDoc(ctx context.Context, key Key, d Document) error {

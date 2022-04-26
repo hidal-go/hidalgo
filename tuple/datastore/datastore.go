@@ -579,14 +579,13 @@ func (tbl *Table) Scan(opt *tuple.ScanOptions) tuple.Iterator {
 }
 
 type Iterator struct {
-	tbl      *Table
+	err      error
 	q        *datastore.Query
-	keysOnly bool
 	f        *tuple.Filter
-
-	it  *datastore.Iterator
-	t   tuple.Tuple
-	err error
+	it       *datastore.Iterator
+	tbl      *Table
+	t        tuple.Tuple
+	keysOnly bool
 }
 
 func (it *Iterator) Reset() {

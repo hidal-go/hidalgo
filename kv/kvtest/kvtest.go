@@ -67,8 +67,8 @@ func RunTestLocal(t *testing.T, open kv.OpenPathFunc, opts *Options) {
 }
 
 var testList = []struct {
+	test       func(tb testing.TB, db kv.KV)
 	name       string
-	test       func(t testing.TB, db kv.KV)
 	concurrent bool // requires concurrent safety
 	txOnly     bool // requires transactions
 }{
