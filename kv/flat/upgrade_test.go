@@ -1,4 +1,4 @@
-package flat
+package flat_test
 
 import (
 	"testing"
@@ -6,6 +6,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/hidal-go/hidalgo/kv"
+	"github.com/hidal-go/hidalgo/kv/flat"
 )
 
 func TestSepEscape(t *testing.T) {
@@ -13,6 +14,6 @@ func TestSepEscape(t *testing.T) {
 		[]byte(`\/aa/b\b/c/d/\`),
 		[]byte(`/aa/b\b/c/d/`),
 	}
-	k2 := KeyUnescape(KeyEscape(k))
+	k2 := flat.KeyUnescape(flat.KeyEscape(k))
 	require.Equal(t, k, k2)
 }

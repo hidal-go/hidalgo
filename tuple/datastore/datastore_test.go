@@ -1,4 +1,4 @@
-package datastore
+package datastore_test
 
 import (
 	"context"
@@ -9,6 +9,7 @@ import (
 	"github.com/ory/dockertest"
 
 	"github.com/hidal-go/hidalgo/tuple"
+	ds "github.com/hidal-go/hidalgo/tuple/datastore"
 	"github.com/hidal-go/hidalgo/tuple/tupletest"
 )
 
@@ -58,6 +59,7 @@ func TestDatastore(t *testing.T) {
 		t.Cleanup(func() {
 			_ = cli.Close()
 		})
-		return OpenClient(cli)
+
+		return ds.OpenClient(cli)
 	}, nil)
 }

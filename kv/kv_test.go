@@ -1,43 +1,44 @@
-package kv
+package kv_test
 
 import (
 	"testing"
 
+	"github.com/hidal-go/hidalgo/kv"
 	"github.com/stretchr/testify/require"
 )
 
 var keyCompareCases = []struct {
-	k1, k2 Key
+	k1, k2 kv.Key
 	exp    int
 }{
 	{
-		k1:  SKey("a"),
-		k2:  SKey("a"),
+		k1:  kv.SKey("a"),
+		k2:  kv.SKey("a"),
 		exp: 0,
 	},
 	{
-		k1:  SKey("a"),
-		k2:  SKey("b"),
+		k1:  kv.SKey("a"),
+		k2:  kv.SKey("b"),
 		exp: -1,
 	},
 	{
-		k1:  SKey("a"),
-		k2:  SKey("a", "b"),
+		k1:  kv.SKey("a"),
+		k2:  kv.SKey("a", "b"),
 		exp: -1,
 	},
 	{
-		k1:  SKey("a", "b"),
-		k2:  SKey("a", "a"),
+		k1:  kv.SKey("a", "b"),
+		k2:  kv.SKey("a", "a"),
 		exp: +1,
 	},
 	{
 		k1:  nil,
-		k2:  SKey("a", "b"),
+		k2:  kv.SKey("a", "b"),
 		exp: -1,
 	},
 	{
-		k1:  SKey("ab"),
-		k2:  SKey("a", "b"),
+		k1:  kv.SKey("ab"),
+		k2:  kv.SKey("a", "b"),
 		exp: +1,
 	},
 }
@@ -55,52 +56,52 @@ func TestKeyCompare(t *testing.T) {
 }
 
 var keyHasPrefixCases = []struct {
-	key, pref Key
+	key, pref kv.Key
 	exp       bool
 }{
 	{
-		key:  SKey("a"),
-		pref: SKey("a"),
+		key:  kv.SKey("a"),
+		pref: kv.SKey("a"),
 		exp:  true,
 	},
 	{
-		key:  SKey("a"),
-		pref: SKey("b"),
+		key:  kv.SKey("a"),
+		pref: kv.SKey("b"),
 		exp:  false,
 	},
 	{
-		key:  SKey("a"),
-		pref: SKey("a", "b"),
+		key:  kv.SKey("a"),
+		pref: kv.SKey("a", "b"),
 		exp:  false,
 	},
 	{
-		key:  SKey("a", "b"),
-		pref: SKey("a"),
+		key:  kv.SKey("a", "b"),
+		pref: kv.SKey("a"),
 		exp:  true,
 	},
 	{
-		key:  SKey("a", "b"),
-		pref: SKey("a", "a"),
+		key:  kv.SKey("a", "b"),
+		pref: kv.SKey("a", "a"),
 		exp:  false,
 	},
 	{
 		key:  nil,
-		pref: SKey("a", "b"),
+		pref: kv.SKey("a", "b"),
 		exp:  false,
 	},
 	{
-		key:  SKey("a", "b"),
+		key:  kv.SKey("a", "b"),
 		pref: nil,
 		exp:  true,
 	},
 	{
-		key:  SKey("ab"),
-		pref: SKey("a", "b"),
+		key:  kv.SKey("ab"),
+		pref: kv.SKey("a", "b"),
 		exp:  false,
 	},
 	{
-		key:  SKey("a", "b"),
-		pref: SKey("ab"),
+		key:  kv.SKey("a", "b"),
+		pref: kv.SKey("ab"),
 		exp:  false,
 	},
 }
@@ -115,10 +116,10 @@ func TestKeyHasPrefix(t *testing.T) {
 }
 
 func TestKeyAppend(t *testing.T) {
-	k := SKey("a", "b", "c")
-	k = k.Append(SKey("d"))
-	require.Equal(t, SKey("a", "b", "c", "d"), k)
-	k = SKey("a", "b", "c")
+	k := kv.SKey("a", "b", "c")
+	k = k.Append(kv.SKey("d"))
+	require.Equal(t, kv.SKey("a", "b", "c", "d"), k)
+	k = kv.SKey("a", "b", "c")
 	k = k.AppendBytes([]byte("d"))
-	require.Equal(t, SKey("a", "b", "c", "d"), k)
+	require.Equal(t, kv.SKey("a", "b", "c", "d"), k)
 }
