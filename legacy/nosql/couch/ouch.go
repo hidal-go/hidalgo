@@ -22,7 +22,7 @@ func Traits() nosql.Traits {
 	}
 }
 
-func DialDriver(ctx context.Context, driver, addr, dbName string) (*kivik.Client, string, error) {
+func DialDriver(_ context.Context, driver, addr, dbName string) (*kivik.Client, string, error) {
 	addrParsed, err := url.Parse(addr)
 	if err != nil {
 		return nil, "", err
@@ -40,7 +40,7 @@ func DialDriver(ctx context.Context, driver, addr, dbName string) (*kivik.Client
 	return cli, dbName, err
 }
 
-func Dial(create bool, driver, addr, ns string, opt nosql.Options) (*DB, error) {
+func Dial(create bool, driver, addr, ns string, _ nosql.Options) (*DB, error) {
 	ctx := context.TODO() // TODO - replace with parameter value
 
 	client, dbName, err := DialDriver(ctx, driver, addr, ns)
@@ -580,7 +580,7 @@ func (u *Update) Upsert(d nosql.Document) nosql.Update {
 
 func (u *Update) Do(ctx context.Context) error {
 	orig, id, rev, err := u.db.findByKey(ctx, u.col, u.key)
-	if err == nosql.ErrNotFound {
+	if errors.Is(err, nosql.ErrNotFound) {
 		if !u.upsert {
 			return err
 		}
