@@ -163,15 +163,13 @@ func (tx *Tx) CreateTable(ctx context.Context, table tuple.Header) (tuple.Table,
 	}
 	k := tx.s.tableKey(table.Name)
 	_, err = tx.s.c.RunInTransaction(ctx, func(tx *datastore.Transaction) error {
-		var t tableObject
 		er := tx.Get(k, &tableObject{})
 		if er == nil {
 			return tuple.ErrTableExists
 		} else if !errors.Is(er, datastore.ErrNoSuchEntity) {
 			return er
 		}
-		t = tableObject{Data: data}
-		_, err = tx.Put(k, &t)
+		_, err = tx.Put(k, &tableObject{Data: data})
 		return err
 	})
 	if err != nil {
@@ -226,9 +224,8 @@ func (tbl *Table) Clear(ctx context.Context) error {
 	}
 }
 
-func (tbl *Table) key(key tuple.Key, auto bool) *datastore.Key {
+func (tbl *Table) key(key tuple.Key, auto bool) (k *datastore.Key) {
 	kind := tbl.h.Name
-	var k *datastore.Key
 	for i, c := range tbl.h.Key {
 		v := key[i]
 		switch c.Type.(type) {
@@ -254,19 +251,19 @@ func (tbl *Table) key(key tuple.Key, auto bool) *datastore.Key {
 }
 
 func (tbl *Table) parseKey(key *datastore.Key) (tuple.Key, error) {
-	k := make(tuple.Key, len(tbl.h.Key))
-	for i := len(k) - 1; i >= 0; i-- {
+	keys := make(tuple.Key, len(tbl.h.Key))
+	for i := len(keys) - 1; i >= 0; i-- {
 		if key == nil {
 			return nil, fmt.Errorf("short key")
 		}
 		c := tbl.h.Key[i]
 		switch c.Type.(type) {
 		case values.StringType:
-			k[i] = values.String(key.Name)
+			keys[i] = values.String(key.Name)
 		case values.IntType:
-			k[i] = values.Int(key.ID)
+			keys[i] = values.Int(key.ID)
 		case values.UIntType:
-			k[i] = values.UInt(key.ID)
+			keys[i] = values.UInt(key.ID)
 		default:
 			d, err := hex.DecodeString(key.Name)
 			if err != nil {
@@ -277,11 +274,11 @@ func (tbl *Table) parseKey(key *datastore.Key) (tuple.Key, error) {
 			if err != nil {
 				return nil, err
 			}
-			k[i] = v.Sortable()
+			keys[i] = v.Sortable()
 		}
 		key = key.Parent
 	}
-	return k, nil
+	return keys, nil
 }
 
 var _ datastore.PropertyLoadSaver = (*payload)(nil)
@@ -397,8 +394,8 @@ func (p *payload) Save() ([]datastore.Property, error) {
 		})
 	}
 	for i, c := range p.h.Data {
-		v := p.t.Data[i]
 		var val interface{}
+		v := p.t.Data[i]
 		if v != nil {
 			switch c.Type.(type) {
 			case values.BytesType:
