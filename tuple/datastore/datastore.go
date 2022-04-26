@@ -483,12 +483,12 @@ func (tbl *Table) InsertTuple(ctx context.Context, t tuple.Tuple) (tuple.Key, er
 	}
 	k := tbl.key(t.Key, true)
 	if err := tx.Get(k, &payload{h: &tbl.h}); err == nil {
-		tx.Rollback()
+		_ = tx.Rollback()
 		return nil, tuple.ErrExists
 	}
 	pk, err := tx.Put(k, &payload{h: &tbl.h, t: t})
 	if err != nil {
-		tx.Rollback()
+		_ = tx.Rollback()
 		return nil, err
 	}
 	c, err := tx.Commit()
