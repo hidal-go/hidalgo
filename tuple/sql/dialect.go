@@ -69,12 +69,12 @@ func (d *Dialect) QuoteIdentifier(s string) string {
 	if q := d.QuoteIdentifierFunc; q != nil {
 		return q(s)
 	}
-	return "`" + strings.Replace(s, "`", "", -1) + "`"
+	return "`" + strings.ReplaceAll(s, "`", "") + "`"
 }
 
 func (d *Dialect) QuoteString(s string) string {
 	// only used when setting comments, so it's pretty naive
-	return "'" + strings.Replace(s, "'", "''", -1) + "'"
+	return "'" + strings.ReplaceAll(s, "'", "''") + "'"
 }
 
 func (d *Dialect) sqlType(t values.Type, key bool) string {
