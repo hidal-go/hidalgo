@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"strconv"
@@ -589,7 +590,7 @@ func (it *Iterator) Next(ctx context.Context) bool {
 	} else {
 		it.i++
 	}
-	if it.err == io.EOF {
+	if errors.Is(it.err, io.EOF) {
 		it.err = nil
 		it.done = true
 	}

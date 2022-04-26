@@ -16,6 +16,7 @@ package leveldb
 
 import (
 	"context"
+	"errors"
 
 	"github.com/syndtr/goleveldb/leveldb"
 	"github.com/syndtr/goleveldb/leveldb/iterator"
@@ -140,7 +141,7 @@ func (tx *Tx) Get(ctx context.Context, key flat.Key) (flat.Value, error) {
 	} else {
 		val, err = tx.sn.Get(key, tx.db.ro)
 	}
-	if err == leveldb.ErrNotFound {
+	if errors.Is(err, leveldb.ErrNotFound) {
 		return nil, flat.ErrNotFound
 	} else if err != nil {
 		return nil, err

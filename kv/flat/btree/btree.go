@@ -17,6 +17,7 @@ package btree
 import (
 	"bytes"
 	"context"
+	"errors"
 	"io"
 
 	"github.com/hidal-go/hidalgo/base"
@@ -152,7 +153,7 @@ func (it *Iterator) WithPrefix(pref flat.Key) flat.Iterator {
 
 func (it *Iterator) next() bool {
 	k, v, err := it.e.Next()
-	if err == io.EOF {
+	if errors.Is(err, io.EOF) {
 		return false
 	} else if !bytes.HasPrefix(k, it.pref) {
 		return false

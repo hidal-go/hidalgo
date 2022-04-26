@@ -3,6 +3,7 @@ package datastore
 import (
 	"context"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"time"
 
@@ -62,7 +63,7 @@ func (t *tableInfo) Open(tx tuple.Tx) (tuple.Table, error) {
 func (s *TupleStore) Table(ctx context.Context, name string) (tuple.TableInfo, error) {
 	var t tableObject
 	err := s.c.Get(ctx, s.tableKey(name), &t)
-	if err == datastore.ErrNoSuchEntity {
+	if errors.Is(err, datastore.ErrNoSuchEntity) {
 		return nil, tuple.ErrTableNotFound
 	} else if err != nil {
 		return nil, err
@@ -166,8 +167,7 @@ func (tx *Tx) CreateTable(ctx context.Context, table tuple.Header) (tuple.Table,
 		err := tx.Get(k, &t)
 		if err == nil {
 			return tuple.ErrTableExists
-		} else if err != nil && err != datastore.ErrNoSuchEntity {
-			return err
+		} else if !errors.Is(err, datastore.ErrNoSuchEntity) {
 		}
 		t = tableObject{Data: data}
 		_, err = tx.Put(k, &t)
@@ -438,7 +438,7 @@ func (tbl *Table) GetTuple(ctx context.Context, key tuple.Key) (tuple.Data, erro
 	p := &payload{h: &tbl.h}
 	p.t.Key = key
 	err := tbl.cli().Get(ctx, tbl.key(key, false), p)
-	if err == datastore.ErrNoSuchEntity {
+	if errors.Is(err, datastore.ErrNoSuchEntity) {
 		return nil, tuple.ErrNotFound
 	} else if err != nil {
 		return nil, err
@@ -633,7 +633,7 @@ func (it *Iterator) Next(ctx context.Context) bool {
 }
 
 func (it *Iterator) Err() error {
-	if it.err == iterator.Done {
+	if errors.Is(it.err, iterator.Done) {
 		return nil
 	}
 	return it.err

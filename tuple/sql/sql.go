@@ -3,6 +3,7 @@ package sqltuple
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"log"
 	"strconv"
@@ -64,8 +65,7 @@ func (s *sqlStore) convError(err error) error {
 	if s.dia.Errors != nil {
 		err = s.dia.Errors(err)
 	}
-	switch err {
-	case ErrTableNotFound:
+	if errors.Is(err, ErrTableNotFound) {
 		return tuple.ErrTableNotFound
 	}
 	return err
@@ -567,7 +567,7 @@ func (tbl *sqlTable) GetTuple(ctx context.Context, key tuple.Key) (tuple.Data, e
 	b.Write(" LIMIT 1")
 	row := tbl.tx.db.queryRow(ctx, tbl.tx.tx, b.String(), b.Args()...)
 	data, err := tbl.scanPayload(row)
-	if err == sql.ErrNoRows {
+	if errors.Is(err, sql.ErrNoRows) {
 		return nil, tuple.ErrNotFound
 	} else if err != nil {
 		return nil, err

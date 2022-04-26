@@ -3,6 +3,7 @@ package tuplekv
 import (
 	"context"
 	"encoding/binary"
+	"errors"
 	"fmt"
 	"io"
 
@@ -19,13 +20,14 @@ func New(kv kv.KV) tuple.Store {
 }
 
 func tupleErr(err error) error {
-	switch err {
-	case kv.ErrNotFound:
+	switch {
+	case errors.Is(err, kv.ErrNotFound):
 		return tuple.ErrNotFound
-	case kv.ErrReadOnly:
+	case errors.Is(err, kv.ErrReadOnly):
 		return tuple.ErrReadOnly
+	default:
+		return err
 	}
-	return err
 }
 
 type tupleStore struct {
@@ -71,7 +73,7 @@ func (db *tupleStore) tableAuto(name string) kv.Key {
 func (db *tupleStore) tableWith(ctx context.Context, tx kv.Tx, name string) (*tupleTableInfo, error) {
 	// TODO: cache
 	data, err := tx.Get(ctx, db.tableSchema(name))
-	if err == kv.ErrNotFound {
+	if errors.Is(err, kv.ErrNotFound) {
 		return nil, tuple.ErrTableNotFound
 	} else if err != nil {
 		return nil, tupleErr(err)
@@ -195,7 +197,7 @@ func (tx *tupleTx) CreateTable(ctx context.Context, table tuple.Header) (tuple.T
 	_, err := tx.tx.Get(ctx, key)
 	if err == nil {
 		return nil, tuple.ErrExists
-	} else if err != nil && err != kv.ErrNotFound {
+	} else if !errors.Is(err, kv.ErrNotFound) {
 		return nil, tupleErr(err)
 	}
 	data, err := tuplepb.MarshalTable(&table)
@@ -349,7 +351,7 @@ func (tbl *tupleTable) GetTuple(ctx context.Context, key tuple.Key) (tuple.Data,
 		return nil, err
 	}
 	data, err := tbl.tx.tx.Get(ctx, tbl.row(key))
-	if err == kv.ErrNotFound {
+	if errors.Is(err, kv.ErrNotFound) {
 		return nil, tuple.ErrNotFound
 	} else if err != nil {
 		return nil, tupleErr(err)
@@ -386,7 +388,7 @@ func (tbl *tupleTable) GetTupleBatch(ctx context.Context, key []tuple.Key) ([]tu
 func (tbl *tupleTable) nextAuto(ctx context.Context) (tuple.Key, error) {
 	key := tbl.auto()
 	v, err := tbl.tx.tx.Get(ctx, key)
-	if err == kv.ErrNotFound {
+	if errors.Is(err, kv.ErrNotFound) {
 		// first - set to 0
 		v = kv.Value{0}
 	} else if err != nil {
@@ -424,7 +426,7 @@ func (tbl *tupleTable) InsertTuple(ctx context.Context, t tuple.Tuple) (tuple.Ke
 	_, err := tbl.tx.tx.Get(ctx, key)
 	if err == nil {
 		return nil, tuple.ErrExists
-	} else if err != nil && err != kv.ErrNotFound {
+	} else if !errors.Is(err, kv.ErrNotFound) {
 		return nil, tupleErr(err)
 	}
 	val, err := tbl.encodeTuple(t.Data)
@@ -450,7 +452,7 @@ func (tbl *tupleTable) UpdateTuple(ctx context.Context, t tuple.Tuple, opt *tupl
 	}
 	if !opt.Upsert {
 		_, err := tbl.tx.tx.Get(ctx, key)
-		if err == kv.ErrNotFound {
+		if errors.Is(err, kv.ErrNotFound) {
 			return tuple.ErrNotFound
 		} else if err != nil {
 			return tupleErr(err)

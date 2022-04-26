@@ -3,6 +3,7 @@ package mongo
 import (
 	"context"
 	"encoding/base64"
+	"errors"
 	"fmt"
 	"net/url"
 	"strings"
@@ -362,7 +363,7 @@ func (db *DB) FindByKey(ctx context.Context, col string, key nosql.Key) (nosql.D
 	res := c.c.FindOne(ctx, primitive.M{"_id": compKey(key)})
 	var m primitive.M
 
-	if err := res.Decode(&m); err == mongo.ErrNoDocuments {
+	if err := res.Decode(&m); errors.Is(err, mongo.ErrNoDocuments) {
 		return nil, nosql.ErrNotFound
 	} else if err != nil {
 		return nil, err

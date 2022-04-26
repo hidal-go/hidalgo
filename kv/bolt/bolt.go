@@ -17,6 +17,7 @@ package bolt
 import (
 	"bytes"
 	"context"
+	"errors"
 	"time"
 
 	"github.com/boltdb/bolt"
@@ -165,7 +166,7 @@ func (tx *Tx) Put(k kv.Key, v kv.Value) error {
 		return nil // bucket creation, no need to put value
 	}
 	err = b.Put(k[0], v)
-	if err == bolt.ErrTxNotWritable {
+	if errors.Is(err, bolt.ErrTxNotWritable) {
 		err = kv.ErrReadOnly
 	}
 	return err
@@ -177,7 +178,7 @@ func (tx *Tx) Del(k kv.Key) error {
 		return nil
 	}
 	err := b.Delete(k[0])
-	if err == bolt.ErrTxNotWritable {
+	if errors.Is(err, bolt.ErrTxNotWritable) {
 		err = kv.ErrReadOnly
 	}
 	return err

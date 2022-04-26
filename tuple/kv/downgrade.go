@@ -2,6 +2,7 @@ package tuplekv
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/hidal-go/hidalgo/filter"
@@ -17,7 +18,7 @@ func NewKV(ctx context.Context, db tuple.Store, table string) (flat.KV, error) {
 	}
 	defer tx.Close()
 	_, err = tx.Table(ctx, table)
-	if err == tuple.ErrTableNotFound {
+	if errors.Is(err, tuple.ErrTableNotFound) {
 		_, err = tx.CreateTable(ctx, tuple.Header{
 			Name: table,
 			Key: []tuple.KeyField{
@@ -97,7 +98,7 @@ func flatData(b flat.Value) tuple.Data {
 
 func (tx *flatTx) Get(ctx context.Context, key flat.Key) (flat.Value, error) {
 	row, err := tx.tbl.GetTuple(ctx, flatKey(key))
-	if err == tuple.ErrNotFound {
+	if errors.Is(err, tuple.ErrNotFound) {
 		return nil, flat.ErrNotFound
 	} else if err != nil {
 		return nil, err

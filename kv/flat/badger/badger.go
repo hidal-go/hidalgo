@@ -2,6 +2,7 @@ package badger
 
 import (
 	"context"
+	"errors"
 
 	"github.com/dgraph-io/badger/v2"
 
@@ -85,7 +86,7 @@ type Tx struct {
 
 func (tx *Tx) Commit(ctx context.Context) error {
 	err := tx.tx.Commit()
-	if err == badger.ErrConflict {
+	if errors.Is(err, badger.ErrConflict) {
 		err = flat.ErrConflict
 	}
 	return err
@@ -101,7 +102,7 @@ func (tx *Tx) Get(ctx context.Context, key flat.Key) (flat.Value, error) {
 		return nil, flat.ErrNotFound
 	}
 	item, err := tx.tx.Get(key)
-	if err == badger.ErrKeyNotFound {
+	if errors.Is(err, badger.ErrKeyNotFound) {
 		return nil, flat.ErrNotFound
 	} else if err != nil {
 		return nil, err
@@ -115,7 +116,7 @@ func (tx *Tx) GetBatch(ctx context.Context, keys []flat.Key) ([]flat.Value, erro
 
 func (tx *Tx) Put(k flat.Key, v flat.Value) error {
 	err := tx.tx.Set(k, v)
-	if err == badger.ErrConflict {
+	if errors.Is(err, badger.ErrConflict) {
 		err = flat.ErrConflict
 	}
 	return err
@@ -123,7 +124,7 @@ func (tx *Tx) Put(k flat.Key, v flat.Value) error {
 
 func (tx *Tx) Del(k flat.Key) error {
 	err := tx.tx.Delete(k)
-	if err == badger.ErrConflict {
+	if errors.Is(err, badger.ErrConflict) {
 		err = flat.ErrConflict
 	}
 	return err
