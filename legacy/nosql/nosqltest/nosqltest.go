@@ -47,7 +47,7 @@ func TestNoSQL(t *testing.T, gen Database) {
 	}
 }
 
-func BenchmarkNoSQL(t *testing.B, gen Database) {
+func BenchmarkNoSQL(b *testing.B, gen Database) {
 	// TODO
 }
 
