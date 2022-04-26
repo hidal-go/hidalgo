@@ -78,8 +78,8 @@ func (s *TupleStore) Table(ctx context.Context, name string) (tuple.TableInfo, e
 func (s *TupleStore) ListTables(ctx context.Context) ([]tuple.TableInfo, error) {
 	q := datastore.NewQuery(kindTable).Ancestor(s.metaRoot())
 	var tables []tableObject
-	_, err := s.c.GetAll(ctx, q, &tables)
-	if err != nil {
+
+	if _, err := s.c.GetAll(ctx, q, &tables); err != nil {
 		return nil, err
 	}
 	out := make([]tuple.TableInfo, 0, len(tables))
