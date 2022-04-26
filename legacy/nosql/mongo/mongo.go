@@ -109,8 +109,7 @@ type DB struct {
 }
 
 func (db *DB) Close() error {
-	db.sess.Disconnect(context.TODO())
-	return nil
+	return db.sess.Disconnect(context.TODO())
 }
 
 func (db *DB) EnsureIndex(ctx context.Context, col string, primary nosql.Index, secondary []nosql.Index) error {
