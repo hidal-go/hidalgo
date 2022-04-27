@@ -54,12 +54,15 @@ type KV struct {
 func (d *KV) logging() bool {
 	return d.log
 }
+
 func (d *KV) Log(v bool) {
 	d.log = v
 }
+
 func (d *KV) Stats() Stats {
 	return d.stats
 }
+
 func (d *KV) Close() error {
 	err := d.KV.Close()
 	if err != nil {
@@ -122,6 +125,7 @@ func (tx *kvTX) done(err error) {
 		atomic.AddInt64(&d.running.txRO, -1)
 	}
 }
+
 func (tx *kvTX) Commit(ctx context.Context) error {
 	if tx.tx == nil {
 		return tx.err

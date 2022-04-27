@@ -112,36 +112,44 @@ func (String) isPrimitive() {}
 func (v String) Native() interface{} {
 	return string(v)
 }
+
 func (v *String) NativePtr() interface{} {
 	return (*string)(v)
 }
+
 func (String) Type() Type {
 	return StringType{}
 }
+
 func (String) SortableType() SortableType {
 	return StringType{}
 }
+
 func (String) PrimitiveType() PrimitiveType {
 	return StringType{}
 }
+
 func (v *String) Value() Value {
 	if v == nil {
 		return nil
 	}
 	return *v
 }
+
 func (v *String) Sortable() Sortable {
 	if v == nil {
 		return nil
 	}
 	return *v
 }
+
 func (v *String) Primitive() Primitive {
 	if v == nil {
 		return nil
 	}
 	return *v
 }
+
 func (v String) Compare(b Sortable) int {
 	if b == nil {
 		return +1
@@ -160,16 +168,20 @@ func (v String) PrefixEnd() BinaryString {
 	}
 	return String(end)
 }
+
 func (v String) MarshalBinary() ([]byte, error) {
 	return []byte(v), nil
 }
+
 func (v *String) UnmarshalBinary(p []byte) error {
 	*v = String(p)
 	return nil
 }
+
 func (v String) MarshalSortable() ([]byte, error) {
 	return []byte(v), nil
 }
+
 func (v *String) UnmarshalSortable(p []byte) error {
 	*v = String(p)
 	return nil
@@ -181,36 +193,44 @@ func (Bytes) isPrimitive() {}
 func (v Bytes) Native() interface{} {
 	return []byte(v)
 }
+
 func (v *Bytes) NativePtr() interface{} {
 	return (*[]byte)(v)
 }
+
 func (Bytes) Type() Type {
 	return BytesType{}
 }
+
 func (Bytes) SortableType() SortableType {
 	return BytesType{}
 }
+
 func (Bytes) PrimitiveType() PrimitiveType {
 	return BytesType{}
 }
+
 func (v *Bytes) Value() Value {
 	if v == nil {
 		return nil
 	}
 	return *v
 }
+
 func (v *Bytes) Sortable() Sortable {
 	if v == nil {
 		return nil
 	}
 	return *v
 }
+
 func (v *Bytes) Primitive() Primitive {
 	if v == nil {
 		return nil
 	}
 	return *v
 }
+
 func (v Bytes) Compare(b Sortable) int {
 	if b == nil {
 		return +1
@@ -220,6 +240,7 @@ func (v Bytes) Compare(b Sortable) int {
 	bb, _ := b.MarshalSortable()
 	return bytes.Compare(ab, bb)
 }
+
 func prefixEnd(key []byte) []byte {
 	for i := len(key) - 1; i >= 0; i-- {
 		if key[i] < 0xff {
@@ -239,16 +260,20 @@ func (v Bytes) PrefixEnd() BinaryString {
 	}
 	return Bytes(end)
 }
+
 func (v Bytes) MarshalBinary() ([]byte, error) {
 	return append([]byte{}, v...), nil
 }
+
 func (v *Bytes) UnmarshalBinary(p []byte) error {
 	*v = Bytes(append([]byte{}, p...))
 	return nil
 }
+
 func (v Bytes) MarshalSortable() ([]byte, error) {
 	return append([]byte{}, v...), nil
 }
+
 func (v *Bytes) UnmarshalSortable(p []byte) error {
 	*v = Bytes(append([]byte{}, p...))
 	return nil
@@ -260,36 +285,44 @@ func (Int) isPrimitive() {}
 func (v Int) Native() interface{} {
 	return int64(v)
 }
+
 func (v *Int) NativePtr() interface{} {
 	return (*int64)(v)
 }
+
 func (Int) Type() Type {
 	return IntType{}
 }
+
 func (Int) SortableType() SortableType {
 	return IntType{}
 }
+
 func (Int) PrimitiveType() PrimitiveType {
 	return IntType{}
 }
+
 func (v *Int) Value() Value {
 	if v == nil {
 		return nil
 	}
 	return *v
 }
+
 func (v *Int) Sortable() Sortable {
 	if v == nil {
 		return nil
 	}
 	return *v
 }
+
 func (v *Int) Primitive() Primitive {
 	if v == nil {
 		return nil
 	}
 	return *v
 }
+
 func (v Int) Compare(b Sortable) int {
 	if b == nil {
 		return +1
@@ -299,11 +332,13 @@ func (v Int) Compare(b Sortable) int {
 	bb, _ := b.MarshalSortable()
 	return bytes.Compare(ab, bb)
 }
+
 func (v Int) MarshalBinary() ([]byte, error) {
 	buf := make([]byte, binary.MaxVarintLen64)
 	n := binary.PutVarint(buf, int64(v))
 	return buf[:n], nil
 }
+
 func (v *Int) UnmarshalBinary(p []byte) error {
 	iv, n := binary.Varint(p)
 	if n == 0 {
@@ -341,6 +376,7 @@ func (v Int) MarshalSortable() ([]byte, error) {
 	sortableOrder.PutUint64(buf, v.asSortable())
 	return buf, nil
 }
+
 func (v *Int) UnmarshalSortable(p []byte) error {
 	if len(p) != 8 {
 		return fmt.Errorf("unexpected value size: %d", len(p))
@@ -355,36 +391,44 @@ func (UInt) isPrimitive() {}
 func (v UInt) Native() interface{} {
 	return uint64(v)
 }
+
 func (v *UInt) NativePtr() interface{} {
 	return (*uint64)(v)
 }
+
 func (UInt) Type() Type {
 	return UIntType{}
 }
+
 func (UInt) SortableType() SortableType {
 	return UIntType{}
 }
+
 func (UInt) PrimitiveType() PrimitiveType {
 	return UIntType{}
 }
+
 func (v *UInt) Value() Value {
 	if v == nil {
 		return nil
 	}
 	return *v
 }
+
 func (v *UInt) Sortable() Sortable {
 	if v == nil {
 		return nil
 	}
 	return *v
 }
+
 func (v *UInt) Primitive() Primitive {
 	if v == nil {
 		return nil
 	}
 	return *v
 }
+
 func (v UInt) Compare(b Sortable) int {
 	if b == nil {
 		return +1
@@ -394,11 +438,13 @@ func (v UInt) Compare(b Sortable) int {
 	bb, _ := b.MarshalSortable()
 	return bytes.Compare(ab, bb)
 }
+
 func (v UInt) MarshalBinary() ([]byte, error) {
 	buf := make([]byte, binary.MaxVarintLen64)
 	n := binary.PutUvarint(buf, uint64(v))
 	return buf[:n], nil
 }
+
 func (v *UInt) UnmarshalBinary(p []byte) error {
 	iv, n := binary.Uvarint(p)
 	if n == 0 {
@@ -411,11 +457,13 @@ func (v *UInt) UnmarshalBinary(p []byte) error {
 	*v = UInt(iv)
 	return nil
 }
+
 func (v UInt) MarshalSortable() ([]byte, error) {
 	buf := make([]byte, 8)
 	sortableOrder.PutUint64(buf, uint64(v))
 	return buf, nil
 }
+
 func (v *UInt) UnmarshalSortable(p []byte) error {
 	if len(p) != 8 {
 		return fmt.Errorf("unexpected value size: %d", len(p))
@@ -430,33 +478,40 @@ func (Float) isPrimitive() {}
 func (v Float) Native() interface{} {
 	return float64(v)
 }
+
 func (v *Float) NativePtr() interface{} {
 	return (*float64)(v)
 }
+
 func (Float) Type() Type {
 	return FloatType{}
 }
+
 func (Float) PrimitiveType() PrimitiveType {
 	return FloatType{}
 }
+
 func (v *Float) Value() Value {
 	if v == nil {
 		return nil
 	}
 	return *v
 }
+
 func (v *Float) Primitive() Primitive {
 	if v == nil {
 		return nil
 	}
 	return *v
 }
+
 func (v Float) MarshalBinary() ([]byte, error) {
 	buf := make([]byte, 8)
 	iv := math.Float64bits(float64(v))
 	defaultOrder.PutUint64(buf, iv)
 	return buf, nil
 }
+
 func (v *Float) UnmarshalBinary(p []byte) error {
 	if len(p) != 8 {
 		return fmt.Errorf("unexpected value size: %d", len(p))
@@ -472,36 +527,44 @@ func (Bool) isPrimitive() {}
 func (v Bool) Native() interface{} {
 	return bool(v)
 }
+
 func (v *Bool) NativePtr() interface{} {
 	return (*bool)(v)
 }
+
 func (Bool) Type() Type {
 	return BoolType{}
 }
+
 func (Bool) SortableType() SortableType {
 	return BoolType{}
 }
+
 func (Bool) PrimitiveType() PrimitiveType {
 	return BoolType{}
 }
+
 func (v *Bool) Value() Value {
 	if v == nil {
 		return nil
 	}
 	return *v
 }
+
 func (v *Bool) Sortable() Sortable {
 	if v == nil {
 		return nil
 	}
 	return *v
 }
+
 func (v *Bool) Primitive() Primitive {
 	if v == nil {
 		return nil
 	}
 	return *v
 }
+
 func (v Bool) Compare(b Sortable) int {
 	if b == nil {
 		return +1
@@ -511,12 +574,14 @@ func (v Bool) Compare(b Sortable) int {
 	bb, _ := b.MarshalSortable()
 	return bytes.Compare(ab, bb)
 }
+
 func (v Bool) MarshalBinary() ([]byte, error) {
 	if v {
 		return []byte{1}, nil
 	}
 	return []byte{0}, nil
 }
+
 func (v *Bool) UnmarshalBinary(p []byte) error {
 	if len(p) != 1 {
 		return fmt.Errorf("unexpected value size: %d", len(p))
@@ -524,12 +589,14 @@ func (v *Bool) UnmarshalBinary(p []byte) error {
 	*v = Bool(p[0] != 0)
 	return nil
 }
+
 func (v Bool) MarshalSortable() ([]byte, error) {
 	if v {
 		return []byte{1}, nil
 	}
 	return []byte{0}, nil
 }
+
 func (v *Bool) UnmarshalSortable(p []byte) error {
 	if len(p) != 1 {
 		return fmt.Errorf("unexpected value size: %d", len(p))
@@ -547,30 +614,37 @@ type Time time.Time
 func (v Time) Native() interface{} {
 	return time.Time(v)
 }
+
 func (v Time) String() string {
 	return time.Time(v).String()
 }
+
 func (v *Time) NativePtr() interface{} {
 	return (*time.Time)(v)
 }
+
 func (Time) Type() Type {
 	return TimeType{}
 }
+
 func (Time) SortableType() SortableType {
 	return TimeType{}
 }
+
 func (v *Time) Value() Value {
 	if v == nil {
 		return nil
 	}
 	return Time(time.Time(*v).UTC())
 }
+
 func (v *Time) Sortable() Sortable {
 	if v == nil {
 		return nil
 	}
 	return Time(time.Time(*v).UTC())
 }
+
 func (v Time) Compare(b Sortable) int {
 	if b == nil {
 		return +1
@@ -580,9 +654,11 @@ func (v Time) Compare(b Sortable) int {
 	bb, _ := b.MarshalSortable()
 	return bytes.Compare(ab, bb)
 }
+
 func (v Time) MarshalBinary() ([]byte, error) {
 	return time.Time(v).MarshalBinary()
 }
+
 func (v *Time) UnmarshalBinary(p []byte) error {
 	var t time.Time
 	if err := t.UnmarshalBinary(p); err != nil {
@@ -591,10 +667,12 @@ func (v *Time) UnmarshalBinary(p []byte) error {
 	*v = AsTime(t)
 	return nil
 }
+
 func (v Time) MarshalSortable() ([]byte, error) {
 	iv := Int(time.Time(v).UnixNano())
 	return iv.MarshalSortable()
 }
+
 func (v *Time) UnmarshalSortable(p []byte) error {
 	var iv Int
 	if err := iv.UnmarshalSortable(p); err != nil {

@@ -75,9 +75,11 @@ func (db *DB) SetWriteOptions(wo *opt.WriteOptions) {
 func (db *DB) SetReadOptions(ro *opt.ReadOptions) {
 	db.ro = ro
 }
+
 func (db *DB) Close() error {
 	return db.db.Close()
 }
+
 func (db *DB) Tx(rw bool) (flat.Tx, error) {
 	tx := &Tx{db: db}
 	var err error
@@ -118,6 +120,7 @@ func (tx *Tx) Commit(ctx context.Context) error {
 	tx.sn.Release()
 	return tx.err
 }
+
 func (tx *Tx) Close() error {
 	if tx.tx != nil {
 		tx.tx.Discard()
@@ -126,6 +129,7 @@ func (tx *Tx) Close() error {
 	}
 	return tx.err
 }
+
 func (tx *Tx) Get(ctx context.Context, key flat.Key) (flat.Value, error) {
 	var (
 		val []byte
@@ -143,21 +147,25 @@ func (tx *Tx) Get(ctx context.Context, key flat.Key) (flat.Value, error) {
 	}
 	return val, nil
 }
+
 func (tx *Tx) GetBatch(ctx context.Context, keys []flat.Key) ([]flat.Value, error) {
 	return flat.GetBatch(ctx, tx, keys)
 }
+
 func (tx *Tx) Put(k flat.Key, v flat.Value) error {
 	if tx.tx == nil {
 		return flat.ErrReadOnly
 	}
 	return tx.tx.Put(k, v, tx.db.wo)
 }
+
 func (tx *Tx) Del(k flat.Key) error {
 	if tx.tx == nil {
 		return flat.ErrReadOnly
 	}
 	return tx.tx.Delete(k, tx.db.wo)
 }
+
 func (tx *Tx) Scan(opts ...flat.IteratorOption) flat.Iterator {
 	lit := &Iterator{tx: tx}
 	lit.WithPrefix(nil)
@@ -208,11 +216,11 @@ func (it *Iterator) Next(ctx context.Context) bool {
 	}
 	return it.it.Next()
 }
+
 func (it *Iterator) Key() flat.Key   { return it.it.Key() }
 func (it *Iterator) Val() flat.Value { return it.it.Value() }
-func (it *Iterator) Err() error {
-	return it.it.Error()
-}
+func (it *Iterator) Err() error      { return it.it.Error() }
+
 func (it *Iterator) Close() error {
 	it.it.Release()
 	return it.Err()

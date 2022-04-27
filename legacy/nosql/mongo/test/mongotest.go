@@ -42,7 +42,6 @@ func MongoVersion(vers string) nosqltest.Database {
 			addr := fmt.Sprintf("mongodb://%s", cont.GetHostPort("27017/tcp"))
 			err = pool.Retry(func() error {
 				sess, err := gomongo.NewClient(options.Client().ApplyURI(addr))
-
 				if err != nil {
 					return err
 				}
