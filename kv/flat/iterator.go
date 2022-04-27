@@ -33,10 +33,12 @@ func Seek(ctx context.Context, it Iterator, key Key) bool {
 	if it, ok := it.(Seeker); ok {
 		return it.Seek(ctx, key)
 	}
+
 	if len(key) == 0 {
 		it.Reset() // seek to the beginning
 		return it.Next(ctx)
 	}
+
 	// check where we currently are
 	k := it.Key()
 	if len(k) == 0 {
@@ -52,12 +54,14 @@ func Seek(ctx context.Context, it Iterator, key Key) bool {
 			it.Reset() // too far, must restart
 		}
 	}
+
 	for it.Next(ctx) {
 		k = it.Key()
 		if bytes.Compare(k, key) >= 0 {
 			return true
 		}
 	}
+
 	return false
 }
 

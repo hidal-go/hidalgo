@@ -21,9 +21,11 @@ func TableSize(ctx context.Context, t Table, f *Filter, exact bool) (int64, erro
 		KeysOnly: true,
 		Filter:   f,
 	})
+
 	var n int64
 	for it.Next(ctx) {
 		n++
 	}
+
 	return n, it.Err()
 }

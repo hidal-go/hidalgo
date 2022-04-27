@@ -28,14 +28,17 @@ func RunTest(t *testing.T, fnc Func, opts *Options) {
 	if opts == nil {
 		opts = &Options{}
 	}
+
 	for _, c := range testList {
 		t.Run(c.name, func(t *testing.T) {
 			if c.concurrent && opts.NoLocks {
 				t.Skip("implementation doesn't support concurrent writes")
 			}
+
 			if c.txOnly && opts.NoTx {
 				t.Skip("implementation doesn't support transactions")
 			}
+
 			db := fnc(t)
 			c.test(t, db)
 		})
@@ -47,6 +50,7 @@ func RunTestLocal(t *testing.T, open kv.OpenPathFunc, opts *Options) {
 	if opts == nil {
 		opts = &Options{}
 	}
+
 	RunTest(t, func(t testing.TB) kv.KV {
 		dir, err := ioutil.TempDir("", "dal-kv-")
 		require.NoError(t, err)
@@ -58,10 +62,12 @@ func RunTestLocal(t *testing.T, open kv.OpenPathFunc, opts *Options) {
 		if err != nil {
 			require.NoError(t, err)
 		}
+
 		t.Cleanup(func() {
 			db.Close()
 			db.Close() // test double close
 		})
+
 		return db
 	}, opts)
 }
@@ -210,6 +216,7 @@ func seek(t testing.TB, db kv.KV) {
 			if i < off {
 				continue
 			}
+
 			ok := kv.Seek(ctx, it, all[i].Key)
 			require.True(t, ok)
 			require.Equal(t, all[i].Key, it.Key())
@@ -249,12 +256,15 @@ func increment(t testing.TB, db kv.KV) {
 				if err != nil {
 					return err
 				}
+
 				v, err := strconv.Atoi(string(val))
 				if err != nil {
 					return err
 				}
+
 				v++
 				val = []byte(strconv.Itoa(v))
+
 				return tx.Put(key, val)
 			})
 			if err != nil {
@@ -262,12 +272,15 @@ func increment(t testing.TB, db kv.KV) {
 			}
 		}()
 	}
+
 	close(ready)
 	wg.Wait()
+
 	select {
 	case err := <-errc:
 		require.NoError(t, err)
 	default:
 	}
+
 	td.Expect(key, []byte("10"))
 }

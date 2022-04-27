@@ -12,17 +12,21 @@ func Update(ctx context.Context, kv KV, update func(tx Tx) error) error {
 				return err
 			}
 			defer tx.Close()
+
 			err = update(tx)
 			if err != nil {
 				return err
 			}
+
 			return tx.Commit(ctx)
 		}()
+
 		if err == ErrConflict {
 			continue
 		} else if err != nil {
 			return err
 		}
+
 		return nil
 	}
 }
@@ -34,10 +38,12 @@ func View(ctx context.Context, kv KV, view func(tx Tx) error) error {
 		return err
 	}
 	defer tx.Close()
+
 	err = view(tx)
 	if err == nil {
 		err = tx.Close()
 	}
+
 	return err
 }
 
@@ -46,11 +52,13 @@ func View(ctx context.Context, kv KV, view func(tx Tx) error) error {
 func Each(ctx context.Context, tx Tx, fnc func(k Key, v Value) error, opts ...IteratorOption) error {
 	it := tx.Scan(opts...)
 	defer it.Close()
+
 	for it.Next(ctx) {
 		if err := fnc(it.Key(), it.Val()); err != nil {
 			return err
 		}
 	}
+
 	return it.Err()
 }
 

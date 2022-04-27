@@ -105,12 +105,14 @@ func (tx *Tx) bucket(key kv.Key) (*bolt.Bucket, kv.Key) {
 	if len(key) <= 1 {
 		return tx.root(), key
 	}
+
 	b := tx.tx.Bucket(key[0])
 	key = key[1:]
 	for b != nil && len(key) > 1 {
 		b = b.Bucket(key[0])
 		key = key[1:]
 	}
+
 	return b, key
 }
 
@@ -119,10 +121,12 @@ func (tx *Tx) Get(ctx context.Context, key kv.Key) (kv.Value, error) {
 	if b == nil || len(k) != 1 {
 		return nil, kv.ErrNotFound
 	}
+
 	v := b.Get(k[0])
 	if v == nil {
 		return nil, kv.ErrNotFound
 	}
+
 	return v, nil
 }
 
@@ -149,12 +153,14 @@ func (tx *Tx) Put(k kv.Key, v kv.Value) error {
 		b   *bolt.Bucket
 		err error
 	)
+
 	if len(k) <= 1 {
 		b = tx.root()
 	} else {
 		b, err = tx.tx.CreateBucketIfNotExists(k[0])
 		k = k[1:]
 	}
+
 	for err == nil && b != nil && len(k) > 1 {
 		b, err = b.CreateBucketIfNotExists(k[0])
 		k = k[1:]
@@ -164,10 +170,12 @@ func (tx *Tx) Put(k kv.Key, v kv.Value) error {
 	} else if len(k[0]) == 0 && len(v) == 0 {
 		return nil // bucket creation, no need to put value
 	}
+
 	err = b.Put(k[0], v)
 	if err == bolt.ErrTxNotWritable {
 		err = kv.ErrReadOnly
 	}
+
 	return err
 }
 
@@ -176,10 +184,12 @@ func (tx *Tx) Del(k kv.Key) error {
 	if b == nil || len(k) != 1 {
 		return nil
 	}
+
 	err := b.Delete(k[0])
 	if err == bolt.ErrTxNotWritable {
 		err = kv.ErrReadOnly
 	}
+
 	return err
 }
 
@@ -215,13 +225,16 @@ func (it *Iterator) Reset() {
 	it.v = nil
 	it.stack.c = nil
 	it.stack.b = nil
+
 	if cap(it.stack.k) >= len(it.rootk) {
 		it.stack.k = it.stack.k[:len(it.rootk)]
 	} else {
 		// we will append to it
 		it.stack.k = it.rootk.Clone()
 	}
+
 	copy(it.stack.k, it.rootk)
+
 	if it.rootb != nil {
 		it.stack.b = []*bolt.Bucket{it.rootb}
 	}
@@ -229,6 +242,7 @@ func (it *Iterator) Reset() {
 
 func (it *Iterator) WithPrefix(pref kv.Key) kv.Iterator {
 	it.Reset()
+
 	kpref := pref
 	b, p := it.tx.bucket(pref)
 	if b == nil || len(p) > 1 {
@@ -238,6 +252,7 @@ func (it *Iterator) WithPrefix(pref kv.Key) kv.Iterator {
 		*it = Iterator{tx: it.tx}
 		return it
 	}
+
 	// the key for bucket we iterate
 	it.rootk = kpref[:len(kpref)-len(p)]
 	it.rootb = b
@@ -250,6 +265,7 @@ func (it *Iterator) next(pref kv.Key) bool {
 	for len(it.stack.b) > 0 {
 		i := len(it.stack.b) - 1
 		cb := it.stack.b[i]
+
 		if len(it.stack.c) < len(it.stack.b) {
 			c := cb.Cursor()
 			it.stack.c = append(it.stack.c, c)
@@ -262,6 +278,7 @@ func (it *Iterator) next(pref kv.Key) bool {
 			c := it.stack.c[i]
 			it.k, it.v = c.Next()
 		}
+
 		if it.k != nil {
 			// found a key, check prefix
 			if i >= len(pref) || bytes.HasPrefix(it.k, pref[i]) {
@@ -280,6 +297,7 @@ func (it *Iterator) next(pref kv.Key) bool {
 				return true
 			}
 		}
+
 		// iterator is ended, or we reached the end of the prefix
 		// return to top-level bucket
 		it.stack.c = it.stack.c[:len(it.stack.c)-1]
@@ -288,6 +306,7 @@ func (it *Iterator) next(pref kv.Key) bool {
 			it.stack.k = it.stack.k[:len(it.stack.k)-1]
 		}
 	}
+
 	return false
 }
 

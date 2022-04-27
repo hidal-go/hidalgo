@@ -66,6 +66,7 @@ func (it *prefixIteratorFlat) Next(ctx context.Context) bool {
 	if it.done {
 		return false
 	}
+
 	if !it.seek {
 		found := flat.Seek(ctx, it.base, it.pref)
 		it.seek = true
@@ -79,10 +80,12 @@ func (it *prefixIteratorFlat) Next(ctx context.Context) bool {
 			return false
 		}
 	}
+
 	key := it.base.Key()
 	if bytes.HasPrefix(key, it.pref) {
 		return true
 	}
+
 	// keys are sorted, and we reached the end of the prefix
 	it.done = true
 	return false

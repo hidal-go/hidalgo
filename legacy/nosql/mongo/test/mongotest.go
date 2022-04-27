@@ -58,13 +58,16 @@ func MongoVersion(vers string) nosqltest.Database {
 			if err != nil {
 				t.Fatal(err)
 			}
+
 			qs, err := mongo.Dial(addr, "test", nil)
 			if err != nil {
 				t.Fatal(err)
 			}
+
 			t.Cleanup(func() {
 				_ = qs.Close()
 			})
+
 			return qs
 		},
 	}

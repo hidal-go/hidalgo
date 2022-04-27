@@ -56,6 +56,7 @@ func KeyUnescape(k Key) kv.Key {
 		k2  kv.Key
 		cur Key
 	)
+
 	for i := 0; i < len(k); i++ {
 		p := k[i]
 		if p == esc {
@@ -69,9 +70,11 @@ func KeyUnescape(k Key) kv.Key {
 		}
 		cur = append(cur, p)
 	}
+
 	if cur != nil {
 		k2 = append(k2, cur)
 	}
+
 	return k2
 }
 
@@ -143,6 +146,7 @@ func (tx *flatTx) Scan(opts ...kv.IteratorOption) kv.Iterator {
 		native   []IteratorOption
 		fallback []kv.IteratorOption
 	)
+
 	for _, opt := range opts {
 		if v, ok := opt.(IteratorOption); ok {
 			native = append(native, v)
@@ -150,7 +154,9 @@ func (tx *flatTx) Scan(opts ...kv.IteratorOption) kv.Iterator {
 			fallback = append(fallback, opt)
 		}
 	}
+
 	it := &prefIter{kv: tx.kv, Iterator: tx.tx.Scan(native...)}
+
 	return kv.ApplyIteratorOptions(it, fallback)
 }
 

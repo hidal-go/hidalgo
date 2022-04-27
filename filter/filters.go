@@ -62,6 +62,7 @@ func (f Equal) FilterSortable(a values.Sortable) bool {
 	if !ok {
 		return a == nil && f.Value == nil
 	}
+
 	switch a := a.(type) {
 	case values.Bytes:
 		b, ok := b.(values.Bytes)
@@ -70,6 +71,7 @@ func (f Equal) FilterSortable(a values.Sortable) bool {
 		}
 		return bytes.Equal(a, b)
 	}
+
 	return f.Value == a
 }
 
@@ -172,17 +174,21 @@ func (f Range) isPrefix() bool {
 	if f.Start == nil || !f.Start.Equal {
 		return false
 	}
+
 	s, ok := f.Start.Value.(values.BinaryString)
 	if !ok {
 		return false
 	}
+
 	end := s.PrefixEnd()
 	if end == nil {
 		return f.End == nil
 	}
+
 	if f.End == nil || f.End.Equal {
 		return false
 	}
+
 	return values.Compare(end, f.End.Value) == 0
 }
 

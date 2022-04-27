@@ -46,18 +46,23 @@ func (d *Dialect) SetDefaults() {
 	if d.StringType == "" {
 		d.StringType = "TEXT"
 	}
+
 	if d.StringKeyType == "" {
 		d.StringKeyType = d.StringType
 	}
+
 	if d.BytesType == "" {
 		d.BytesType = "BLOB"
 	}
+
 	if d.BytesKeyType == "" {
 		d.BytesKeyType = d.BytesType
 	}
+
 	if d.TimeType == "" {
 		d.TimeType = "TIMESTAMP"
 	}
+
 	if d.Placeholder == nil {
 		d.Placeholder = func(_ int) string {
 			return "?"
@@ -109,11 +114,13 @@ func (d *Dialect) sqlType(t values.Type, key bool) string {
 	default:
 		panic(fmt.Errorf("unsupported type: %T", t))
 	}
+
 	if key {
 		tp += " NOT NULL"
 	} else {
 		tp += " NULL"
 	}
+
 	return tp
 }
 func (d *Dialect) sqlColumnComment(t values.Type) string {
@@ -155,13 +162,16 @@ func (d *Dialect) nativeType(typ, comment string) (values.Type, bool, error) {
 	if auto {
 		comment = comment[:len(comment)-5]
 	}
+
 	var opt string
 	if i := strings.Index(typ, "("); i > 0 {
 		typ, opt = typ[:i], typ[i:]
 	}
+
 	if i := strings.Index(typ, " "); i > 0 {
 		typ, opt = typ[:i], typ[i:]+opt
 	}
+
 	switch typ {
 	case "text", "varchar", "char":
 		return values.StringType{}, auto, nil
@@ -184,5 +194,6 @@ func (d *Dialect) nativeType(typ, comment string) (values.Type, bool, error) {
 	case "timestamp", "datetime", "date", "time":
 		return values.TimeType{}, auto, nil
 	}
+
 	return nil, false, fmt.Errorf("unsupported column type: %q", typ)
 }

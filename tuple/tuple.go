@@ -86,6 +86,7 @@ func (t Header) Validate() error {
 	} else if len(t.Key) == 0 {
 		return fmt.Errorf("at least one key field is required")
 	}
+
 	names := make(map[string]struct{})
 	for _, f := range t.Key {
 		if f.Name == "" {
