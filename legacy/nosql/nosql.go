@@ -97,6 +97,7 @@ func (op FilterOp) String() string {
 	}
 	return name
 }
+
 func (op FilterOp) GoString() string {
 	return "nosql." + op.String()
 }

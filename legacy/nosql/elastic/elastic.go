@@ -130,6 +130,7 @@ func (db *DB) indexName(col string) string {
 	}
 	return db.ind.pref + "_" + col
 }
+
 func (db *DB) EnsureIndex(ctx context.Context, typ string, primary nosql.Index, secondary []nosql.Index) error {
 	if primary.Type != nosql.StringExact {
 		return fmt.Errorf("unsupported type of primary index: %v", primary.Type)
@@ -200,6 +201,7 @@ func (db *DB) EnsureIndex(ctx context.Context, typ string, primary nosql.Index, 
 	}
 	return nil
 }
+
 func toElasticValue(v nosql.Value) interface{} {
 	switch v := v.(type) {
 	case nil:
@@ -224,6 +226,7 @@ func toElasticValue(v nosql.Value) interface{} {
 		panic(fmt.Errorf("unsupported type: %T", v))
 	}
 }
+
 func fromElasticValue(v interface{}) nosql.Value {
 	switch v := v.(type) {
 	case nil:
@@ -265,6 +268,7 @@ func fromElasticValue(v interface{}) nosql.Value {
 		panic(fmt.Errorf("unsupported type: %T", v))
 	}
 }
+
 func toElasticDoc(d nosql.Document) map[string]interface{} {
 	if d == nil {
 		return nil
@@ -275,6 +279,7 @@ func toElasticDoc(d nosql.Document) map[string]interface{} {
 	}
 	return m
 }
+
 func fromElasticDoc(d map[string]interface{}) nosql.Document {
 	if d == nil {
 		return nil
@@ -358,6 +363,7 @@ func (db *DB) Insert(ctx context.Context, col string, key nosql.Key, d nosql.Doc
 	}
 	return key, nil
 }
+
 func (db *DB) FindByKey(ctx context.Context, col string, key nosql.Key) (nosql.Document, error) {
 	c := db.colls[col]
 	resp, err := db.cli.Search(db.indexName(col)).Type(col).Query(
@@ -371,16 +377,20 @@ func (db *DB) FindByKey(ctx context.Context, col string, key nosql.Key) (nosql.D
 	h := resp.Hits.Hits[0]
 	return c.convDoc(h), nil
 }
+
 func (db *DB) indexRef(col string) indexRef {
 	c := db.colls[col]
 	return indexRef{cli: db.cli, ind: db.indexName(col), c: &c}
 }
+
 func (db *DB) Query(col string) nosql.Query {
 	return &Query{indexRef: db.indexRef(col)}
 }
+
 func (db *DB) Update(col string, key nosql.Key) nosql.Update {
 	return &Update{indexRef: db.indexRef(col), key: key}
 }
+
 func (db *DB) Delete(col string) nosql.Delete {
 	return &Delete{indexRef: db.indexRef(col)}
 }
@@ -512,10 +522,12 @@ func (q *Query) WithFields(filters ...nosql.FieldFilter) nosql.Query {
 	q.qu.Filters = append(q.qu.Filters, filters...)
 	return q
 }
+
 func (q *Query) Limit(n int) nosql.Query {
 	q.limit = int64(n)
 	return q
 }
+
 func (q *Query) Count(ctx context.Context) (int64, error) {
 	cnt := q.cli.Count(q.ind).Type(q.c.typ)
 	if !q.qu.IsAll() {
@@ -530,6 +542,7 @@ func (q *Query) Count(ctx context.Context) (int64, error) {
 	}
 	return n, nil
 }
+
 func (q *Query) One(ctx context.Context) (nosql.Document, error) {
 	qu := q.cli.Search(q.ind).Type(q.c.typ).Size(1)
 	if !q.qu.IsAll() {
@@ -543,6 +556,7 @@ func (q *Query) One(ctx context.Context) (nosql.Document, error) {
 	}
 	return q.c.convDoc(resp.Hits.Hits[0]), nil
 }
+
 func (q *Query) Iterate() nosql.DocIterator {
 	qu := q.cli.Scroll(q.ind).Type(q.c.typ)
 	if q.limit > 0 {
@@ -586,18 +600,22 @@ func (it *Iterator) Next(ctx context.Context) bool {
 	}
 	return true
 }
+
 func (it *Iterator) Err() error {
 	return it.err
 }
+
 func (it *Iterator) Close() error {
 	return nil
 }
+
 func (it *Iterator) hit() *elastic.SearchHit {
 	if it.buf == nil || it.i >= len(it.buf.Hits.Hits) {
 		return nil
 	}
 	return it.buf.Hits.Hits[it.i]
 }
+
 func (it *Iterator) Key() nosql.Key {
 	h := it.hit()
 	if h == nil {
@@ -605,6 +623,7 @@ func (it *Iterator) Key() nosql.Key {
 	}
 	return it.c.getKey(h)
 }
+
 func (it *Iterator) Doc() nosql.Document {
 	h := it.hit()
 	if h == nil {
@@ -622,6 +641,7 @@ func (d *Delete) WithFields(filters ...nosql.FieldFilter) nosql.Delete {
 	d.qu.Filters = append(d.qu.Filters, filters...)
 	return d
 }
+
 func (d *Delete) Keys(keys ...nosql.Key) nosql.Delete {
 	if len(keys) == 0 {
 		return d
@@ -629,6 +649,7 @@ func (d *Delete) Keys(keys ...nosql.Key) nosql.Delete {
 	d.qu.Keys = append(d.qu.Keys, keys...)
 	return d
 }
+
 func (d *Delete) Do(ctx context.Context) error {
 	_, err := d.cli.DeleteByQuery(d.ind).Type(d.c.typ).Query(d.qu).Do(ctx)
 	if err != nil {
@@ -653,6 +674,7 @@ func (u *Update) Inc(field string, dn int) nosql.Update {
 	u.inc[field] = u.inc[field] + dn
 	return u
 }
+
 func (u *Update) Upsert(d nosql.Document) nosql.Update {
 	u.upsert = toElasticDoc(d)
 	if u.upsert == nil {
@@ -661,6 +683,7 @@ func (u *Update) Upsert(d nosql.Document) nosql.Update {
 	u.c.setKey(u.upsert, u.key)
 	return u
 }
+
 func (u *Update) Do(ctx context.Context) error {
 	upd := u.cli.Update().Index(u.ind).Type(u.c.typ).Id(compKey(u.key))
 	if len(u.inc) != 0 {
