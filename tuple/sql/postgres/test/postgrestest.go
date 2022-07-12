@@ -15,7 +15,7 @@ var versions = []string{
 }
 
 func init() {
-	var vers []sqltest.Version
+	vers := make([]sqltest.Version, 0, len(versions))
 	for _, v := range versions {
 		vers = append(vers, sqltest.Version{
 			Name: v, Factory: PostgresVersion(v),
@@ -28,19 +28,19 @@ func PostgresVersion(vers string) sqltest.Database {
 	const image = "postgres"
 	return sqltest.Database{
 		Recreate: false,
-		Run: func(t testing.TB) string {
+		Run: func(tb testing.TB) string {
 			pool, err := dockertest.NewPool("")
 			if err != nil {
-				t.Fatal(err)
+				tb.Fatal(err)
 			}
 
 			cont, err := pool.Run(image, vers, []string{
 				"POSTGRES_PASSWORD=postgres",
 			})
 			if err != nil {
-				t.Fatal(err)
+				tb.Fatal(err)
 			}
-			t.Cleanup(func() {
+			tb.Cleanup(func() {
 				_ = cont.Close()
 			})
 
@@ -56,7 +56,7 @@ func PostgresVersion(vers string) sqltest.Database {
 				return cli.Ping()
 			})
 			if err != nil {
-				t.Fatal(err)
+				tb.Fatal(err)
 			}
 			return addr
 		},

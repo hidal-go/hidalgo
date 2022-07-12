@@ -25,43 +25,42 @@ func init() {
 func MongoVersion(vers string) nosqltest.Database {
 	return nosqltest.Database{
 		Traits: mongo.Traits(),
-		Run: func(t testing.TB) nosql.Database {
+		Run: func(tb testing.TB) nosql.Database {
 			pool, err := dockertest.NewPool("")
 			if err != nil {
-				t.Fatal(err)
+				tb.Fatal(err)
 			}
 
 			cont, err := pool.Run("mongo", vers, nil)
 			if err != nil {
-				t.Fatal(err)
+				tb.Fatal(err)
 			}
-			t.Cleanup(func() {
+			tb.Cleanup(func() {
 				_ = cont.Close()
 			})
 
 			addr := fmt.Sprintf("mongodb://%s", cont.GetHostPort("27017/tcp"))
 			err = pool.Retry(func() error {
-				sess, err := gomongo.NewClient(options.Client().ApplyURI(addr))
-				if err != nil {
-					return err
+				sess, er := gomongo.NewClient(options.Client().ApplyURI(addr))
+				if er != nil {
+					return er
 				}
 				defer sess.Disconnect(context.TODO())
 
-				err = sess.Connect(context.TODO())
-
-				if err != nil {
-					return err
+				er = sess.Connect(context.TODO())
+				if er != nil {
+					return er
 				}
 				return nil
 			})
 			if err != nil {
-				t.Fatal(err)
+				tb.Fatal(err)
 			}
 			qs, err := mongo.Dial(addr, "test", nil)
 			if err != nil {
-				t.Fatal(err)
+				tb.Fatal(err)
 			}
-			t.Cleanup(func() {
+			tb.Cleanup(func() {
 				_ = qs.Close()
 			})
 			return qs

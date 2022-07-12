@@ -9,7 +9,7 @@ import (
 
 // WithPrefixKV returns IteratorOption that limits scanned key to a given binary prefix.
 // Store implementations can optimize this by implementing kv.PrefixIterator.
-func WithPrefixKV(pref kv.Key) IteratorOption {
+func WithPrefixKV(pref kv.Key) PrefixKV {
 	return PrefixKV{Pref: pref}
 }
 
@@ -72,11 +72,9 @@ func (it *prefixIteratorKV) Next(ctx context.Context) bool {
 			it.done = true
 			return false
 		}
-	} else {
-		if !it.base.Next(ctx) {
-			it.done = true
-			return false
-		}
+	} else if !it.base.Next(ctx) {
+		it.done = true
+		return false
 	}
 	key := it.base.Key()
 	if key.HasPrefix(it.pref) {

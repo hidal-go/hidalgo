@@ -1,4 +1,4 @@
-package tuplepb
+package tuplepb_test
 
 import (
 	"testing"
@@ -6,6 +6,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/hidal-go/hidalgo/tuple"
+	"github.com/hidal-go/hidalgo/tuple/tuplepb"
 	"github.com/hidal-go/hidalgo/values"
 )
 
@@ -23,10 +24,10 @@ func TestTableEncoding(t *testing.T) {
 		},
 	}
 
-	data, err := MarshalTable(tbl)
+	data, err := tuplepb.MarshalTable(tbl)
 	require.NoError(t, err)
 
-	tbl2, err := UnmarshalTable(data)
+	tbl2, err := tuplepb.UnmarshalTable(data)
 	require.NoError(t, err)
 	require.Equal(t, tbl, tbl2)
 }

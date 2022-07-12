@@ -170,7 +170,7 @@ func GetBatch(ctx context.Context, tx Getter, keys []Key) ([]Value, error) {
 	var err error
 	for i, k := range keys {
 		vals[i], err = tx.Get(ctx, k)
-		if err == ErrNotFound {
+		if errors.Is(err, ErrNotFound) {
 			vals[i] = nil
 		} else if err != nil {
 			return nil, err

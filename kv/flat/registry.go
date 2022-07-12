@@ -12,8 +12,8 @@ type OpenPathFunc func(path string) (KV, error)
 
 // Registration is an information about the database driver.
 type Registration struct {
-	base.Registration
 	OpenPath OpenPathFunc
+	base.Registration
 }
 
 var registry = make(map[string]Registration)

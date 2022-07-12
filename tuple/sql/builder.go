@@ -11,9 +11,9 @@ func (d *Dialect) NewBuilder() *Builder {
 
 type Builder struct {
 	d    *Dialect
-	pi   int
 	buf  *bytes.Buffer
 	args []interface{}
+	pi   int
 }
 
 func (b *Builder) Reset() {

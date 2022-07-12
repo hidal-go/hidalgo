@@ -20,7 +20,7 @@ import (
 
 // Func is a constructor for database implementations.
 // It returns an empty database and a function to destroy it.
-type Func func(t testing.TB) tuple.Store
+type Func func(tb testing.TB) tuple.Store
 
 type Options struct {
 	NoLocks bool // not safe for concurrent writes
@@ -38,15 +38,15 @@ func RunTest(t *testing.T, fnc Func, opts *Options) {
 		})
 	}
 	t.Run("kv", func(t *testing.T) {
-		kvtest.RunTest(t, func(t testing.TB) hkv.KV {
-			db := fnc(t)
+		kvtest.RunTest(t, func(tb testing.TB) hkv.KV {
+			db := fnc(tb)
 
 			ctx := context.TODO()
 			kdb, err := tuplekv.NewKV(ctx, db, "kv")
 			if err != nil {
-				require.NoError(t, err)
+				require.NoError(tb, err)
 			}
-			t.Cleanup(func() {
+			tb.Cleanup(func() {
 				_ = kdb.Close()
 			})
 			return flat.Upgrade(kdb)
@@ -58,8 +58,8 @@ func RunTest(t *testing.T, fnc Func, opts *Options) {
 }
 
 var testList = []struct {
-	name string
 	test func(t *testing.T, db tuple.Store)
+	name string
 }{
 	{name: "basic", test: basic},
 	{name: "typed", test: typed},
@@ -125,6 +125,7 @@ func typed(t *testing.T, db tuple.Store) {
 		// FIXME: test nanoseconds on backends that support it
 		values.AsTime(time.Unix(123, 456789000)),
 	}
+
 	var payloads []values.Value
 	for _, tp := range sortable {
 		payloads = append(payloads, tp)
@@ -314,7 +315,7 @@ func tables(t *testing.T, db tuple.Store) {
 	})
 }
 
-func tablesSimple(t testing.TB, db tuple.Store) {
+func tablesSimple(tb testing.TB, db tuple.Store) {
 	ctx := context.Background()
 	const name = "test1"
 
@@ -330,7 +331,7 @@ func tablesSimple(t testing.TB, db tuple.Store) {
 
 	newTx := func(rw bool) tuple.Tx {
 		tx, err := db.Tx(rw)
-		require.NoError(t, err)
+		require.NoError(tb, err)
 		return tx
 	}
 
@@ -338,70 +339,70 @@ func tablesSimple(t testing.TB, db tuple.Store) {
 
 	notExists := func() {
 		tbl, err := tx.Table(ctx, name)
-		require.Equal(t, tuple.ErrTableNotFound, err)
-		require.Nil(t, tbl)
+		require.Equal(tb, tuple.ErrTableNotFound, err)
+		require.Nil(tb, tbl)
 	}
 
 	// access table when it not exists
 	notExists()
 
 	list, err := tx.ListTables(ctx)
-	require.NoError(t, err)
-	require.Empty(t, list)
+	require.NoError(tb, err)
+	require.Empty(tb, list)
 
 	// create table on read-only transaction
 	_, err = tx.CreateTable(ctx, schema)
-	require.Equal(t, tuple.ErrReadOnly, err)
+	require.Equal(tb, tuple.ErrReadOnly, err)
 
 	notExists()
 
 	err = tx.Close()
-	require.NoError(t, err)
+	require.NoError(tb, err)
 
 	// reopen read-write transaction
 	tx = newTx(true)
 
 	// table should not exist after failed creation
 	tbl, err := tx.Table(ctx, name)
-	require.Equal(t, tuple.ErrTableNotFound, err)
-	require.Nil(t, tbl)
+	require.Equal(tb, tuple.ErrTableNotFound, err)
+	require.Nil(tb, tbl)
 
 	tbl, err = tx.CreateTable(ctx, schema)
-	require.NoError(t, err)
-	require.NotNil(t, tbl)
+	require.NoError(tb, err)
+	require.NotNil(tb, tbl)
 
 	// TODO: check create + rollback
 	err = tx.Commit(ctx)
-	require.NoError(t, err)
+	require.NoError(tb, err)
 
 	tx = newTx(true)
 
 	tbl, err = tx.Table(ctx, name)
-	require.NoError(t, err)
-	assert.Equal(t, schema, tbl.Header())
+	require.NoError(tb, err)
+	assert.Equal(tb, schema, tbl.Header())
 
 	err = tbl.Drop(ctx)
-	require.NoError(t, err)
+	require.NoError(tb, err)
 
 	tbl, err = tx.Table(ctx, name)
-	require.Equal(t, tuple.ErrTableNotFound, err)
-	require.Nil(t, tbl)
+	require.Equal(tb, tuple.ErrTableNotFound, err)
+	require.Nil(tb, tbl)
 
 	err = tx.Commit(ctx)
-	require.NoError(t, err)
+	require.NoError(tb, err)
 
 	tx = newTx(false)
 
 	notExists()
 
 	err = tx.Close()
-	require.NoError(t, err)
+	require.NoError(tb, err)
 
 	// TODO: test multiple tables
 	// TODO: test different headers (only keys, only values)
 }
 
-func tablesAuto(t testing.TB, db tuple.Store) {
+func tablesAuto(tb testing.TB, db tuple.Store) {
 	ctx := context.Background()
 	const name = "test2"
 
@@ -417,27 +418,27 @@ func tablesAuto(t testing.TB, db tuple.Store) {
 
 	newTx := func(rw bool) tuple.Tx {
 		tx, err := db.Tx(rw)
-		require.NoError(t, err)
+		require.NoError(tb, err)
 		return tx
 	}
 
 	tx := newTx(true)
 
 	tbl, err := tx.CreateTable(ctx, schema)
-	require.NoError(t, err)
-	require.NotNil(t, tbl)
+	require.NoError(tb, err)
+	require.NotNil(tb, tbl)
 
 	err = tx.Commit(ctx)
-	require.NoError(t, err)
+	require.NoError(tb, err)
 
 	tx = newTx(false)
 
 	tbl, err = tx.Table(ctx, name)
-	require.NoError(t, err)
-	assert.Equal(t, schema, tbl.Header())
+	require.NoError(tb, err)
+	assert.Equal(tb, schema, tbl.Header())
 
 	err = tx.Close()
-	require.NoError(t, err)
+	require.NoError(tb, err)
 }
 
 func auto(t *testing.T, db tuple.Store) {

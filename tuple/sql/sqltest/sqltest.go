@@ -14,8 +14,8 @@ import (
 )
 
 type Database struct {
+	Run      func(tb testing.TB) string
 	Recreate bool
-	Run      func(t testing.TB) string
 }
 
 func TestSQL(t *testing.T, name string, gen Database) {
@@ -24,35 +24,35 @@ func TestSQL(t *testing.T, name string, gen Database) {
 	if !recreate {
 		addr = gen.Run(t)
 	}
-	tupletest.RunTest(t, func(t testing.TB) tuple.Store {
+	tupletest.RunTest(t, func(tb testing.TB) tuple.Store {
 		db := fmt.Sprintf("db_%x", rand.Int())
 		addr := addr
 		if recreate {
-			addr = gen.Run(t)
+			addr = gen.Run(tb)
 		}
 		conn, err := sqltuple.OpenSQL(name, addr, "")
 		if err != nil {
-			require.NoError(t, err)
+			require.NoError(tb, err)
 		}
 		_, err = conn.Exec(`CREATE DATABASE ` + db)
 		conn.Close()
 		if err != nil {
-			require.NoError(t, err)
+			require.NoError(tb, err)
 		}
 		conn, err = sqltuple.OpenSQL(name, addr, db)
 		if err != nil {
-			require.NoError(t, err)
+			require.NoError(tb, err)
 		}
-		t.Cleanup(func() {
+		tb.Cleanup(func() {
 			conn.Close()
 			if !recreate {
-				conn, err := sqltuple.OpenSQL(name, addr, "")
+				conn, err = sqltuple.OpenSQL(name, addr, "")
 				if err == nil {
 					_, err = conn.Exec(`DROP DATABASE ` + db)
 					conn.Close()
 				}
 				if err != nil {
-					t.Errorf("cannot remove test database: %v", err)
+					tb.Errorf("cannot remove test database: %v", err)
 				}
 			}
 		})

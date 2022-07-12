@@ -78,24 +78,24 @@ type Database interface {
 type FilterOp int
 
 func (op FilterOp) String() string {
-	name := ""
 	switch op {
 	case Equal:
-		name = "Equal"
+		return "Equal"
 	case NotEqual:
-		name = "NotEqual"
+		return "NotEqual"
 	case GT:
-		name = "GT"
+		return "GT"
 	case GTE:
-		name = "GTE"
+		return "GTE"
 	case LT:
-		name = "LT"
+		return "LT"
 	case LTE:
-		name = "LTE"
+		return "LTE"
+	case Regexp:
+		return "Regexp"
 	default:
 		return fmt.Sprintf("FilterOp(%d)", int(op))
 	}
-	return name
 }
 
 func (op FilterOp) GoString() string {
@@ -114,9 +114,9 @@ const (
 
 // FieldFilter represents a single field comparison operation.
 type FieldFilter struct {
+	Value  Value    // value that will be compared with field of the document
 	Path   []string // path is a path to specific field in the document
 	Filter FilterOp // comparison operation
-	Value  Value    // value that will be compared with field of the document
 }
 
 func (f FieldFilter) Matches(doc Document) bool {
@@ -241,9 +241,9 @@ func BatchInsert(db Database, col string) DocWriter {
 
 type seqInsert struct {
 	db   Database
+	err  error
 	col  string
 	keys []Key
-	err  error
 }
 
 func (w *seqInsert) WriteDoc(ctx context.Context, key Key, d Document) error {

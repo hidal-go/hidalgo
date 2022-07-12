@@ -3,6 +3,7 @@ package pebble
 import (
 	"bytes"
 	"context"
+	"errors"
 
 	"github.com/cockroachdb/pebble"
 
@@ -93,7 +94,7 @@ func (tx *Tx) Get(ctx context.Context, key flat.Key) (flat.Value, error) {
 		return nil, flat.ErrNotFound
 	}
 	val, closer, err := tx.tx.Get(key)
-	if err == pebble.ErrNotFound {
+	if errors.Is(err, pebble.ErrNotFound) {
 		return nil, flat.ErrNotFound
 	} else if err != nil {
 		return nil, err
@@ -136,10 +137,10 @@ var (
 )
 
 type Iterator struct {
+	err   error
 	it    *pebble.Iterator
 	pref  flat.Key
 	first bool
-	err   error
 }
 
 func (it *Iterator) Reset() {

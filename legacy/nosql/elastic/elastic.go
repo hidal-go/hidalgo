@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"strconv"
@@ -62,12 +63,10 @@ func Dial(addr, index string, opt nosql.Options) (*DB, error) {
 	}
 	major, err := strconv.Atoi(strings.SplitN(vers, ".", 2)[0])
 	if err != nil {
-		return nil, fmt.Errorf("cannot parse version: %v", err)
+		return nil, fmt.Errorf("cannot parse version: %w", err)
 	}
 	ind := opt.GetString("index", index)
-	if err != nil {
-		return nil, err
-	}
+	// TODO FIXME: Check returned value from opt.GetString().
 	settings := `{
 			"number_of_shards":1,
 			"number_of_replicas":0
@@ -88,19 +87,19 @@ func Dial(addr, index string, opt nosql.Options) (*DB, error) {
 
 type collection struct {
 	typ       string
-	compPK    bool // compose PK from existing keys; if false, use id instead of target field
-	primary   nosql.Index
 	secondary []nosql.Index
+	primary   nosql.Index
+	compPK    bool // compose PK from existing keys; if false, use id instead of target field
 }
 
 type DB struct {
-	cli *elastic.Client
-	ind struct {
-		one      bool // use one index for all types (<= v5)
+	cli   *elastic.Client
+	colls map[string]collection
+	ind   struct {
 		pref     string
 		settings json.RawMessage
+		one      bool // use one index for all types (<= v5)
 	}
-	colls map[string]collection
 }
 
 func (db *DB) Close() error {
@@ -164,13 +163,8 @@ func (db *DB) EnsureIndex(ctx context.Context, typ string, primary nosql.Index, 
 			if _, ok := props[f]; ok {
 				continue
 			}
-			var typ indType
-			switch ind.Type {
-			case nosql.StringExact:
-				typ = indKeyword
-			}
-			if typ != "" {
-				props[f] = property{Type: typ}
+			if ind.Type == nosql.StringExact {
+				props[f] = property{Type: indKeyword}
 			}
 		}
 	}
@@ -408,7 +402,7 @@ func convRegexp(o interface{}) interface{} {
 	if strings.HasSuffix(s, "$") {
 		s = s[:len(s)-1]
 	} else {
-		s = s + ".*"
+		s += ".*"
 	}
 	return s
 }
@@ -508,14 +502,14 @@ func (q elasticQuery) Source() (interface{}, error) {
 
 type indexRef struct {
 	cli *elastic.Client
-	ind string
 	c   *collection
+	ind string
 }
 
 type Query struct {
 	indexRef
-	limit int64
 	qu    elasticQuery
+	limit int64
 }
 
 func (q *Query) WithFields(filters ...nosql.FieldFilter) nosql.Query {
@@ -569,13 +563,12 @@ func (q *Query) Iterate() nosql.DocIterator {
 }
 
 type Iterator struct {
+	err error
+	qu  *elastic.ScrollService
+	buf *elastic.SearchResult
 	indexRef
-	qu *elastic.ScrollService
-
-	buf  *elastic.SearchResult
-	done bool
 	i    int
-	err  error
+	done bool
 }
 
 func (it *Iterator) Next(ctx context.Context) bool {
@@ -590,7 +583,7 @@ func (it *Iterator) Next(ctx context.Context) bool {
 	} else {
 		it.i++
 	}
-	if it.err == io.EOF {
+	if errors.Is(it.err, io.EOF) {
 		it.err = nil
 		it.done = true
 	}
@@ -660,18 +653,18 @@ func (d *Delete) Do(ctx context.Context) error {
 }
 
 type Update struct {
-	indexRef
-	key nosql.Key
-
 	upsert map[string]interface{}
 	inc    map[string]int
+
+	indexRef
+	key nosql.Key
 }
 
 func (u *Update) Inc(field string, dn int) nosql.Update {
 	if u.inc == nil {
 		u.inc = make(map[string]int)
 	}
-	u.inc[field] = u.inc[field] + dn
+	u.inc[field] += dn
 	return u
 }
 
@@ -720,11 +713,11 @@ func (db *DB) BatchInsert(col string) nosql.DocWriter {
 const batchSize = 100
 
 type inserter struct {
+	err error
 	indexRef
 	buf   []elastic.BulkableRequest
 	ikeys []nosql.Key
 	keys  []nosql.Key
-	err   error
 }
 
 func (w *inserter) WriteDoc(ctx context.Context, key nosql.Key, d nosql.Document) error {

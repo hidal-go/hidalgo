@@ -3,6 +3,7 @@ package datastore
 import (
 	"context"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"time"
 
@@ -62,7 +63,7 @@ func (t *tableInfo) Open(tx tuple.Tx) (tuple.Table, error) {
 func (s *TupleStore) Table(ctx context.Context, name string) (tuple.TableInfo, error) {
 	var t tableObject
 	err := s.c.Get(ctx, s.tableKey(name), &t)
-	if err == datastore.ErrNoSuchEntity {
+	if errors.Is(err, datastore.ErrNoSuchEntity) {
 		return nil, tuple.ErrTableNotFound
 	} else if err != nil {
 		return nil, err
@@ -77,8 +78,8 @@ func (s *TupleStore) Table(ctx context.Context, name string) (tuple.TableInfo, e
 func (s *TupleStore) ListTables(ctx context.Context) ([]tuple.TableInfo, error) {
 	q := datastore.NewQuery(kindTable).Ancestor(s.metaRoot())
 	var tables []tableObject
-	_, err := s.c.GetAll(ctx, q, &tables)
-	if err != nil {
+
+	if _, err := s.c.GetAll(ctx, q, &tables); err != nil {
 		return nil, err
 	}
 	out := make([]tuple.TableInfo, 0, len(tables))
@@ -162,15 +163,13 @@ func (tx *Tx) CreateTable(ctx context.Context, table tuple.Header) (tuple.Table,
 	}
 	k := tx.s.tableKey(table.Name)
 	_, err = tx.s.c.RunInTransaction(ctx, func(tx *datastore.Transaction) error {
-		var t tableObject
-		err := tx.Get(k, &t)
-		if err == nil {
+		er := tx.Get(k, &tableObject{})
+		if er == nil {
 			return tuple.ErrTableExists
-		} else if err != nil && err != datastore.ErrNoSuchEntity {
-			return err
+		} else if !errors.Is(er, datastore.ErrNoSuchEntity) {
+			return er
 		}
-		t = tableObject{Data: data}
-		_, err = tx.Put(k, &t)
+		_, err = tx.Put(k, &tableObject{Data: data})
 		return err
 	})
 	if err != nil {
@@ -225,9 +224,8 @@ func (tbl *Table) Clear(ctx context.Context) error {
 	}
 }
 
-func (tbl *Table) key(key tuple.Key, auto bool) *datastore.Key {
+func (tbl *Table) key(key tuple.Key, auto bool) (k *datastore.Key) {
 	kind := tbl.h.Name
-	var k *datastore.Key
 	for i, c := range tbl.h.Key {
 		v := key[i]
 		switch c.Type.(type) {
@@ -253,19 +251,19 @@ func (tbl *Table) key(key tuple.Key, auto bool) *datastore.Key {
 }
 
 func (tbl *Table) parseKey(key *datastore.Key) (tuple.Key, error) {
-	k := make(tuple.Key, len(tbl.h.Key))
-	for i := len(k) - 1; i >= 0; i-- {
+	keys := make(tuple.Key, len(tbl.h.Key))
+	for i := len(keys) - 1; i >= 0; i-- {
 		if key == nil {
 			return nil, fmt.Errorf("short key")
 		}
 		c := tbl.h.Key[i]
 		switch c.Type.(type) {
 		case values.StringType:
-			k[i] = values.String(key.Name)
+			keys[i] = values.String(key.Name)
 		case values.IntType:
-			k[i] = values.Int(key.ID)
+			keys[i] = values.Int(key.ID)
 		case values.UIntType:
-			k[i] = values.UInt(key.ID)
+			keys[i] = values.UInt(key.ID)
 		default:
 			d, err := hex.DecodeString(key.Name)
 			if err != nil {
@@ -276,11 +274,11 @@ func (tbl *Table) parseKey(key *datastore.Key) (tuple.Key, error) {
 			if err != nil {
 				return nil, err
 			}
-			k[i] = v.Sortable()
+			keys[i] = v.Sortable()
 		}
 		key = key.Parent
 	}
-	return k, nil
+	return keys, nil
 }
 
 var _ datastore.PropertyLoadSaver = (*payload)(nil)
@@ -396,8 +394,8 @@ func (p *payload) Save() ([]datastore.Property, error) {
 		})
 	}
 	for i, c := range p.h.Data {
-		v := p.t.Data[i]
 		var val interface{}
+		v := p.t.Data[i]
 		if v != nil {
 			switch c.Type.(type) {
 			case values.BytesType:
@@ -438,7 +436,7 @@ func (tbl *Table) GetTuple(ctx context.Context, key tuple.Key) (tuple.Data, erro
 	p := &payload{h: &tbl.h}
 	p.t.Key = key
 	err := tbl.cli().Get(ctx, tbl.key(key, false), p)
-	if err == datastore.ErrNoSuchEntity {
+	if errors.Is(err, datastore.ErrNoSuchEntity) {
 		return nil, tuple.ErrNotFound
 	} else if err != nil {
 		return nil, err
@@ -482,13 +480,14 @@ func (tbl *Table) InsertTuple(ctx context.Context, t tuple.Tuple) (tuple.Key, er
 		return nil, err
 	}
 	k := tbl.key(t.Key, true)
-	if err := tx.Get(k, &payload{h: &tbl.h}); err == nil {
-		tx.Rollback()
+
+	if er := tx.Get(k, &payload{h: &tbl.h}); er == nil {
+		_ = tx.Rollback()
 		return nil, tuple.ErrExists
 	}
 	pk, err := tx.Put(k, &payload{h: &tbl.h, t: t})
 	if err != nil {
-		tx.Rollback()
+		_ = tx.Rollback()
 		return nil, err
 	}
 	c, err := tx.Commit()
@@ -522,7 +521,9 @@ func (tbl *Table) UpdateTuple(ctx context.Context, t tuple.Tuple, opt *tuple.Upd
 		return err
 	}
 	k := tbl.key(t.Key, false)
-	if err := tx.Get(k, &payload{h: &tbl.h}); err == datastore.ErrNoSuchEntity {
+
+	err = tx.Get(k, &payload{h: &tbl.h})
+	if errors.Is(err, datastore.ErrNoSuchEntity) {
 		return tuple.ErrNotFound
 	}
 	_, err = tx.Put(k, &payload{h: &tbl.h, t: t})
@@ -579,14 +580,13 @@ func (tbl *Table) Scan(opt *tuple.ScanOptions) tuple.Iterator {
 }
 
 type Iterator struct {
-	tbl      *Table
+	err      error
 	q        *datastore.Query
-	keysOnly bool
 	f        *tuple.Filter
-
-	it  *datastore.Iterator
-	t   tuple.Tuple
-	err error
+	it       *datastore.Iterator
+	tbl      *Table
+	t        tuple.Tuple
+	keysOnly bool
 }
 
 func (it *Iterator) Reset() {
@@ -634,7 +634,7 @@ func (it *Iterator) Next(ctx context.Context) bool {
 }
 
 func (it *Iterator) Err() error {
-	if it.err == iterator.Done {
+	if errors.Is(it.err, iterator.Done) {
 		return nil
 	}
 	return it.err

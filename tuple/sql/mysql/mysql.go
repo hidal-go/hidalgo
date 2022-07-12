@@ -37,7 +37,7 @@ func init() {
 			ListColumns: `SELECT column_name, column_type, is_nullable, column_key, column_comment
 FROM information_schema.columns WHERE table_schema = ? AND table_name = ?`,
 			QuoteIdentifierFunc: func(s string) string {
-				return "`" + strings.Replace(s, "`", "", -1) + "`"
+				return "`" + strings.ReplaceAll(s, "`", "") + "`"
 			},
 			ColumnCommentInline: func(s string) string {
 				return "COMMENT " + s

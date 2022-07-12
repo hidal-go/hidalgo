@@ -24,10 +24,10 @@ func init() {
 func CouchVersion(vers string) nosqltest.Database {
 	return nosqltest.Database{
 		Traits: couch.Traits(),
-		Run: func(t testing.TB) nosql.Database {
+		Run: func(tb testing.TB) nosql.Database {
 			pool, err := dockertest.NewPool("")
 			if err != nil {
-				t.Fatal(err)
+				tb.Fatal(err)
 			}
 
 			cont, err := pool.Run("couchdb", vers, []string{
@@ -35,9 +35,9 @@ func CouchVersion(vers string) nosqltest.Database {
 				"COUCHDB_PASSWORD=test",
 			})
 			if err != nil {
-				t.Fatal(err)
+				tb.Fatal(err)
 			}
-			t.Cleanup(func() {
+			tb.Cleanup(func() {
 				_ = cont.Close()
 			})
 
@@ -54,14 +54,14 @@ func CouchVersion(vers string) nosqltest.Database {
 				return err
 			})
 			if err != nil {
-				t.Fatal(err)
+				tb.Fatal(err)
 			}
 
 			qs, err := couch.Dial(true, couch.DriverCouch, addr, "test", nil)
 			if err != nil {
-				t.Fatal(err)
+				tb.Fatal(err)
 			}
-			t.Cleanup(func() {
+			tb.Cleanup(func() {
 				_ = qs.Close()
 			})
 			return qs

@@ -1,6 +1,9 @@
 package flat
 
-import "context"
+import (
+	"context"
+	"errors"
+)
 
 // Update is a helper to open a read-write transaction and update the database.
 // The update function may be called multiple times in case of conflicts with other writes.
@@ -18,7 +21,7 @@ func Update(ctx context.Context, kv KV, update func(tx Tx) error) error {
 			}
 			return tx.Commit(ctx)
 		}()
-		if err == ErrConflict {
+		if errors.Is(err, ErrConflict) {
 			continue
 		} else if err != nil {
 			return err
@@ -28,7 +31,7 @@ func Update(ctx context.Context, kv KV, update func(tx Tx) error) error {
 }
 
 // View is a helper to open a read-only transaction to read the database.
-func View(ctx context.Context, kv KV, view func(tx Tx) error) error {
+func View(_ context.Context, kv KV, view func(tx Tx) error) error {
 	tx, err := kv.Tx(false)
 	if err != nil {
 		return err

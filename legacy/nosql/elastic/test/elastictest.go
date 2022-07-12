@@ -17,7 +17,7 @@ var versions = []string{
 }
 
 func init() {
-	var vers []nosqltest.Version
+	vers := make([]nosqltest.Version, 0, len(versions))
 	for _, v := range versions {
 		vers = append(vers, nosqltest.Version{
 			Name: v, Factory: ElasticVersion(v),
@@ -29,19 +29,19 @@ func init() {
 func ElasticVersion(vers string) nosqltest.Database {
 	return nosqltest.Database{
 		Traits: elastic.Traits(),
-		Run: func(t testing.TB) nosql.Database {
+		Run: func(tb testing.TB) nosql.Database {
 			name := "docker.elastic.co/elasticsearch/elasticsearch"
 
 			pool, err := dockertest.NewPool("")
 			if err != nil {
-				t.Fatal(err)
+				tb.Fatal(err)
 			}
 
 			cont, err := pool.Run(name, vers, nil)
 			if err != nil {
-				t.Fatal(err)
+				tb.Fatal(err)
 			}
-			t.Cleanup(func() {
+			tb.Cleanup(func() {
 				_ = cont.Close()
 			})
 
@@ -53,22 +53,22 @@ func ElasticVersion(vers string) nosqltest.Database {
 			ctx := context.Background()
 
 			err = pool.Retry(func() error {
-				cli, err := edriver.NewClient(edriver.SetURL(addr))
-				if err != nil {
-					return err
+				cli, er := edriver.NewClient(edriver.SetURL(addr))
+				if er != nil {
+					return er
 				}
-				_, _, err = cli.Ping(addr).Do(ctx)
-				return err
+				_, _, er = cli.Ping(addr).Do(ctx)
+				return er
 			})
 			if err != nil {
-				t.Fatal(err)
+				tb.Fatal(err)
 			}
 
 			db, err := elastic.Dial(addr, "test", nil)
 			if err != nil {
-				t.Fatal(addr, err)
+				tb.Fatal(addr, err)
 			}
-			t.Cleanup(func() {
+			tb.Cleanup(func() {
 				_ = db.Close()
 			})
 			return db

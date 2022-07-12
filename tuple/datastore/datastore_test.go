@@ -1,4 +1,4 @@
-package datastore
+package datastore_test
 
 import (
 	"context"
@@ -9,14 +9,15 @@ import (
 	"github.com/ory/dockertest"
 
 	"github.com/hidal-go/hidalgo/tuple"
+	ds "github.com/hidal-go/hidalgo/tuple/datastore"
 	"github.com/hidal-go/hidalgo/tuple/tupletest"
 )
 
 func TestDatastore(t *testing.T) {
-	tupletest.RunTest(t, func(t testing.TB) tuple.Store {
+	tupletest.RunTest(t, func(tb testing.TB) tuple.Store {
 		pool, err := dockertest.NewPool("")
 		if err != nil {
-			t.Fatal(err)
+			tb.Fatal(err)
 		}
 
 		const (
@@ -35,29 +36,31 @@ func TestDatastore(t *testing.T) {
 			},
 		})
 		if err != nil {
-			t.Fatal(err)
+			tb.Fatal(err)
 		}
-		t.Cleanup(func() {
+		tb.Cleanup(func() {
 			_ = cont.Close()
 		})
 
 		ctx := context.Background()
 		host := cont.GetHostPort("8080/tcp")
 		if host == "" {
-			t.Fatal("empty host")
+			tb.Fatal("empty host")
 		}
+
 		if err = os.Setenv("DATASTORE_EMULATOR_HOST", host); err != nil {
-			t.Fatal(err)
+			tb.Fatal(err)
 		} else if host := os.Getenv("DATASTORE_EMULATOR_HOST"); host == "" {
-			t.Fatal("set env failed")
+			tb.Fatal("set env failed")
 		}
 		cli, err := datastore.NewClient(ctx, proj)
 		if err != nil {
-			t.Fatal(err)
+			tb.Fatal(err)
 		}
-		t.Cleanup(func() {
+		tb.Cleanup(func() {
 			_ = cli.Close()
 		})
-		return OpenClient(cli)
+
+		return ds.OpenClient(cli)
 	}, nil)
 }

@@ -8,8 +8,8 @@ import (
 )
 
 type Registration struct {
-	nosql.Registration
 	Versions []Version
+	nosql.Registration
 }
 
 type Version struct {
@@ -63,7 +63,7 @@ func ByName(name string) *Registration {
 }
 
 func allNames() []string {
-	var names []string
+	names := make([]string, 0, len(registry))
 	for name := range registry {
 		names = append(names, name)
 	}

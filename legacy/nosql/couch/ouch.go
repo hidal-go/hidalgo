@@ -22,7 +22,7 @@ func Traits() nosql.Traits {
 	}
 }
 
-func DialDriver(ctx context.Context, driver, addr, dbName string) (*kivik.Client, string, error) {
+func DialDriver(_ context.Context, driver, addr, dbName string) (*kivik.Client, string, error) {
 	addrParsed, err := url.Parse(addr)
 	if err != nil {
 		return nil, "", err
@@ -40,12 +40,12 @@ func DialDriver(ctx context.Context, driver, addr, dbName string) (*kivik.Client
 	return cli, dbName, err
 }
 
-func Dial(create bool, driver, addr, ns string, opt nosql.Options) (*DB, error) {
+func Dial(create bool, driver, addr, ns string, _ nosql.Options) (*DB, error) {
 	ctx := context.TODO() // TODO - replace with parameter value
 
 	client, dbName, err := DialDriver(ctx, driver, addr, ns)
 	if err != nil {
-		return nil, fmt.Errorf("cannot open driver: %v", err)
+		return nil, fmt.Errorf("cannot open driver: %w", err)
 	}
 
 	var db *kivik.DB
@@ -63,8 +63,8 @@ func Dial(create bool, driver, addr, ns string, opt nosql.Options) (*DB, error) 
 }
 
 type collection struct {
-	primary   nosql.Index
 	secondary []nosql.Index
+	primary   nosql.Index
 }
 
 type DB struct {
@@ -259,9 +259,9 @@ func (q ouchQuery) putSelector(field string, v interface{}) {
 
 type Query struct {
 	db          *DB
-	col         string
 	qu          ouchQuery
 	pathFilters map[string][]nosql.FieldFilter
+	col         string
 }
 
 func (q *Query) WithFields(filters ...nosql.FieldFilter) nosql.Query {
@@ -277,7 +277,7 @@ func (q *Query) buildFilters() {
 		term := map[string]interface{}{}
 		for _, filter := range filterList {
 			testValue := toOuchValue(filter.Value)
-			test := ""
+			var test string
 			switch filter.Filter {
 			case nosql.Equal:
 				test = "$eq"
@@ -383,13 +383,13 @@ func (q *Query) Iterate() nosql.DocIterator {
 }
 
 type Iterator struct {
-	db     *DB
-	col    string
-	qu     ouchQuery
+	prevID interface{}
 	err    error
+	qu     ouchQuery
 	rows   *kivik.Rows
 	doc    map[string]interface{}
-	prevID interface{}
+	db     *DB
+	col    string
 	closed bool
 }
 
@@ -555,11 +555,11 @@ func (d *Delete) Do(ctx context.Context) error {
 
 type Update struct {
 	db     *DB
+	update nosql.Document
+	inc    map[string]int // increment the named numeric field by the int
 	col    string
 	key    nosql.Key
-	update nosql.Document
 	upsert bool
-	inc    map[string]int // increment the named numeric field by the int
 }
 
 func (u *Update) Inc(field string, dn int) nosql.Update {
@@ -580,7 +580,7 @@ func (u *Update) Upsert(d nosql.Document) nosql.Update {
 
 func (u *Update) Do(ctx context.Context) error {
 	orig, id, rev, err := u.db.findByKey(ctx, u.col, u.key)
-	if err == nosql.ErrNotFound {
+	if errors.Is(err, nosql.ErrNotFound) {
 		if !u.upsert {
 			return err
 		}

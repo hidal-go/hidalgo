@@ -3,6 +3,7 @@ package mongo
 import (
 	"context"
 	"encoding/base64"
+	"errors"
 	"fmt"
 	"net/url"
 	"strings"
@@ -97,9 +98,9 @@ func Dial(addr, dbName string, opt nosql.Options) (*DB, error) {
 
 type collection struct {
 	c         *mongo.Collection
-	compPK    bool // compose PK from existing keys; if false, use _id instead of target field
-	primary   nosql.Index
 	secondary []nosql.Index
+	primary   nosql.Index
+	compPK    bool // compose PK from existing keys; if false, use _id instead of target field
 }
 
 type DB struct {
@@ -109,8 +110,7 @@ type DB struct {
 }
 
 func (db *DB) Close() error {
-	db.sess.Disconnect(context.TODO())
-	return nil
+	return db.sess.Disconnect(context.TODO())
 }
 
 func (db *DB) EnsureIndex(ctx context.Context, col string, primary nosql.Index, secondary []nosql.Index) error {
@@ -205,7 +205,7 @@ func fromBsonValue(v interface{}) nosql.Value {
 		}
 		return arr
 	case primitive.ObjectID:
-		return nosql.String(objidString(v))
+		return nosql.String(objIDString(v))
 	case primitive.M:
 		return fromBsonDoc(v)
 	case primitive.A:
@@ -314,7 +314,7 @@ func getOrGenID(key nosql.Key) (nosql.Key, string) {
 	var mid string
 	if key == nil {
 		// TODO: maybe allow to pass custom key types as nosql.Key
-		oid := objidString(primitive.NewObjectID())
+		oid := objIDString(primitive.NewObjectID())
 		mid = oid
 		key = nosql.Key{oid}
 	} else {
@@ -334,7 +334,7 @@ func (c *collection) convIns(key nosql.Key, d nosql.Document) (nosql.Key, primit
 	return key, m
 }
 
-func objidString(id primitive.ObjectID) string {
+func objIDString(id primitive.ObjectID) string {
 	return base64.StdEncoding.EncodeToString(id[:])
 }
 
@@ -363,7 +363,7 @@ func (db *DB) FindByKey(ctx context.Context, col string, key nosql.Key) (nosql.D
 	res := c.c.FindOne(ctx, primitive.M{"_id": compKey(key)})
 	var m primitive.M
 
-	if err := res.Decode(&m); err == mongo.ErrNoDocuments {
+	if err := res.Decode(&m); errors.Is(err, mongo.ErrNoDocuments) {
 		return nil, nosql.ErrNotFound
 	} else if err != nil {
 		return nil, err
@@ -439,8 +439,8 @@ func mergeFilters(dst, src primitive.M) {
 
 type Query struct {
 	c     *collection
-	limit int
 	query primitive.M
+	limit int
 }
 
 func (q *Query) WithFields(filters ...nosql.FieldFilter) nosql.Query {
@@ -533,9 +533,8 @@ func (it *Iterator) Next(ctx context.Context) bool {
 	if !it.it.Next(ctx) {
 		return false
 	}
-	err := it.it.Decode(&elem)
 
-	if err == nil {
+	if err := it.it.Decode(&elem); err == nil {
 		it.res = elem
 	}
 
@@ -618,9 +617,9 @@ func (d *Delete) Do(ctx context.Context) error {
 
 type Update struct {
 	col    *collection
-	key    nosql.Key
 	upsert primitive.M
 	update primitive.M
+	key    nosql.Key
 }
 
 func (u *Update) Inc(field string, dn int) nosql.Update {
@@ -673,11 +672,11 @@ func (db *DB) BatchInsert(col string) nosql.DocWriter {
 const batchSize = 100
 
 type inserter struct {
+	err   error
 	col   *collection
 	buf   []interface{}
 	ikeys []nosql.Key
 	keys  []nosql.Key
-	err   error
 }
 
 func (w *inserter) WriteDoc(ctx context.Context, key nosql.Key, d nosql.Document) error {

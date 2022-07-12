@@ -16,7 +16,7 @@ import (
 
 // Func is a constructor for database implementations.
 // It returns an empty database and a function to destroy it.
-type Func func(t testing.TB) kv.KV
+type Func func(tb testing.TB) kv.KV
 
 type Options struct {
 	NoLocks bool // not safe for concurrent writes
@@ -47,18 +47,18 @@ func RunTestLocal(t *testing.T, open kv.OpenPathFunc, opts *Options) {
 	if opts == nil {
 		opts = &Options{}
 	}
-	RunTest(t, func(t testing.TB) kv.KV {
+	RunTest(t, func(tb testing.TB) kv.KV {
 		dir, err := ioutil.TempDir("", "dal-kv-")
-		require.NoError(t, err)
-		t.Cleanup(func() {
+		require.NoError(tb, err)
+		tb.Cleanup(func() {
 			_ = os.RemoveAll(dir)
 		})
 
 		db, err := open(dir)
 		if err != nil {
-			require.NoError(t, err)
+			require.NoError(tb, err)
 		}
-		t.Cleanup(func() {
+		tb.Cleanup(func() {
 			db.Close()
 			db.Close() // test double close
 		})
@@ -67,8 +67,8 @@ func RunTestLocal(t *testing.T, open kv.OpenPathFunc, opts *Options) {
 }
 
 var testList = []struct {
+	test       func(tb testing.TB, db kv.KV)
 	name       string
-	test       func(t testing.TB, db kv.KV)
 	concurrent bool // requires concurrent safety
 	txOnly     bool // requires transactions
 }{
@@ -78,8 +78,8 @@ var testList = []struct {
 	{name: "increment", test: increment, txOnly: true, concurrent: true},
 }
 
-func basic(t testing.TB, db kv.KV) {
-	td := NewTest(t, db)
+func basic(tb testing.TB, db kv.KV) {
+	td := NewTest(tb, db)
 
 	keys := []kv.Key{
 		{[]byte("a")},
@@ -95,12 +95,12 @@ func basic(t testing.TB, db kv.KV) {
 		td.NotExists(k)
 	}
 
-	var all []kv.Pair
+	all := make([]kv.Pair, len(keys))
 	for i, k := range keys {
 		v := kv.Value(strconv.Itoa(i))
 		td.Put(k, v)
 		td.Expect(k, v)
-		all = append(all, kv.Pair{Key: k, Val: v})
+		all[i] = kv.Pair{Key: k, Val: v}
 	}
 
 	td.ScanReset(all)
@@ -117,8 +117,8 @@ func basic(t testing.TB, db kv.KV) {
 	}
 }
 
-func readonly(t testing.TB, db kv.KV) {
-	td := NewTest(t, db)
+func readonly(tb testing.TB, db kv.KV) {
+	td := NewTest(tb, db)
 
 	key := kv.Key{[]byte("a")}
 	val := []byte("v")
@@ -127,26 +127,26 @@ func readonly(t testing.TB, db kv.KV) {
 	nokey := kv.Key{[]byte("b")}
 
 	tx, err := db.Tx(false)
-	require.NoError(t, err)
+	require.NoError(tb, err)
 	defer tx.Close()
 
 	// writing anything on read-only tx must fail
 	err = tx.Put(key, val)
-	require.Equal(t, kv.ErrReadOnly, err)
+	require.Equal(tb, kv.ErrReadOnly, err)
 	err = tx.Put(nokey, val)
-	require.Equal(t, kv.ErrReadOnly, err)
+	require.Equal(tb, kv.ErrReadOnly, err)
 
 	// deleting records on read-only tx must fail
 	err = tx.Del(key)
-	require.Equal(t, kv.ErrReadOnly, err)
+	require.Equal(tb, kv.ErrReadOnly, err)
 
 	// deleting non-existed record on read-only tx must still fail
 	err = tx.Del(nokey)
-	require.Equal(t, kv.ErrReadOnly, err)
+	require.Equal(tb, kv.ErrReadOnly, err)
 }
 
-func seek(t testing.TB, db kv.KV) {
-	td := NewTest(t, db)
+func seek(tb testing.TB, db kv.KV) {
+	td := NewTest(tb, db)
 
 	keys := []kv.Key{
 		{[]byte("a")},
@@ -157,15 +157,15 @@ func seek(t testing.TB, db kv.KV) {
 		{[]byte("c")},
 	}
 
-	var all []kv.Pair
+	all := make([]kv.Pair, len(keys))
 	for i, k := range keys {
 		v := kv.Value(strconv.Itoa(i))
 		td.Put(k, v)
-		all = append(all, kv.Pair{Key: k, Val: v})
+		all[i] = kv.Pair{Key: k, Val: v}
 	}
 
 	tx, err := db.Tx(false)
-	require.NoError(t, err)
+	require.NoError(tb, err)
 	defer tx.Close()
 
 	ctx := context.TODO()
@@ -181,9 +181,9 @@ func seek(t testing.TB, db kv.KV) {
 	// seek to each key, current value must match corresponding element, and iterating further must return everything else
 	for i, p := range all {
 		ok := kv.Seek(ctx, it, p.Key)
-		require.True(t, ok)
-		require.Equal(t, p.Key, it.Key())
-		require.Equal(t, p.Val, it.Val())
+		require.True(tb, ok)
+		require.Equal(tb, p.Key, it.Key())
+		require.Equal(tb, p.Val, it.Val())
 		td.ExpectIt(it, all[i+1:])
 	}
 
@@ -191,14 +191,14 @@ func seek(t testing.TB, db kv.KV) {
 	for _, off := range []int{1, 2} {
 		for i := range all[:len(all)-off] {
 			ok := kv.Seek(ctx, it, all[i].Key)
-			require.True(t, ok)
-			require.Equal(t, all[i].Key, it.Key())
-			require.Equal(t, all[i].Val, it.Val())
+			require.True(tb, ok)
+			require.Equal(tb, all[i].Key, it.Key())
+			require.Equal(tb, all[i].Val, it.Val())
 
 			ok = kv.Seek(ctx, it, all[i+off].Key)
-			require.True(t, ok)
-			require.Equal(t, all[i+off].Key, it.Key())
-			require.Equal(t, all[i+off].Val, it.Val())
+			require.True(tb, ok)
+			require.Equal(tb, all[i+off].Key, it.Key())
+			require.Equal(tb, all[i+off].Val, it.Val())
 
 			td.ExpectIt(it, all[i+off+1:])
 		}
@@ -211,14 +211,14 @@ func seek(t testing.TB, db kv.KV) {
 				continue
 			}
 			ok := kv.Seek(ctx, it, all[i].Key)
-			require.True(t, ok)
-			require.Equal(t, all[i].Key, it.Key())
-			require.Equal(t, all[i].Val, it.Val())
+			require.True(tb, ok)
+			require.Equal(tb, all[i].Key, it.Key())
+			require.Equal(tb, all[i].Val, it.Val())
 
 			ok = kv.Seek(ctx, it, all[i-off].Key)
-			require.True(t, ok)
-			require.Equal(t, all[i-off].Key, it.Key())
-			require.Equal(t, all[i-off].Val, it.Val())
+			require.True(tb, ok)
+			require.Equal(tb, all[i-off].Key, it.Key())
+			require.Equal(tb, all[i-off].Val, it.Val())
 
 			td.ExpectIt(it, all[i-off+1:])
 		}
@@ -228,8 +228,8 @@ func seek(t testing.TB, db kv.KV) {
 	td.ExpectIt(it, all)
 }
 
-func increment(t testing.TB, db kv.KV) {
-	td := NewTest(t, db)
+func increment(tb testing.TB, db kv.KV) {
+	td := NewTest(tb, db)
 
 	key := kv.Key{[]byte("a")}
 	td.Put(key, []byte("0"))
@@ -266,7 +266,7 @@ func increment(t testing.TB, db kv.KV) {
 	wg.Wait()
 	select {
 	case err := <-errc:
-		require.NoError(t, err)
+		require.NoError(tb, err)
 	default:
 	}
 	td.Expect(key, []byte("10"))

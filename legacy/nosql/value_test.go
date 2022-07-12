@@ -1,34 +1,35 @@
-package nosql
+package nosql_test
 
 import (
 	"testing"
 
+	"github.com/hidal-go/hidalgo/legacy/nosql"
 	"github.com/stretchr/testify/require"
 )
 
 var filterMatch = []struct {
-	f   FieldFilter
-	d   Document
+	d   nosql.Document
+	f   nosql.FieldFilter
 	exp bool
 }{
 	{
-		f:   FieldFilter{Path: []string{"value", "str"}, Filter: GT, Value: String("f")},
-		d:   Document{"value": Document{"str": String("bob")}},
+		f:   nosql.FieldFilter{Path: []string{"value", "str"}, Filter: nosql.GT, Value: nosql.String("f")},
+		d:   nosql.Document{"value": nosql.Document{"str": nosql.String("bob")}},
 		exp: false,
 	},
 	{
-		f:   FieldFilter{Path: []string{"value", "str"}, Filter: Equal, Value: String("f")},
-		d:   Document{"value": Document{"str": String("bob")}},
+		f:   nosql.FieldFilter{Path: []string{"value", "str"}, Filter: nosql.Equal, Value: nosql.String("f")},
+		d:   nosql.Document{"value": nosql.Document{"str": nosql.String("bob")}},
 		exp: false,
 	},
 	{
-		f:   FieldFilter{Path: []string{"value", "str"}, Filter: Equal, Value: String("bob")},
-		d:   Document{"value": Document{"str": String("bob")}},
+		f:   nosql.FieldFilter{Path: []string{"value", "str"}, Filter: nosql.Equal, Value: nosql.String("bob")},
+		d:   nosql.Document{"value": nosql.Document{"str": nosql.String("bob")}},
 		exp: true,
 	},
 	{
-		f:   FieldFilter{Path: []string{"value", "str"}, Filter: NotEqual, Value: String("bob")},
-		d:   Document{"value1": Document{"str": String("bob")}},
+		f:   nosql.FieldFilter{Path: []string{"value", "str"}, Filter: nosql.NotEqual, Value: nosql.String("bob")},
+		d:   nosql.Document{"value1": nosql.Document{"str": nosql.String("bob")}},
 		exp: true,
 	},
 }

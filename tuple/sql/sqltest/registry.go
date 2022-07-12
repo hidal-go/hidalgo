@@ -13,8 +13,8 @@ type Registration struct {
 }
 
 type Version struct {
-	Name    string
 	Factory Database
+	Name    string
 }
 
 var registry = make(map[string][]Version)
@@ -63,7 +63,7 @@ func ByName(name string) *Registration {
 }
 
 func allNames() []string {
-	var names []string
+	names := make([]string, 0, len(registry))
 	for name := range registry {
 		names = append(names, name)
 	}

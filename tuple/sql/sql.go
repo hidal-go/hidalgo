@@ -3,6 +3,7 @@ package sqltuple
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"log"
 	"strconv"
@@ -64,8 +65,7 @@ func (s *sqlStore) convError(err error) error {
 	if s.dia.Errors != nil {
 		err = s.dia.Errors(err)
 	}
-	switch err {
-	case ErrTableNotFound:
+	if errors.Is(err, ErrTableNotFound) {
 		return tuple.ErrTableNotFound
 	}
 	return err
@@ -567,7 +567,7 @@ func (tbl *sqlTable) GetTuple(ctx context.Context, key tuple.Key) (tuple.Data, e
 	b.Write(" LIMIT 1")
 	row := tbl.tx.db.queryRow(ctx, tbl.tx.tx, b.String(), b.Args()...)
 	data, err := tbl.scanPayload(row)
-	if err == sql.ErrNoRows {
+	if errors.Is(err, sql.ErrNoRows) {
 		return nil, tuple.ErrNotFound
 	} else if err != nil {
 		return nil, err
@@ -765,7 +765,7 @@ func (tbl *sqlTable) DeleteTuples(ctx context.Context, f *tuple.Filter) error {
 	return it.Err()
 }
 
-func (tbl *sqlTable) scan(open rowsFunc, keysOnly bool, f *tuple.Filter) tuple.Iterator {
+func (tbl *sqlTable) scan(open rowsFunc, keysOnly bool, f *tuple.Filter) *sqlIterator {
 	return &sqlIterator{tbl: tbl, open: open, f: f, keysOnly: keysOnly}
 }
 
@@ -816,15 +816,13 @@ func (tbl *sqlTable) Scan(opt *tuple.ScanOptions) tuple.Iterator {
 type rowsFunc func(ctx context.Context) (*sql.Rows, error)
 
 type sqlIterator struct {
-	tbl *sqlTable
-
+	err      error
 	rows     *sql.Rows
 	open     rowsFunc
-	keysOnly bool
 	f        *tuple.Filter
-
-	t   *tuple.Tuple
-	err error
+	t        *tuple.Tuple
+	tbl      *sqlTable
+	keysOnly bool
 }
 
 func (it *sqlIterator) Reset() {

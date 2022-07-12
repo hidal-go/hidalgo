@@ -15,8 +15,8 @@ import (
 )
 
 type Database struct {
+	Run    func(tb testing.TB) nosql.Database
 	Traits nosql.Traits
-	Run    func(t testing.TB) nosql.Database
 }
 
 func TestNoSQL(t *testing.T, gen Database) {
@@ -47,7 +47,7 @@ func TestNoSQL(t *testing.T, gen Database) {
 	}
 }
 
-func BenchmarkNoSQL(t *testing.B, gen Database) {
+func BenchmarkNoSQL(b *testing.B, gen Database) {
 	// TODO
 }
 
@@ -56,9 +56,9 @@ func init() {
 }
 
 type keyType struct {
+	Gen    func() nosql.Key
 	Name   string
 	Fields []string
-	Gen    func() nosql.Key
 }
 
 func (kt keyType) SetKey(d nosql.Document, k nosql.Key) {
@@ -115,8 +115,8 @@ var keyTypes = []keyType{
 }
 
 var testsNoSQLKey = []struct {
-	name string
 	t    func(t *testing.T, c tableConf)
+	name string
 }{
 	{name: "ensure", t: testEnsure},
 	{name: "insert", t: testInsert},
@@ -129,16 +129,16 @@ type tableConf struct {
 	ctx context.Context
 	db  nosql.Database
 	col string
-	tr  nosql.Traits
 	kt  keyType
+	tr  nosql.Traits
 }
 
-func (c tableConf) ensurePK(t testing.TB, secondary ...nosql.Index) {
+func (c tableConf) ensurePK(tb testing.TB, secondary ...nosql.Index) {
 	err := c.db.EnsureIndex(c.ctx, c.col, nosql.Index{
 		Fields: c.kt.Fields,
 		Type:   nosql.StringExact,
 	}, secondary)
-	require.NoError(t, err)
+	require.NoError(tb, err)
 }
 
 func (c tableConf) FindByKey(key nosql.Key) (nosql.Document, error) {
@@ -154,11 +154,11 @@ func (c tableConf) fixDoc(k nosql.Key, d nosql.Document) {
 	fixDoc(&c.tr, d)
 }
 
-func (c tableConf) expectAll(t testing.TB, docs []nosql.Document) {
-	iterateExpect(t, c.kt, c.db.Query(c.col), docs)
+func (c tableConf) expectAll(tb testing.TB, docs []nosql.Document) {
+	iterateExpect(tb, c.kt, c.db.Query(c.col), docs)
 }
 
-func (c tableConf) insertDocs(t testing.TB, n int, fnc func(i int) nosql.Document) ([]nosql.Key, []nosql.Document) {
+func (c tableConf) insertDocs(tb testing.TB, n int, fnc func(i int) nosql.Document) ([]nosql.Key, []nosql.Document) {
 	var docs []nosql.Document
 	w := nosql.BatchInsert(c.db, c.col)
 	defer w.Close()
@@ -169,18 +169,18 @@ func (c tableConf) insertDocs(t testing.TB, n int, fnc func(i int) nosql.Documen
 			key = c.kt.Gen()
 		}
 		err := w.WriteDoc(c.ctx, key, doc)
-		require.NoError(t, err)
+		require.NoError(tb, err)
 		docs = append(docs, doc)
 	}
 	err := w.Flush(c.ctx)
-	require.NoError(t, err)
+	require.NoError(tb, err)
 
 	keys := w.Keys()
 	for i := range docs {
 		c.fixDoc(keys[i], docs[i])
 	}
 
-	c.expectAll(t, docs)
+	c.expectAll(tb, docs)
 	return keys, docs
 }
 
@@ -273,7 +273,7 @@ func (s docsAndKeys) Swap(i, j int) {
 	s.Keys[i], s.Keys[j] = s.Keys[j], s.Keys[i]
 }
 
-func iterateExpect(t testing.TB, kt keyType, qu nosql.Query, exp []nosql.Document) {
+func iterateExpect(tb testing.TB, kt keyType, qu nosql.Query, exp []nosql.Document) {
 	ctx := context.TODO()
 
 	it := qu.Iterate()
@@ -286,7 +286,8 @@ func iterateExpect(t testing.TB, kt keyType, qu nosql.Query, exp []nosql.Documen
 		keys = append(keys, it.Key())
 		got = append(got, it.Doc())
 	}
-	require.NoError(t, it.Err())
+
+	require.NoError(tb, it.Err())
 
 	sorter := byFields(kt.Fields)
 	exp = append([]nosql.Document{}, exp...)
@@ -294,20 +295,23 @@ func iterateExpect(t testing.TB, kt keyType, qu nosql.Query, exp []nosql.Documen
 		return sorter.Less(exp[i], exp[j])
 	})
 	var expKeys []nosql.Key
-	for _, d := range exp {
-		expKeys = append(expKeys, sorter.Key(d))
+	if len(exp) > 0 {
+		expKeys = make([]nosql.Key, 0, len(exp))
+		for _, d := range exp {
+			expKeys = append(expKeys, sorter.Key(d))
+		}
 	}
 
 	sort.Sort(docsAndKeys{
 		LessFunc: sorter.Less,
 		Docs:     got, Keys: keys,
 	})
-	require.Equal(t, exp, got)
-	require.Equal(t, expKeys, keys)
+	require.Equal(tb, exp, got)
+	require.Equal(tb, expKeys, keys)
 
 	n, err := qu.Count(ctx)
-	require.NoError(t, err)
-	require.Equal(t, int64(len(exp)), int64(n))
+	require.NoError(tb, err)
+	require.Equal(tb, int64(len(exp)), int64(n))
 }
 
 func testEnsure(t *testing.T, c tableConf) {
@@ -327,8 +331,8 @@ func testInsert(t *testing.T, c tableConf) {
 	c.expectAll(t, nil)
 
 	type insert struct {
-		Key nosql.Key
 		Doc nosql.Document
+		Key nosql.Key
 	}
 
 	k1 := c.kt.Gen()
@@ -355,8 +359,8 @@ func testInsert(t *testing.T, c tableConf) {
 	}
 	for i := range ins {
 		in := &ins[i]
-		k, err := c.Insert(in.Key, in.Doc)
-		require.NoError(t, err)
+		k, er := c.Insert(in.Key, in.Doc)
+		require.NoError(t, er)
 		if in.Key == nil {
 			require.NotNil(t, k)
 			in.Key = k
@@ -365,10 +369,10 @@ func testInsert(t *testing.T, c tableConf) {
 		}
 	}
 
-	var docs []nosql.Document
+	docs := make([]nosql.Document, 0, len(ins))
 	for _, in := range ins {
-		doc, err := c.FindByKey(in.Key)
-		require.NoError(t, err, "find %#v", in.Key)
+		doc, er := c.FindByKey(in.Key)
+		require.NoError(t, er, "find %#v", in.Key)
 		c.fixDoc(in.Key, in.Doc)
 		require.Equal(t, in.Doc, doc, "got: %#v", doc)
 		docs = append(docs, in.Doc)
@@ -416,7 +420,7 @@ func testUpdate(t *testing.T, c tableConf) {
 			"n": nosql.Int(2),
 		},
 	}
-	var keys []nosql.Key
+	keys := make([]nosql.Key, 0, len(docs))
 	for range docs {
 		keys = append(keys, c.kt.Gen())
 	}

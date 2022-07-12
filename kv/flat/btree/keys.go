@@ -79,22 +79,22 @@ func init() {
 
 var (
 	btDPool = sync.Pool{New: func() interface{} { return &d{} }}
-	btEPool = btEpool{sync.Pool{New: func() interface{} { return &Enumerator{} }}}
-	btTPool = btTpool{sync.Pool{New: func() interface{} { return &Tree{} }}}
+	btEPool = enumPool{sync.Pool{New: func() interface{} { return &Enumerator{} }}}
+	btTPool = treePool{sync.Pool{New: func() interface{} { return &Tree{} }}}
 	btXPool = sync.Pool{New: func() interface{} { return &x{} }}
 )
 
-type btTpool struct{ sync.Pool }
+type treePool struct{ sync.Pool }
 
-func (p *btTpool) get(cmp Cmp) *Tree {
+func (p *treePool) get(cmp Cmp) *Tree {
 	x := p.Get().(*Tree)
 	x.cmp = cmp
 	return x
 }
 
-type btEpool struct{ sync.Pool }
+type enumPool struct{ sync.Pool }
 
-func (p *btEpool) get(err error, hit bool, i int, k []byte, q *d, t *Tree, ver int64) *Enumerator {
+func (p *enumPool) get(err error, hit bool, i int, k []byte, q *d, t *Tree, ver int64) *Enumerator {
 	x := p.Get().(*Enumerator)
 	x.err, x.hit, x.i, x.k, x.q, x.t, x.ver = err, hit, i, k, q, t, ver
 	return x
@@ -110,10 +110,10 @@ type (
 	Cmp func(a, b []byte) int
 
 	d struct { // data page
-		c int
-		d [2*kd + 1]de
 		n *d
 		p *d
+		d [2*kd + 1]de
+		c int
 	}
 
 	de struct { // d element
@@ -131,21 +131,21 @@ type (
 	// other words, io.EOF from an Enumaretor is "sticky" (idempotent).
 	Enumerator struct {
 		err error
-		hit bool
-		i   int
-		k   []byte
 		q   *d
 		t   *Tree
+		k   []byte
+		i   int
 		ver int64
+		hit bool
 	}
 
 	// Tree is a B+tree.
 	Tree struct {
-		c     int
+		r     interface{}
 		cmp   Cmp
 		first *d
 		last  *d
-		r     interface{}
+		c     int
 		ver   int64
 	}
 
@@ -155,8 +155,8 @@ type (
 	}
 
 	x struct { // index page
-		c int
 		x [2*kx + 2]xe
+		c int
 	}
 )
 
@@ -332,7 +332,7 @@ func (t *Tree) catX(p, q, r *x, pi int) {
 
 // Delete removes the k's KV pair, if it exists, in which case Delete returns
 // true.
-func (t *Tree) Delete(k []byte) (ok bool) {
+func (t *Tree) Delete(k []byte) bool {
 	pi := -1
 	var p *x
 	q := t.r
@@ -341,8 +341,7 @@ func (t *Tree) Delete(k []byte) (ok bool) {
 	}
 
 	for {
-		var i int
-		i, ok = t.find(q, k)
+		i, ok := t.find(q, k)
 		if ok {
 			switch x := q.(type) {
 			case *x:
@@ -352,7 +351,6 @@ func (t *Tree) Delete(k []byte) (ok bool) {
 				pi = i + 1
 				p = x
 				q = x.x[pi].ch
-				ok = false
 				continue
 			case *d:
 				t.extract(x, i)
@@ -864,37 +862,37 @@ func (e *Enumerator) Close() {
 // next item in the key collation order. If there is no item to return, err ==
 // io.EOF is returned.
 func (e *Enumerator) Next() (k, v []byte, err error) {
-	if err = e.err; err != nil {
-		return
+	if e.err != nil {
+		return nil, nil, e.err
 	}
 
 	if e.ver != e.t.ver {
 		f, hit := e.t.Seek(e.k)
 		if !e.hit && hit {
 			if err = f.next(); err != nil {
-				return
+				return nil, nil, err
 			}
 		}
 
 		*e = *f
 		f.Close()
 	}
+
 	if e.q == nil {
-		e.err, err = io.EOF, io.EOF
-		return
+		e.err = io.EOF
+		return nil, nil, io.EOF
 	}
 
 	if e.i >= e.q.c {
 		if err = e.next(); err != nil {
-			return
+			return nil, nil, err
 		}
 	}
 
 	i := e.q.d[e.i]
-	k, v = i.k, i.v
-	e.k, e.hit = k, false
-	e.next()
-	return
+	e.k, e.hit = i.k, false
+	_ = e.next()
+	return i.k, i.v, err
 }
 
 func (e *Enumerator) next() error {
@@ -911,6 +909,7 @@ func (e *Enumerator) next() error {
 			e.err = io.EOF
 		}
 	}
+
 	return e.err
 }
 
@@ -918,37 +917,37 @@ func (e *Enumerator) next() error {
 // previous item in the key collation order. If there is no item to return, err
 // == io.EOF is returned.
 func (e *Enumerator) Prev() (k, v []byte, err error) {
-	if err = e.err; err != nil {
-		return
+	if e.err != nil {
+		return nil, nil, e.err
 	}
 
 	if e.ver != e.t.ver {
 		f, hit := e.t.Seek(e.k)
 		if !e.hit && hit {
 			if err = f.prev(); err != nil {
-				return
+				return nil, nil, err
 			}
 		}
 
 		*e = *f
 		f.Close()
 	}
+
 	if e.q == nil {
-		e.err, err = io.EOF, io.EOF
-		return
+		e.err = io.EOF
+		return nil, nil, io.EOF
 	}
 
 	if e.i >= e.q.c {
 		if err = e.next(); err != nil {
-			return
+			return nil, nil, err
 		}
 	}
 
 	i := e.q.d[e.i]
-	k, v = i.k, i.v
-	e.k, e.hit = k, false
-	e.prev()
-	return
+	e.k, e.hit = i.k, false
+	_ = e.prev()
+	return i.k, i.v, err
 }
 
 func (e *Enumerator) prev() error {
@@ -968,5 +967,6 @@ func (e *Enumerator) prev() error {
 
 		e.i = e.q.c - 1
 	}
+
 	return e.err
 }

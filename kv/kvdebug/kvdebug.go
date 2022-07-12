@@ -2,6 +2,7 @@ package kvdebug
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log"
 	"sync/atomic"
@@ -40,6 +41,8 @@ type Stats struct {
 }
 
 type KV struct {
+	KV kv.KV
+
 	stats   Stats
 	running struct {
 		txRO int64
@@ -47,8 +50,6 @@ type KV struct {
 		iter int64
 	}
 	log bool
-
-	KV kv.KV
 }
 
 func (d *KV) logging() bool {
@@ -148,7 +149,7 @@ func (tx *kvTX) Get(ctx context.Context, k kv.Key) (kv.Value, error) {
 	v, err := tx.tx.Get(ctx, k)
 	d := tx.kv
 	atomic.AddInt64(&d.stats.Get.N, 1)
-	if err == kv.ErrNotFound {
+	if errors.Is(err, kv.ErrNotFound) {
 		atomic.AddInt64(&d.stats.Get.Miss, 1)
 	} else if err != nil {
 		atomic.AddInt64(&d.stats.Errs, 1)
