@@ -11,7 +11,7 @@ import (
 )
 
 func NewKV(ctx context.Context, db tuple.Store, table string) (flat.KV, error) {
-	tx, err := db.Tx(true)
+	tx, err := db.Tx(ctx, true)
 	if err != nil {
 		return nil, err
 	}
@@ -46,12 +46,12 @@ func (kv *flatKV) Close() error {
 	return kv.db.Close()
 }
 
-func (kv *flatKV) Tx(rw bool) (flat.Tx, error) {
-	tx, err := kv.db.Tx(rw)
+func (kv *flatKV) Tx(ctx context.Context, rw bool) (flat.Tx, error) {
+	tx, err := kv.db.Tx(ctx, rw)
 	if err != nil {
 		return nil, err
 	}
-	tbl, err := tx.Table(context.TODO(), kv.table)
+	tbl, err := tx.Table(ctx, kv.table)
 	if err != nil {
 		tx.Close()
 		return nil, err
@@ -132,22 +132,22 @@ func (tx *flatTx) GetBatch(ctx context.Context, key []flat.Key) ([]flat.Value, e
 	return vals, nil
 }
 
-func (tx *flatTx) Put(k flat.Key, v flat.Value) error {
-	return tx.tbl.UpdateTuple(context.TODO(), tuple.Tuple{
+func (tx *flatTx) Put(ctx context.Context, k flat.Key, v flat.Value) error {
+	return tx.tbl.UpdateTuple(ctx, tuple.Tuple{
 		Key:  flatKey(k),
 		Data: flatData(v),
 	}, &tuple.UpdateOpt{Upsert: true})
 }
 
-func (tx *flatTx) Del(k flat.Key) error {
-	return tx.tbl.DeleteTuples(context.TODO(), &tuple.Filter{
+func (tx *flatTx) Del(ctx context.Context, k flat.Key) error {
+	return tx.tbl.DeleteTuples(ctx, &tuple.Filter{
 		KeyFilter: tuple.Keys{flatKey(k)},
 	})
 }
 
-func (tx *flatTx) Scan(opts ...flat.IteratorOption) flat.Iterator {
-	tit := &flatIterator{tx: tx}
-	tit.seek(nil)
+func (tx *flatTx) Scan(ctx context.Context, opts ...flat.IteratorOption) flat.Iterator {
+	tit := &flatIterator{ctx: ctx, tx: tx}
+	tit.seek(ctx, nil)
 	var it flat.Iterator = tit
 	it = flat.ApplyIteratorOptions(it, opts)
 	return it
@@ -159,6 +159,7 @@ var (
 )
 
 type flatIterator struct {
+	ctx  context.Context
 	tx   *flatTx
 	pref flat.Key
 	it   tuple.Iterator
@@ -174,7 +175,7 @@ func (it *flatIterator) Reset() {
 
 func (it *flatIterator) WithPrefix(pref flat.Key) flat.Iterator {
 	it.pref = pref
-	it.seek(nil)
+	it.seek(it.ctx, nil)
 	return it
 }
 
@@ -198,7 +199,7 @@ func (it *flatIterator) filters() tuple.KeyFilters {
 	}
 }
 
-func (it *flatIterator) seek(key flat.Key) {
+func (it *flatIterator) seek(ctx context.Context, key flat.Key) {
 	it.Reset()
 	if it.it != nil {
 		_ = it.it.Close()
@@ -211,14 +212,14 @@ func (it *flatIterator) seek(key flat.Key) {
 	if len(filters) != 0 {
 		f = &tuple.Filter{KeyFilter: filters}
 	}
-	it.it = it.tx.tbl.Scan(&tuple.ScanOptions{
+	it.it = it.tx.tbl.Scan(ctx, &tuple.ScanOptions{
 		Sort:   tuple.SortAsc,
 		Filter: f,
 	})
 }
 
 func (it *flatIterator) Seek(ctx context.Context, key flat.Key) bool {
-	it.seek(key)
+	it.seek(ctx, key)
 	return it.it.Next(ctx)
 }
 

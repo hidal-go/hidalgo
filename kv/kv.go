@@ -22,7 +22,7 @@ var (
 // KV is an interface for hierarchical key-value databases.
 type KV interface {
 	base.DB
-	Tx(rw bool) (Tx, error)
+	Tx(ctx context.Context, rw bool) (Tx, error)
 	View(ctx context.Context, fn func(tx Tx) error) error
 	Update(ctx context.Context, fn func(tx Tx) error) error
 }
@@ -157,11 +157,11 @@ type Tx interface {
 	// Put writes a key-value pair to the database.
 	// New value will immediately be visible by Get on the same Tx,
 	// but implementation might buffer the write until transaction is committed.
-	Put(k Key, v Value) error
+	Put(ctx context.Context, k Key, v Value) error
 	// Del removes the key from the database. See Put for consistency guaranties.
-	Del(k Key) error
+	Del(ctx context.Context, k Key) error
 	// Scan starts iteration over key-value pairs. Returned results are affected by IteratorOption.
-	Scan(opts ...IteratorOption) Iterator
+	Scan(ctx context.Context, opts ...IteratorOption) Iterator
 }
 
 // GetBatch is an implementation of Tx.GetBatch for databases that has no native implementation for it.

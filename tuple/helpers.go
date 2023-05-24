@@ -6,7 +6,7 @@ import (
 
 // Update is a helper to open a read-write transaction and update the database.
 func Update(ctx context.Context, s Store, update func(tx Tx) error) error {
-	tx, err := s.Tx(true)
+	tx, err := s.Tx(ctx, true)
 	if err != nil {
 		return err
 	}
@@ -22,8 +22,8 @@ func Update(ctx context.Context, s Store, update func(tx Tx) error) error {
 }
 
 // View is a helper to open a read-only transaction to read the database.
-func View(_ context.Context, s Store, view func(tx Tx) error) error {
-	tx, err := s.Tx(false)
+func View(ctx context.Context, s Store, view func(tx Tx) error) error {
+	tx, err := s.Tx(ctx, false)
 	if err != nil {
 		return err
 	}
@@ -63,7 +63,7 @@ type Deleter interface {
 
 func DeleteEach(ctx context.Context, d Deleter, f *Filter) error {
 	// TODO: recognize fixed filters
-	it := d.Scan(&ScanOptions{
+	it := d.Scan(ctx, &ScanOptions{
 		KeysOnly: true,
 		Filter:   f,
 	})

@@ -6,7 +6,6 @@ require (
 	cloud.google.com/go/datastore v1.6.0
 	github.com/boltdb/bolt v1.3.1
 	github.com/cockroachdb/pebble v0.0.0-20220318150003-0ad186894f6d
-	github.com/dennwc/base v1.0.0
 	github.com/dgraph-io/badger/v2 v2.2007.4
 	github.com/go-kivik/couchdb v2.0.0+incompatible
 	github.com/go-kivik/kivik v2.0.0+incompatible

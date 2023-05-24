@@ -51,7 +51,7 @@ func (t *tableInfo) Header() tuple.Header {
 	return t.h.Clone()
 }
 
-func (t *tableInfo) Open(tx tuple.Tx) (tuple.Table, error) {
+func (t *tableInfo) Open(ctx context.Context, tx tuple.Tx) (tuple.Table, error) {
 	dtx, ok := tx.(*Tx)
 	if !ok {
 		return nil, fmt.Errorf("datastore: unexpected tx type: %T", tx)
@@ -92,7 +92,7 @@ func (s *TupleStore) ListTables(ctx context.Context) ([]tuple.TableInfo, error) 
 	return out, nil
 }
 
-func (s *TupleStore) Tx(rw bool) (tuple.Tx, error) {
+func (s *TupleStore) Tx(ctx context.Context, rw bool) (tuple.Tx, error) {
 	return &Tx{s: s, rw: rw}, nil
 }
 
@@ -129,7 +129,7 @@ func (tx *Tx) Table(ctx context.Context, name string) (tuple.Table, error) {
 	if err != nil {
 		return nil, err
 	}
-	return info.Open(tx)
+	return info.Open(ctx, tx)
 }
 
 func (tx *Tx) ListTables(ctx context.Context) ([]tuple.Table, error) {
@@ -139,7 +139,7 @@ func (tx *Tx) ListTables(ctx context.Context) ([]tuple.Table, error) {
 	}
 	out := make([]tuple.Table, 0, len(tables))
 	for _, t := range tables {
-		tbl, err := t.Open(tx)
+		tbl, err := t.Open(ctx, tx)
 		if err != nil {
 			return out, err
 		}
@@ -188,8 +188,8 @@ func (tbl *Table) Header() tuple.Header {
 	return tbl.h.Clone()
 }
 
-func (tbl *Table) Open(tx tuple.Tx) (tuple.Table, error) {
-	return (&tableInfo{h: tbl.h}).Open(tx)
+func (tbl *Table) Open(ctx context.Context, tx tuple.Tx) (tuple.Table, error) {
+	return (&tableInfo{h: tbl.h}).Open(ctx, tx)
 }
 
 func (tbl *Table) cli() *datastore.Client {
@@ -554,7 +554,7 @@ func (tbl *Table) DeleteTuplesByKey(ctx context.Context, keys []tuple.Key) error
 	return tbl.cli().DeleteMulti(ctx, dkeys)
 }
 
-func (tbl *Table) Scan(opt *tuple.ScanOptions) tuple.Iterator {
+func (tbl *Table) Scan(ctx context.Context, opt *tuple.ScanOptions) tuple.Iterator {
 	if opt == nil {
 		opt = &tuple.ScanOptions{}
 	}

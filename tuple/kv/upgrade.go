@@ -36,8 +36,8 @@ func (db *tupleStore) Close() error {
 	return db.db.Close()
 }
 
-func (db *tupleStore) Tx(rw bool) (tuple.Tx, error) {
-	tx, err := db.db.Tx(rw)
+func (db *tupleStore) Tx(ctx context.Context, rw bool) (tuple.Tx, error) {
+	tx, err := db.db.Tx(ctx, rw)
 	if err != nil {
 		return nil, err
 	}
@@ -84,7 +84,7 @@ func (db *tupleStore) tableWith(ctx context.Context, tx kv.Tx, name string) (*tu
 }
 
 func (db *tupleStore) Table(ctx context.Context, name string) (tuple.TableInfo, error) {
-	tx, err := db.db.Tx(false)
+	tx, err := db.db.Tx(ctx, false)
 	if err != nil {
 		return nil, err
 	}
@@ -98,7 +98,7 @@ func (db *tupleStore) Table(ctx context.Context, name string) (tuple.TableInfo, 
 }
 
 func (db *tupleStore) listTablesWith(ctx context.Context, tx kv.Tx) ([]*tupleTableInfo, error) {
-	it := tx.Scan(options.WithPrefixKV(db.tableSchema("")))
+	it := tx.Scan(ctx, options.WithPrefixKV(db.tableSchema("")))
 	defer it.Close()
 	if err := it.Err(); err != nil {
 		return nil, tupleErr(err)
@@ -115,7 +115,7 @@ func (db *tupleStore) listTablesWith(ctx context.Context, tx kv.Tx) ([]*tupleTab
 }
 
 func (db *tupleStore) ListTables(ctx context.Context) ([]tuple.TableInfo, error) {
-	tx, err := db.db.Tx(false)
+	tx, err := db.db.Tx(ctx, false)
 	if err != nil {
 		return nil, err
 	}
@@ -142,7 +142,7 @@ func (t *tupleTableInfo) Header() tuple.Header {
 	return t.h.Clone()
 }
 
-func (t *tupleTableInfo) Open(tx tuple.Tx) (tuple.Table, error) {
+func (t *tupleTableInfo) Open(ctx context.Context, tx tuple.Tx) (tuple.Table, error) {
 	ktx, ok := tx.(*tupleTx)
 	if !ok {
 		return nil, fmt.Errorf("tuplekv: unexpected tx type: %T", tx)
@@ -168,7 +168,7 @@ func (tx *tupleTx) Table(ctx context.Context, name string) (tuple.Table, error) 
 	if err != nil {
 		return nil, err
 	}
-	return info.Open(tx)
+	return info.Open(ctx, tx)
 }
 
 func (tx *tupleTx) ListTables(ctx context.Context) ([]tuple.Table, error) {
@@ -178,7 +178,7 @@ func (tx *tupleTx) ListTables(ctx context.Context) ([]tuple.Table, error) {
 	}
 	out := make([]tuple.Table, 0, len(tables))
 	for _, t := range tables {
-		tbl, err := t.Open(tx)
+		tbl, err := t.Open(ctx, tx)
 		if err != nil {
 			return nil, err
 		}
@@ -202,7 +202,7 @@ func (tx *tupleTx) CreateTable(ctx context.Context, table tuple.Header) (tuple.T
 	if err != nil {
 		return nil, err
 	}
-	err = tx.tx.Put(key, data)
+	err = tx.tx.Put(ctx, key, data)
 	if err != nil {
 		return nil, tupleErr(err)
 	}
@@ -219,8 +219,8 @@ func (tbl *tupleTable) Header() tuple.Header {
 	return tbl.h.Clone()
 }
 
-func (tbl *tupleTable) Open(tx tuple.Tx) (tuple.Table, error) {
-	return (&tupleTableInfo{h: tbl.h}).Open(tx)
+func (tbl *tupleTable) Open(ctx context.Context, tx tuple.Tx) (tuple.Table, error) {
+	return (&tupleTableInfo{h: tbl.h}).Open(ctx, tx)
 }
 
 func (tbl *tupleTable) schema() kv.Key {
@@ -261,15 +261,15 @@ func (tbl *tupleTable) Drop(ctx context.Context) error {
 	if err := tbl.Clear(ctx); err != nil {
 		return err
 	}
-	return tbl.tx.tx.Del(tbl.schema())
+	return tbl.tx.tx.Del(ctx, tbl.schema())
 }
 
 func (tbl *tupleTable) Clear(ctx context.Context) error {
 	// TODO: support prefix delete on kv
-	it := tbl.tx.tx.Scan(options.WithPrefixKV(tbl.row(nil)))
+	it := tbl.tx.tx.Scan(ctx, options.WithPrefixKV(tbl.row(nil)))
 	defer it.Close()
 	for it.Next(ctx) {
-		if err := tbl.tx.tx.Del(it.Key()); err != nil {
+		if err := tbl.tx.tx.Del(ctx, it.Key()); err != nil {
 			return tupleErr(err)
 		}
 	}
@@ -401,7 +401,7 @@ func (tbl *tupleTable) nextAuto(ctx context.Context) (tuple.Key, error) {
 	if err != nil {
 		return nil, err
 	}
-	if err = tbl.tx.tx.Put(key, kv.Value(data)); err != nil {
+	if err = tbl.tx.tx.Put(ctx, key, kv.Value(data)); err != nil {
 		return nil, err
 	}
 	return tuple.Key{last}, nil
@@ -431,7 +431,7 @@ func (tbl *tupleTable) InsertTuple(ctx context.Context, t tuple.Tuple) (tuple.Ke
 	if err != nil {
 		return nil, err
 	}
-	err = tbl.tx.tx.Put(key, val)
+	err = tbl.tx.tx.Put(ctx, key, val)
 	if err != nil {
 		return nil, tupleErr(err)
 	}
@@ -460,7 +460,7 @@ func (tbl *tupleTable) UpdateTuple(ctx context.Context, t tuple.Tuple, opt *tupl
 	if err != nil {
 		return err
 	}
-	err = tbl.tx.tx.Put(key, val)
+	err = tbl.tx.tx.Put(ctx, key, val)
 	if err != nil {
 		return tupleErr(err)
 	}
@@ -480,7 +480,7 @@ func (tbl *tupleTable) DeleteTuples(ctx context.Context, f *tuple.Filter) error 
 			if f.IsAnyData() {
 				// if data won't be filtered - delete tuples directly
 				for _, key := range arr {
-					if err := tbl.tx.tx.Del(tbl.row(key)); err != nil {
+					if err := tbl.tx.tx.Del(ctx, tbl.row(key)); err != nil {
 						return tupleErr(err)
 					}
 				}
@@ -489,17 +489,17 @@ func (tbl *tupleTable) DeleteTuples(ctx context.Context, f *tuple.Filter) error 
 		}
 	}
 	// fallback to iterate + delete
-	it := tbl.scan(f)
+	it := tbl.scan(ctx, f)
 	defer it.Close()
 	for it.Next(ctx) {
-		if err := tbl.tx.tx.Del(it.key()); err != nil {
+		if err := tbl.tx.tx.Del(ctx, it.key()); err != nil {
 			return tupleErr(err)
 		}
 	}
 	return it.Err()
 }
 
-func (tbl *tupleTable) scan(f *tuple.Filter) *tupleIterator {
+func (tbl *tupleTable) scan(ctx context.Context, f *tuple.Filter) *tupleIterator {
 	pref := tbl.row(nil)
 	removeWildcard := func() {
 		if n := len(pref); n != 0 && len(pref[n-1]) == 0 {
@@ -532,20 +532,20 @@ func (tbl *tupleTable) scan(f *tuple.Filter) *tupleIterator {
 	}
 	return &tupleIterator{
 		tbl: tbl, f: f,
-		it: tbl.tx.tx.Scan(options.WithPrefixKV(pref)),
+		it: tbl.tx.tx.Scan(ctx, options.WithPrefixKV(pref)),
 	}
 }
 
-func (tbl *tupleTable) Scan(opt *tuple.ScanOptions) tuple.Iterator {
+func (tbl *tupleTable) Scan(ctx context.Context, opt *tuple.ScanOptions) tuple.Iterator {
 	if opt == nil {
 		opt = &tuple.ScanOptions{}
 	}
 	if opt.Sort == tuple.SortDesc {
 		// FIXME: support descending order
-		return &tupleIterator{err: fmt.Errorf("descending order is not supported yet")}
+		return &tupleIterator{err: fmt.Errorf("descending order is not supported")}
 	}
 	// FIXME: support limit
-	return tbl.scan(opt.Filter)
+	return tbl.scan(ctx, opt.Filter)
 }
 
 type tupleIterator struct {

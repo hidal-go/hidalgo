@@ -7,7 +7,7 @@ import "context"
 func Update(ctx context.Context, kv KV, update func(tx Tx) error) error {
 	for {
 		err := func() error {
-			tx, err := kv.Tx(true)
+			tx, err := kv.Tx(ctx, true)
 			if err != nil {
 				return err
 			}
@@ -29,7 +29,7 @@ func Update(ctx context.Context, kv KV, update func(tx Tx) error) error {
 
 // View is a helper to open a read-only transaction to read the database.
 func View(ctx context.Context, kv KV, view func(tx Tx) error) error {
-	tx, err := kv.Tx(false)
+	tx, err := kv.Tx(ctx, false)
 	if err != nil {
 		return err
 	}
@@ -44,7 +44,7 @@ func View(ctx context.Context, kv KV, view func(tx Tx) error) error {
 // Each is a helper to enumerate all key-value pairs with a specific prefix.
 // See Iterator for rules of using returned values.
 func Each(ctx context.Context, tx Tx, fnc func(k Key, v Value) error, opts ...IteratorOption) error {
-	it := tx.Scan(opts...)
+	it := tx.Scan(ctx, opts...)
 	defer it.Close()
 	for it.Next(ctx) {
 		if err := fnc(it.Key(), it.Val()); err != nil {
@@ -55,8 +55,8 @@ func Each(ctx context.Context, tx Tx, fnc func(k Key, v Value) error, opts ...It
 }
 
 // CreateBucket is a helper to create buckets upfront without writing any key-value pairs to it.
-func CreateBucket(_ context.Context, tx Tx, key Key) error {
+func CreateBucket(ctx context.Context, tx Tx, key Key) error {
 	key = key.Clone()
 	key = append(key, nil)
-	return tx.Put(key, nil)
+	return tx.Put(ctx, key, nil)
 }

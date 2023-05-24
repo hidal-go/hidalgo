@@ -33,8 +33,8 @@ func init() {
 			Local: false, Volatile: false,
 		},
 		Traits: Traits(),
-		Open: func(addr, ns string, opt nosql.Options) (nosql.Database, error) {
-			db, err := Dial(addr, ns, opt)
+		Open: func(ctx context.Context, addr, ns string, opt nosql.Options) (nosql.Database, error) {
+			db, err := Dial(ctx, addr, ns, opt)
 			if err != nil {
 				return nil, err
 			}
@@ -51,7 +51,7 @@ func dialElastic(addr string) (*elastic.Client, error) {
 	return client, nil
 }
 
-func Dial(addr, index string, opt nosql.Options) (*DB, error) {
+func Dial(ctx context.Context, addr, index string, opt nosql.Options) (*DB, error) {
 	client, err := dialElastic(addr)
 	if err != nil {
 		return nil, err
@@ -557,7 +557,7 @@ func (q *Query) One(ctx context.Context) (nosql.Document, error) {
 	return q.c.convDoc(resp.Hits.Hits[0]), nil
 }
 
-func (q *Query) Iterate() nosql.DocIterator {
+func (q *Query) Iterate(ctx context.Context) nosql.DocIterator {
 	qu := q.cli.Scroll(q.ind).Type(q.c.typ)
 	if q.limit > 0 {
 		qu = qu.Size(int(q.limit))

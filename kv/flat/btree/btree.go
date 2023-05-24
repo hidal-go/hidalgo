@@ -58,7 +58,7 @@ func (db *DB) Close() error {
 	return nil
 }
 
-func (db *DB) Tx(rw bool) (flat.Tx, error) {
+func (db *DB) Tx(ctx context.Context, rw bool) (flat.Tx, error) {
 	return &Tx{t: db.t, rw: rw}, nil
 }
 
@@ -101,7 +101,7 @@ func (tx *Tx) Close() error {
 	return nil
 }
 
-func (tx *Tx) Put(k flat.Key, v flat.Value) error {
+func (tx *Tx) Put(ctx context.Context, k flat.Key, v flat.Value) error {
 	if !tx.rw {
 		return flat.ErrReadOnly
 	}
@@ -109,7 +109,7 @@ func (tx *Tx) Put(k flat.Key, v flat.Value) error {
 	return nil
 }
 
-func (tx *Tx) Del(k flat.Key) error {
+func (tx *Tx) Del(ctx context.Context, k flat.Key) error {
 	if !tx.rw {
 		return flat.ErrReadOnly
 	}
@@ -117,7 +117,7 @@ func (tx *Tx) Del(k flat.Key) error {
 	return nil
 }
 
-func (tx *Tx) Scan(opts ...flat.IteratorOption) flat.Iterator {
+func (tx *Tx) Scan(ctx context.Context, opts ...flat.IteratorOption) flat.Iterator {
 	var it flat.Iterator = &Iterator{t: tx.t}
 	it = flat.ApplyIteratorOptions(it, opts)
 	return it

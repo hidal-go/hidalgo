@@ -79,8 +79,8 @@ func (hkv *hieKV) Close() error {
 	return hkv.flat.Close()
 }
 
-func (hkv *hieKV) Tx(rw bool) (kv.Tx, error) {
-	tx, err := hkv.flat.Tx(rw)
+func (hkv *hieKV) Tx(ctx context.Context, rw bool) (kv.Tx, error) {
+	tx, err := hkv.flat.Tx(ctx, rw)
 	if err != nil {
 		return nil, err
 	}
@@ -128,21 +128,21 @@ func (tx *flatTx) Close() error {
 	return tx.tx.Close()
 }
 
-func (tx *flatTx) Put(k kv.Key, v kv.Value) error {
+func (tx *flatTx) Put(ctx context.Context, k kv.Key, v kv.Value) error {
 	if !tx.rw {
 		return kv.ErrReadOnly
 	}
-	return tx.tx.Put(tx.key(k), v)
+	return tx.tx.Put(ctx, tx.key(k), v)
 }
 
-func (tx *flatTx) Del(k kv.Key) error {
+func (tx *flatTx) Del(ctx context.Context, k kv.Key) error {
 	if !tx.rw {
 		return kv.ErrReadOnly
 	}
-	return tx.tx.Del(tx.key(k))
+	return tx.tx.Del(ctx, tx.key(k))
 }
 
-func (tx *flatTx) Scan(opts ...kv.IteratorOption) kv.Iterator {
+func (tx *flatTx) Scan(ctx context.Context, opts ...kv.IteratorOption) kv.Iterator {
 	var (
 		native   []IteratorOption
 		fallback []kv.IteratorOption
@@ -154,7 +154,7 @@ func (tx *flatTx) Scan(opts ...kv.IteratorOption) kv.Iterator {
 			fallback = append(fallback, opt)
 		}
 	}
-	it := &prefIter{kv: tx.kv, Iterator: tx.tx.Scan(native...)}
+	it := &prefIter{kv: tx.kv, Iterator: tx.tx.Scan(ctx, native...)}
 	return kv.ApplyIteratorOptions(it, fallback)
 }
 

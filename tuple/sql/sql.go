@@ -114,7 +114,7 @@ func (s *sqlStore) execb(ctx context.Context, tx *sql.Tx, b *Builder) (sql.Resul
 	return s.exec(ctx, tx, qu, args...)
 }
 
-func (s *sqlStore) Tx(rw bool) (tuple.Tx, error) {
+func (s *sqlStore) Tx(ctx context.Context, rw bool) (tuple.Tx, error) {
 	tx, err := s.db.Begin()
 	if err != nil {
 		return nil, err
@@ -142,7 +142,7 @@ func (t *sqlTableInfo) Header() tuple.Header {
 	return t.h.Clone()
 }
 
-func (t *sqlTableInfo) Open(tx tuple.Tx) (tuple.Table, error) {
+func (t *sqlTableInfo) Open(ctx context.Context, tx tuple.Tx) (tuple.Table, error) {
 	stx, ok := tx.(*sqlTx)
 	if !ok {
 		return nil, fmt.Errorf("sql: unexpected tx type: %T", tx)
@@ -273,7 +273,7 @@ func (tx *sqlTx) Table(ctx context.Context, name string) (tuple.Table, error) {
 	if err != nil {
 		return nil, err
 	}
-	return info.Open(tx)
+	return info.Open(ctx, tx)
 }
 
 func (tx *sqlTx) ListTables(ctx context.Context) ([]tuple.Table, error) {
@@ -283,7 +283,7 @@ func (tx *sqlTx) ListTables(ctx context.Context) ([]tuple.Table, error) {
 	}
 	out := make([]tuple.Table, 0, len(tables))
 	for _, t := range tables {
-		tbl, err := t.Open(tx)
+		tbl, err := t.Open(ctx, tx)
 		if err != nil {
 			return out, err
 		}
@@ -373,8 +373,8 @@ func (tbl *sqlTable) Header() tuple.Header {
 	return tbl.h.Clone()
 }
 
-func (tbl *sqlTable) Open(tx tuple.Tx) (tuple.Table, error) {
-	return (&sqlTableInfo{h: tbl.h}).Open(tx)
+func (tbl *sqlTable) Open(ctx context.Context, tx tuple.Tx) (tuple.Table, error) {
+	return (&sqlTableInfo{h: tbl.h}).Open(ctx, tx)
 }
 
 func (tbl *sqlTable) sqlType(t values.Type, key bool) string {
@@ -804,7 +804,7 @@ func (tbl *sqlTable) scanWhere(opt *tuple.ScanOptions, where func(*Builder)) tup
 	}, opt.KeysOnly, opt.Filter)
 }
 
-func (tbl *sqlTable) Scan(opt *tuple.ScanOptions) tuple.Iterator {
+func (tbl *sqlTable) Scan(ctx context.Context, opt *tuple.ScanOptions) tuple.Iterator {
 	if opt == nil {
 		opt = &tuple.ScanOptions{}
 	}

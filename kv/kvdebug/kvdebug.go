@@ -2,6 +2,7 @@ package kvdebug
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log"
 	"sync/atomic"
@@ -77,8 +78,8 @@ func (d *KV) Close() error {
 	return err
 }
 
-func (d *KV) Tx(rw bool) (kv.Tx, error) {
-	tx, err := d.KV.Tx(rw)
+func (d *KV) Tx(ctx context.Context, rw bool) (kv.Tx, error) {
+	tx, err := d.KV.Tx(ctx, rw)
 	if err != nil {
 		if tx != nil {
 			panic("tx should be nil on error")
@@ -180,11 +181,11 @@ func (tx *kvTX) GetBatch(ctx context.Context, keys []kv.Key) ([]kv.Value, error)
 	return vals, err
 }
 
-func (tx *kvTX) Put(k kv.Key, v kv.Value) error {
+func (tx *kvTX) Put(ctx context.Context, k kv.Key, v kv.Value) error {
 	if !tx.rw {
-		panic("put in RO transaction")
+		return errors.New("read-only transaction")
 	}
-	err := tx.tx.Put(k, v)
+	err := tx.tx.Put(ctx, k, v)
 	d := tx.kv
 	atomic.AddInt64(&d.stats.Put.N, 1)
 	if err != nil {
@@ -196,11 +197,11 @@ func (tx *kvTX) Put(k kv.Key, v kv.Value) error {
 	return err
 }
 
-func (tx *kvTX) Del(k kv.Key) error {
+func (tx *kvTX) Del(ctx context.Context, k kv.Key) error {
 	if !tx.rw {
 		panic("del in RO transaction")
 	}
-	err := tx.tx.Del(k)
+	err := tx.tx.Del(ctx, k)
 	d := tx.kv
 	atomic.AddInt64(&d.stats.Del.N, 1)
 	if err != nil {
@@ -212,14 +213,14 @@ func (tx *kvTX) Del(k kv.Key) error {
 	return err
 }
 
-func (tx *kvTX) Scan(opts ...kv.IteratorOption) kv.Iterator {
+func (tx *kvTX) Scan(ctx context.Context, opts ...kv.IteratorOption) kv.Iterator {
 	d := tx.kv
 	atomic.AddInt64(&d.running.iter, 1)
 	atomic.AddInt64(&d.stats.Iter.N, 1)
 	if d.logging() {
 		log.Printf("scan: %+v", opts)
 	}
-	return &kvIter{kv: tx.kv, it: tx.tx.Scan(opts...)}
+	return &kvIter{kv: tx.kv, it: tx.tx.Scan(ctx, opts...)}
 }
 
 type kvIter struct {
