@@ -40,9 +40,7 @@ func DialDriver(ctx context.Context, driver, addr, dbName string) (*kivik.Client
 	return cli, dbName, err
 }
 
-func Dial(create bool, driver, addr, ns string, opt nosql.Options) (*DB, error) {
-	ctx := context.TODO() // TODO - replace with parameter value
-
+func Dial(ctx context.Context, create bool, driver, addr, ns string, opt nosql.Options) (*DB, error) {
 	client, dbName, err := DialDriver(ctx, driver, addr, ns)
 	if err != nil {
 		return nil, fmt.Errorf("cannot open driver: %v", err)
@@ -341,7 +339,7 @@ func (q *Query) Limit(n int) nosql.Query {
 func (q *Query) Count(ctx context.Context) (int64, error) {
 	// TODO it should be possible to use map/reduce logic, rather than a mango query, to speed this up, at least for some cases
 
-	it := q.Iterate().(*Iterator)
+	it := q.Iterate(ctx).(*Iterator)
 	it.qu = it.qu.clone()
 	// don't pull back any fields in the query, to reduce bandwidth
 	it.qu["fields"] = []interface{}{}
@@ -358,7 +356,7 @@ func (q *Query) Count(ctx context.Context) (int64, error) {
 }
 
 func (q *Query) One(ctx context.Context) (nosql.Document, error) {
-	it := q.Iterate()
+	it := q.Iterate(ctx)
 	defer it.Close()
 	if err := it.Err(); err != nil {
 		return nil, err
@@ -369,7 +367,7 @@ func (q *Query) One(ctx context.Context) (nosql.Document, error) {
 	return nil, nosql.ErrNotFound
 }
 
-func (q *Query) Iterate() nosql.DocIterator {
+func (q *Query) Iterate(ctx context.Context) nosql.DocIterator {
 	q.buildFilters()
 
 	// NOTE: to see that the query actually is using an index, uncomment the lines below
@@ -528,7 +526,7 @@ func (d *Delete) Do(ctx context.Context) error {
 		// only pull back the _id & _rev fields in the query
 		d.q.qu["fields"] = []interface{}{idField, revField}
 
-		it := d.q.Iterate().(*Iterator)
+		it := d.q.Iterate(ctx).(*Iterator)
 		for it.Next(ctx) {
 			id := it.doc[idField].(string)
 			rev := it.doc[revField].(string)

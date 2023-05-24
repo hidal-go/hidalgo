@@ -4,12 +4,14 @@
 package couchtest
 
 import (
+	"context"
 	"fmt"
 	"io/ioutil"
 	"math/rand"
 	"os"
 	"testing"
 
+	"github.com/go-kivik/kivik"
 	"github.com/hidal-go/hidalgo/legacy/nosql"
 	"github.com/hidal-go/hidalgo/legacy/nosql/couch"
 	"github.com/hidal-go/hidalgo/legacy/nosql/nosqltest"
@@ -35,17 +37,17 @@ func Pouch() nosqltest.Database {
 				}
 			})
 
+			ctx := context.Background()
 			name := fmt.Sprintf("db-%d", rand.Int())
 
-			qs, err := couch.Dial(false, couch.DriverPouch, dir+"/"+name, name, nil)
+			qs, err := couch.Dial(ctx, false, couch.DriverPouch, dir+"/"+name, name, nil)
 			if err != nil {
 				os.RemoveAll(dir)
 				t.Fatal(err)
 			}
 			t.Cleanup(func() {
 				qs.Close()
-				ctx := context.TODO()
-				if c, err := kivik.New(ctx, couch.DriverPouch, dir); err == nil {
+				if c, err := kivik.New(couch.DriverPouch, dir); err == nil {
 					_ = c.DestroyDB(ctx, name)
 				}
 			})

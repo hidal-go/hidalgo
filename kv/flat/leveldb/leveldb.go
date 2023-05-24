@@ -80,7 +80,7 @@ func (db *DB) Close() error {
 	return db.db.Close()
 }
 
-func (db *DB) Tx(rw bool) (flat.Tx, error) {
+func (db *DB) Tx(ctx context.Context, rw bool) (flat.Tx, error) {
 	tx := &Tx{db: db}
 	var err error
 	if rw {
@@ -152,21 +152,21 @@ func (tx *Tx) GetBatch(ctx context.Context, keys []flat.Key) ([]flat.Value, erro
 	return flat.GetBatch(ctx, tx, keys)
 }
 
-func (tx *Tx) Put(k flat.Key, v flat.Value) error {
+func (tx *Tx) Put(ctx context.Context, k flat.Key, v flat.Value) error {
 	if tx.tx == nil {
 		return flat.ErrReadOnly
 	}
 	return tx.tx.Put(k, v, tx.db.wo)
 }
 
-func (tx *Tx) Del(k flat.Key) error {
+func (tx *Tx) Del(ctx context.Context, k flat.Key) error {
 	if tx.tx == nil {
 		return flat.ErrReadOnly
 	}
 	return tx.tx.Delete(k, tx.db.wo)
 }
 
-func (tx *Tx) Scan(opts ...flat.IteratorOption) flat.Iterator {
+func (tx *Tx) Scan(ctx context.Context, opts ...flat.IteratorOption) flat.Iterator {
 	lit := &Iterator{tx: tx}
 	lit.WithPrefix(nil)
 	var it flat.Iterator = lit

@@ -4,6 +4,8 @@
 package couch
 
 import (
+	"context"
+
 	_ "github.com/go-kivik/couchdb" // The CouchDB driver
 
 	"github.com/hidal-go/hidalgo/base"
@@ -26,10 +28,10 @@ func init() {
 	})
 }
 
-func CreateCouch(addr, ns string, opt nosql.Options) (nosql.Database, error) {
-	return Dial(true, DriverCouch, addr, ns, opt)
+func CreateCouch(ctx context.Context, addr, ns string, opt nosql.Options) (nosql.Database, error) {
+	return Dial(ctx, true, DriverCouch, addr, ns, opt)
 }
 
-func OpenCouch(addr, ns string, opt nosql.Options) (nosql.Database, error) {
-	return Dial(false, DriverCouch, addr, ns, opt)
+func OpenCouch(ctx context.Context, addr, ns string, opt nosql.Options) (nosql.Database, error) {
+	return Dial(ctx, false, DriverCouch, addr, ns, opt)
 }

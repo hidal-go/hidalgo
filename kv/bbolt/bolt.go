@@ -75,7 +75,7 @@ func (db *DB) Close() error {
 	return db.db.Close()
 }
 
-func (db *DB) Tx(rw bool) (kv.Tx, error) {
+func (db *DB) Tx(ctx context.Context, rw bool) (kv.Tx, error) {
 	tx, err := db.db.Begin(rw)
 	if err != nil {
 		return nil, err
@@ -144,7 +144,7 @@ func (tx *Tx) Close() error {
 	return tx.tx.Rollback()
 }
 
-func (tx *Tx) Put(k kv.Key, v kv.Value) error {
+func (tx *Tx) Put(ctx context.Context, k kv.Key, v kv.Value) error {
 	var (
 		b   *bolt.Bucket
 		err error
@@ -171,7 +171,7 @@ func (tx *Tx) Put(k kv.Key, v kv.Value) error {
 	return err
 }
 
-func (tx *Tx) Del(k kv.Key) error {
+func (tx *Tx) Del(ctx context.Context, k kv.Key) error {
 	b, k := tx.bucket(k)
 	if b == nil || len(k) != 1 {
 		return nil
@@ -183,7 +183,7 @@ func (tx *Tx) Del(k kv.Key) error {
 	return err
 }
 
-func (tx *Tx) Scan(opts ...kv.IteratorOption) kv.Iterator {
+func (tx *Tx) Scan(ctx context.Context, opts ...kv.IteratorOption) kv.Iterator {
 	var it kv.Iterator = &Iterator{
 		tx:    tx,
 		rootb: tx.root(),

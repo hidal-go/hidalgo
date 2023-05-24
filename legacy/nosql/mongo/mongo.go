@@ -35,8 +35,8 @@ func init() {
 			Local: false, Volatile: false,
 		},
 		Traits: Traits(),
-		Open: func(addr, ns string, opt nosql.Options) (nosql.Database, error) {
-			db, err := Dial(addr, ns, opt)
+		Open: func(ctx context.Context, addr, ns string, opt nosql.Options) (nosql.Database, error) {
+			db, err := Dial(ctx, addr, ns, opt)
 			if err != nil {
 				return nil, err
 			}
@@ -45,7 +45,7 @@ func init() {
 	})
 }
 
-func dialMongo(addr, dbName string, noSqloptions nosql.Options) (*mongo.Client, error) {
+func dialMongo(ctx context.Context, addr, dbName string, noSqloptions nosql.Options) (*mongo.Client, error) {
 	if connVal, ok := noSqloptions["session"]; ok {
 		if conn, ok := connVal.(*mongo.Client); ok {
 			return conn, nil
@@ -57,7 +57,7 @@ func dialMongo(addr, dbName string, noSqloptions nosql.Options) (*mongo.Client, 
 		if err != nil {
 			return nil, err
 		}
-		err = client.Connect(context.TODO())
+		err = client.Connect(ctx)
 		if err != nil {
 			return nil, err
 		}
@@ -74,7 +74,7 @@ func dialMongo(addr, dbName string, noSqloptions nosql.Options) (*mongo.Client, 
 	if err != nil {
 		return nil, err
 	}
-	return client, client.Connect(context.TODO())
+	return client, client.Connect(ctx)
 }
 
 func New(sess *mongo.Client, dbName string) (*DB, error) {
@@ -84,11 +84,11 @@ func New(sess *mongo.Client, dbName string) (*DB, error) {
 	}, nil
 }
 
-func Dial(addr, dbName string, opt nosql.Options) (*DB, error) {
+func Dial(ctx context.Context, addr, dbName string, opt nosql.Options) (*DB, error) {
 	// the dbName parameter is actually the defaultDatabase name, check if we had an override via the options
 	dbOverride := opt.GetString("database_name", dbName)
 
-	sess, err := dialMongo(addr, dbOverride, opt)
+	sess, err := dialMongo(ctx, addr, dbOverride, opt)
 	if err != nil {
 		return nil, err
 	}
@@ -109,7 +109,7 @@ type DB struct {
 }
 
 func (db *DB) Close() error {
-	db.sess.Disconnect(context.TODO())
+	db.sess.Disconnect(context.Background())
 	return nil
 }
 
@@ -458,7 +458,7 @@ func (q *Query) Limit(n int) nosql.Query {
 	return q
 }
 
-func (q *Query) build() (*mongo.Cursor, error) {
+func (q *Query) build(ctx context.Context) (*mongo.Cursor, error) {
 	var m interface{} = bson.D{}
 	if q.query != nil {
 		m = q.query
@@ -468,7 +468,7 @@ func (q *Query) build() (*mongo.Cursor, error) {
 		findOptions.SetLimit(int64(q.limit))
 	}
 
-	qu, err := q.c.c.Find(context.TODO(), m, findOptions)
+	qu, err := q.c.c.Find(ctx, m, findOptions)
 
 	return qu, err
 }
@@ -494,7 +494,7 @@ func (q *Query) Count(ctx context.Context) (int64, error) {
 
 func (q *Query) One(ctx context.Context) (nosql.Document, error) {
 	m := &primitive.M{}
-	cursor, err := q.build()
+	cursor, err := q.build(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -509,8 +509,8 @@ func (q *Query) One(ctx context.Context) (nosql.Document, error) {
 	return q.c.convDoc(*m), nil
 }
 
-func (q *Query) Iterate() nosql.DocIterator {
-	it, err := q.build()
+func (q *Query) Iterate(ctx context.Context) nosql.DocIterator {
+	it, err := q.build(ctx)
 	if err != nil {
 		return &Iterator{it: it, err: err, c: q.c}
 	}
@@ -554,7 +554,7 @@ func (it *Iterator) Err() error {
 
 func (it *Iterator) Close() error {
 	if it.it != nil {
-		return it.it.Close(context.TODO())
+		return it.it.Close(context.Background())
 	}
 	return nil
 }

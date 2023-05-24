@@ -19,10 +19,11 @@ type Test struct {
 }
 
 func (t Test) Get(key kv.Key) (kv.Value, error) {
-	tx, err := t.db.Tx(false)
+	ctx := context.Background()
+	tx, err := t.db.Tx(ctx, false)
 	require.NoError(t.t, err)
 	defer tx.Close()
-	return tx.Get(context.TODO(), key)
+	return tx.Get(ctx, key)
 }
 
 func (t Test) NotExists(k kv.Key) {
@@ -38,13 +39,13 @@ func (t Test) Expect(k kv.Key, exp kv.Value) {
 }
 
 func (t Test) Put(key kv.Key, val kv.Value) {
-	tx, err := t.db.Tx(true)
+	ctx := context.Background()
+	tx, err := t.db.Tx(ctx, true)
 	require.NoError(t.t, err)
 	defer tx.Close()
-	err = tx.Put(key, val)
+	err = tx.Put(ctx, key, val)
 	require.NoError(t.t, err)
 
-	ctx := context.TODO()
 	got, err := tx.Get(ctx, key)
 	require.NoError(t.t, err)
 	require.Equal(t.t, val, got)
@@ -53,14 +54,14 @@ func (t Test) Put(key kv.Key, val kv.Value) {
 }
 
 func (t Test) Del(key kv.Key) {
-	tx, err := t.db.Tx(true)
+	ctx := context.Background()
+	tx, err := t.db.Tx(ctx, true)
 	require.NoError(t.t, err)
 	defer tx.Close()
 
-	err = tx.Del(key)
+	err = tx.Del(ctx, key)
 	require.NoError(t.t, err)
 
-	ctx := context.TODO()
 	got, err := tx.Get(ctx, key)
 	require.Equal(t.t, kv.ErrNotFound, err)
 	require.Equal(t.t, kv.Value(nil), got)
@@ -73,7 +74,7 @@ func (t Test) ExpectIt(it kv.Iterator, exp []kv.Pair) {
 	if len(exp) == 0 {
 		exp = nil
 	}
-	ctx := context.TODO()
+	ctx := context.Background()
 	var got []kv.Pair
 	for it.Next(ctx) {
 		got = append(got, kv.Pair{
@@ -86,11 +87,12 @@ func (t Test) ExpectIt(it kv.Iterator, exp []kv.Pair) {
 }
 
 func (t Test) Scan(exp []kv.Pair, opts ...kv.IteratorOption) {
-	tx, err := t.db.Tx(false)
+	ctx := context.Background()
+	tx, err := t.db.Tx(ctx, false)
 	require.NoError(t.t, err)
 	defer tx.Close()
 
-	it := tx.Scan(opts...)
+	it := tx.Scan(ctx, opts...)
 	defer it.Close()
 	require.NoError(t.t, it.Err())
 
@@ -98,11 +100,12 @@ func (t Test) Scan(exp []kv.Pair, opts ...kv.IteratorOption) {
 }
 
 func (t Test) ScanReset(exp []kv.Pair, opts ...kv.IteratorOption) {
-	tx, err := t.db.Tx(false)
+	ctx := context.Background()
+	tx, err := t.db.Tx(ctx, false)
 	require.NoError(t.t, err)
 	defer tx.Close()
 
-	it := tx.Scan(opts...)
+	it := tx.Scan(ctx, opts...)
 	defer it.Close()
 	require.NoError(t.t, it.Err())
 

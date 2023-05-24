@@ -40,14 +40,15 @@ func MongoVersion(vers string) nosqltest.Database {
 			})
 
 			addr := fmt.Sprintf("mongodb://%s", cont.GetHostPort("27017/tcp"))
+			ctx := context.Background()
 			err = pool.Retry(func() error {
 				sess, err := gomongo.NewClient(options.Client().ApplyURI(addr))
 				if err != nil {
 					return err
 				}
-				defer sess.Disconnect(context.TODO())
+				defer sess.Disconnect(ctx)
 
-				err = sess.Connect(context.TODO())
+				err = sess.Connect(ctx)
 
 				if err != nil {
 					return err
@@ -57,7 +58,7 @@ func MongoVersion(vers string) nosqltest.Database {
 			if err != nil {
 				t.Fatal(err)
 			}
-			qs, err := mongo.Dial(addr, "test", nil)
+			qs, err := mongo.Dial(ctx, addr, "test", nil)
 			if err != nil {
 				t.Fatal(err)
 			}

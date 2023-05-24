@@ -17,7 +17,7 @@ func TableSize(ctx context.Context, t Table, f *Filter, exact bool) (int64, erro
 	if !exact {
 		return 1000, ErrWildGuess
 	}
-	it := t.Scan(&ScanOptions{
+	it := t.Scan(ctx, &ScanOptions{
 		KeysOnly: true,
 		Filter:   f,
 	})

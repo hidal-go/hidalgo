@@ -27,6 +27,7 @@ func TestNoSQL(t *testing.T, gen Database) {
 		db = gen.Run(t)
 	}
 
+	ctx := context.Background()
 	for _, kt := range keyTypes {
 		t.Run(kt.Name, func(t *testing.T) {
 			for _, c := range testsNoSQLKey {
@@ -37,7 +38,7 @@ func TestNoSQL(t *testing.T, gen Database) {
 						db = gen.Run(t)
 					}
 					c.t(t, tableConf{
-						ctx: context.TODO(),
+						ctx: ctx,
 						db:  db, tr: tr,
 						col: col, kt: kt,
 					})
@@ -274,9 +275,8 @@ func (s docsAndKeys) Swap(i, j int) {
 }
 
 func iterateExpect(t testing.TB, kt keyType, qu nosql.Query, exp []nosql.Document) {
-	ctx := context.TODO()
-
-	it := qu.Iterate()
+	ctx := context.Background()
+	it := qu.Iterate(ctx)
 	defer it.Close()
 	var (
 		got  = make([]nosql.Document, 0, len(exp))
@@ -403,7 +403,7 @@ func testDeleteByKey(t *testing.T, c tableConf) {
 }
 
 func testUpdate(t *testing.T, c tableConf) {
-	ctx := context.TODO()
+	ctx := context.Background()
 	c.ensurePK(t)
 
 	docs := []nosql.Document{
@@ -496,7 +496,7 @@ func testUpdate(t *testing.T, c tableConf) {
 }
 
 func testDeleteQuery(t *testing.T, c tableConf) {
-	ctx := context.TODO()
+	ctx := context.Background()
 	c.ensurePK(t)
 
 	keys, docs := c.insertDocs(t, 10+len(c.kt.Fields), func(i int) nosql.Document {

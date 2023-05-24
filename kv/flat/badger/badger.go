@@ -66,7 +66,7 @@ func (db *DB) Close() error {
 	return db.db.Close()
 }
 
-func (db *DB) Tx(rw bool) (flat.Tx, error) {
+func (db *DB) Tx(ctx context.Context, rw bool) (flat.Tx, error) {
 	tx := db.db.NewTransaction(rw)
 	return &Tx{tx: tx}, nil
 }
@@ -113,7 +113,7 @@ func (tx *Tx) GetBatch(ctx context.Context, keys []flat.Key) ([]flat.Value, erro
 	return flat.GetBatch(ctx, tx, keys)
 }
 
-func (tx *Tx) Put(k flat.Key, v flat.Value) error {
+func (tx *Tx) Put(ctx context.Context, k flat.Key, v flat.Value) error {
 	err := tx.tx.Set(k, v)
 	if err == badger.ErrConflict {
 		err = flat.ErrConflict
@@ -121,7 +121,7 @@ func (tx *Tx) Put(k flat.Key, v flat.Value) error {
 	return err
 }
 
-func (tx *Tx) Del(k flat.Key) error {
+func (tx *Tx) Del(ctx context.Context, k flat.Key) error {
 	err := tx.tx.Delete(k)
 	if err == badger.ErrConflict {
 		err = flat.ErrConflict
@@ -129,7 +129,7 @@ func (tx *Tx) Del(k flat.Key) error {
 	return err
 }
 
-func (tx *Tx) Scan(opts ...flat.IteratorOption) flat.Iterator {
+func (tx *Tx) Scan(ctx context.Context, opts ...flat.IteratorOption) flat.Iterator {
 	bit := tx.tx.NewIterator(badger.DefaultIteratorOptions)
 	var it flat.Iterator = &Iterator{it: bit, first: true}
 	it = flat.ApplyIteratorOptions(it, opts)

@@ -1,13 +1,14 @@
 package nosql
 
 import (
+	"context"
 	"sort"
 
 	"github.com/hidal-go/hidalgo/base"
 )
 
 // OpenFunc is a function for opening a database given a address and the database name.
-type OpenFunc func(addr, ns string, opt Options) (Database, error)
+type OpenFunc func(ctx context.Context, addr, ns string, opt Options) (Database, error)
 
 // Registration is an information about the database driver.
 type Registration struct {

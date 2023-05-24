@@ -57,7 +57,7 @@ func CouchVersion(vers string) nosqltest.Database {
 				t.Fatal(err)
 			}
 
-			qs, err := couch.Dial(true, couch.DriverCouch, addr, "test", nil)
+			qs, err := couch.Dial(ctx, true, couch.DriverCouch, addr, "test", nil)
 			if err != nil {
 				t.Fatal(err)
 			}

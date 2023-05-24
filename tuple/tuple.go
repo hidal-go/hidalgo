@@ -223,7 +223,7 @@ type Tuple struct {
 type Store interface {
 	base.DB
 	// Tx opens a read-only or read-write transaction in the tuple store.
-	Tx(rw bool) (Tx, error)
+	Tx(ctx context.Context, rw bool) (Tx, error)
 	// View provides functional-style read-only transactional access the tuple store.
 	View(ctx context.Context, view func(tx Tx) error) error
 	// Update provides functional-style read-write transactional access to the tuple store.
@@ -264,7 +264,7 @@ type ScanOptions struct {
 
 type Scanner interface {
 	// Scan iterates over all tuples matching specific parameters.
-	Scan(opt *ScanOptions) Iterator
+	Scan(ctx context.Context, opt *ScanOptions) Iterator
 }
 
 // TableInfo represent a metadata of a tuple table.
@@ -272,7 +272,7 @@ type TableInfo interface {
 	// Header returns a tuple header used in this table.
 	Header() Header
 	// Open binds a table to the transaction and opens it for further operations.
-	Open(tx Tx) (Table, error)
+	Open(ctx context.Context, tx Tx) (Table, error)
 }
 
 // Table represents an opened tuples table with a specific type (schema).
@@ -297,6 +297,8 @@ type Table interface {
 	UpdateTuple(ctx context.Context, t Tuple, opt *UpdateOpt) error
 	// DeleteTuples removes all tuples that matches a filter.
 	DeleteTuples(ctx context.Context, f *Filter) error
+
+	// Scanner adds the Scan function.
 	Scanner
 }
 

@@ -126,22 +126,23 @@ func readonly(t testing.TB, db kv.KV) {
 
 	nokey := kv.Key{[]byte("b")}
 
-	tx, err := db.Tx(false)
+	ctx := context.Background()
+	tx, err := db.Tx(ctx, false)
 	require.NoError(t, err)
 	defer tx.Close()
 
 	// writing anything on read-only tx must fail
-	err = tx.Put(key, val)
+	err = tx.Put(ctx, key, val)
 	require.Equal(t, kv.ErrReadOnly, err)
-	err = tx.Put(nokey, val)
+	err = tx.Put(ctx, nokey, val)
 	require.Equal(t, kv.ErrReadOnly, err)
 
 	// deleting records on read-only tx must fail
-	err = tx.Del(key)
+	err = tx.Del(ctx, key)
 	require.Equal(t, kv.ErrReadOnly, err)
 
 	// deleting non-existed record on read-only tx must still fail
-	err = tx.Del(nokey)
+	err = tx.Del(ctx, nokey)
 	require.Equal(t, kv.ErrReadOnly, err)
 }
 
@@ -164,15 +165,14 @@ func seek(t testing.TB, db kv.KV) {
 		all = append(all, kv.Pair{Key: k, Val: v})
 	}
 
-	tx, err := db.Tx(false)
+	ctx := context.Background()
+	tx, err := db.Tx(ctx, false)
 	require.NoError(t, err)
 	defer tx.Close()
 
-	ctx := context.TODO()
-
 	// start an iterator and check if it can reset
 	// this is the basic requirement for generic seek to work
-	it := tx.Scan()
+	it := tx.Scan(ctx)
 	defer it.Close()
 	td.ExpectIt(it, all)
 	it.Reset()
@@ -255,7 +255,7 @@ func increment(t testing.TB, db kv.KV) {
 				}
 				v++
 				val = []byte(strconv.Itoa(v))
-				return tx.Put(key, val)
+				return tx.Put(ctx, key, val)
 			})
 			if err != nil {
 				errc <- err

@@ -64,7 +64,7 @@ func ElasticVersion(vers string) nosqltest.Database {
 				t.Fatal(err)
 			}
 
-			db, err := elastic.Dial(addr, "test", nil)
+			db, err := elastic.Dial(ctx, addr, "test", nil)
 			if err != nil {
 				t.Fatal(addr, err)
 			}

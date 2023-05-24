@@ -192,7 +192,7 @@ type Query interface {
 	// One executes query and returns first document from it.
 	One(ctx context.Context) (Document, error)
 	// Iterate starts an iteration over query results.
-	Iterate() DocIterator
+	Iterate(ctx context.Context) DocIterator
 }
 
 // Update is an update request builder.

@@ -41,7 +41,7 @@ func RunTest(t *testing.T, fnc Func, opts *Options) {
 		kvtest.RunTest(t, func(t testing.TB) hkv.KV {
 			db := fnc(t)
 
-			ctx := context.TODO()
+			ctx := context.Background()
 			kdb, err := tuplekv.NewKV(ctx, db, "kv")
 			if err != nil {
 				require.NoError(t, err)
@@ -69,11 +69,11 @@ var testList = []struct {
 }
 
 func basic(t *testing.T, db tuple.Store) {
-	tx, err := db.Tx(true)
+	ctx := context.Background()
+	tx, err := db.Tx(ctx, true)
 	require.NoError(t, err)
 	defer tx.Close()
 
-	ctx := context.TODO()
 	tbl, err := tx.CreateTable(ctx, tuple.Header{
 		Name: "test",
 		Key: []tuple.KeyField{
@@ -96,7 +96,7 @@ func basic(t *testing.T, db tuple.Store) {
 	require.NoError(t, err)
 	require.Equal(t, v1, v2)
 
-	it := tbl.Scan(&tuple.ScanOptions{Sort: tuple.SortAsc})
+	it := tbl.Scan(ctx, &tuple.ScanOptions{Sort: tuple.SortAsc})
 	defer it.Close()
 
 	var tuples []tuple.Tuple
@@ -112,7 +112,8 @@ func basic(t *testing.T, db tuple.Store) {
 }
 
 func typed(t *testing.T, db tuple.Store) {
-	tx, err := db.Tx(true)
+	ctx := context.Background()
+	tx, err := db.Tx(ctx, true)
 	require.NoError(t, err)
 	defer tx.Close()
 
@@ -160,7 +161,6 @@ func typed(t *testing.T, db tuple.Store) {
 		})
 	}
 
-	ctx := context.TODO()
 	tbl1, err := tx.CreateTable(ctx, tuple.Header{
 		Name: "test1", Key: kfields1, Data: vfields,
 	})
@@ -188,7 +188,7 @@ func typed(t *testing.T, db tuple.Store) {
 	require.NoError(t, err, "\nkey : %#v\ndata: %#v", kfields, vfields)
 	require.Equal(t, data, v2, "\n%v\nvs\n%v", data, v2)
 
-	it := tbl.Scan(&tuple.ScanOptions{Sort: tuple.SortAsc})
+	it := tbl.Scan(ctx, &tuple.ScanOptions{Sort: tuple.SortAsc})
 	defer it.Close()
 
 	var tuples []tuple.Tuple
@@ -204,11 +204,11 @@ func typed(t *testing.T, db tuple.Store) {
 }
 
 func scans(t *testing.T, db tuple.Store) {
-	tx, err := db.Tx(true)
+	ctx := context.Background()
+	tx, err := db.Tx(ctx, true)
 	require.NoError(t, err)
 	defer tx.Close()
 
-	ctx := context.TODO()
 	tbl, err := tx.CreateTable(ctx, tuple.Header{
 		Name: "test",
 		Key: []tuple.KeyField{
@@ -253,7 +253,7 @@ func scans(t *testing.T, db tuple.Store) {
 		if kpref != nil {
 			f = &tuple.Filter{KeyFilter: kpref}
 		}
-		it := tbl.Scan(&tuple.ScanOptions{Sort: tuple.SortAsc, Filter: f})
+		it := tbl.Scan(ctx, &tuple.ScanOptions{Sort: tuple.SortAsc, Filter: f})
 		defer it.Close()
 
 		var got []int
@@ -329,7 +329,7 @@ func tablesSimple(t testing.TB, db tuple.Store) {
 	}
 
 	newTx := func(rw bool) tuple.Tx {
-		tx, err := db.Tx(rw)
+		tx, err := db.Tx(ctx, rw)
 		require.NoError(t, err)
 		return tx
 	}
@@ -416,7 +416,7 @@ func tablesAuto(t testing.TB, db tuple.Store) {
 	}
 
 	newTx := func(rw bool) tuple.Tx {
-		tx, err := db.Tx(rw)
+		tx, err := db.Tx(ctx, rw)
 		require.NoError(t, err)
 		return tx
 	}
@@ -441,11 +441,11 @@ func tablesAuto(t testing.TB, db tuple.Store) {
 }
 
 func auto(t *testing.T, db tuple.Store) {
-	tx, err := db.Tx(true)
+	ctx := context.Background()
+	tx, err := db.Tx(ctx, true)
 	require.NoError(t, err)
 	defer tx.Close()
 
-	ctx := context.TODO()
 	tbl, err := tx.CreateTable(ctx, tuple.Header{
 		Name: "test",
 		Key: []tuple.KeyField{
@@ -469,7 +469,7 @@ func auto(t *testing.T, db tuple.Store) {
 	require.NoError(t, err)
 	require.Equal(t, v1, v2)
 
-	it := tbl.Scan(&tuple.ScanOptions{Sort: tuple.SortAsc})
+	it := tbl.Scan(ctx, &tuple.ScanOptions{Sort: tuple.SortAsc})
 	defer it.Close()
 
 	var tuples []tuple.Tuple

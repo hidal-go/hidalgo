@@ -3,9 +3,12 @@
 package couch
 
 import (
-	_ "github.com/go-kivik/pouchdb" // The PouchDB driver
+	"context"
+
 	"github.com/hidal-go/hidalgo/base"
 	"github.com/hidal-go/hidalgo/legacy/nosql"
+
+	_ "github.com/go-kivik/pouchdb" // The PouchDB driver
 )
 
 const (
@@ -24,10 +27,10 @@ func init() {
 	})
 }
 
-func CreatePouch(addr string, ns string, opt nosql.Options) (nosql.Database, error) {
-	return Dial(true, DriverPouch, addr, ns, opt)
+func CreatePouch(ctx context.Context, addr string, ns string, opt nosql.Options) (nosql.Database, error) {
+	return Dial(ctx, true, DriverPouch, addr, ns, opt)
 }
 
-func OpenPouch(addr string, ns string, opt nosql.Options) (nosql.Database, error) {
-	return Dial(false, DriverPouch, addr, ns, opt)
+func OpenPouch(ctx context.Context, addr string, ns string, opt nosql.Options) (nosql.Database, error) {
+	return Dial(ctx, false, DriverPouch, addr, ns, opt)
 }
