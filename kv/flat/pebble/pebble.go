@@ -1,3 +1,7 @@
+//go:build !386 && !arm
+
+// Pebble doesn't support 32bit
+
 package pebble
 
 import (
